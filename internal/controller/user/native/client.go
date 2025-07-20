@@ -2,8 +2,6 @@ package native
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -38,10 +36,9 @@ func NewHarborClient(v2Client *harborclients.HarborCLI) Client {
 func (c *HarborClient) GetUser(ctx context.Context, username string) (*models.UserResp, error) {
 	params := &user.SearchUsersParams{
 		Username: username,
-		Context:  ctx,
 	}
 
-	resp, err := c.V2Client.V2Client.User.SearchUsers(params, c.V2Client.AuthInfo)
+	resp, err := c.V2Client.V2Client.User.SearchUsers(ctx, params)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to search users")
 	}
@@ -49,7 +46,15 @@ func (c *HarborClient) GetUser(ctx context.Context, username string) (*models.Us
 	// Search for exact username match
 	for _, u := range resp.Payload {
 		if u.Username == username {
-			return u, nil
+			// Search only returns basic info, need to get full user details
+			getParams := &user.GetUserParams{
+				UserID: u.UserID,
+			}
+			userResp, err := c.V2Client.V2Client.User.GetUser(ctx, getParams)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get user details")
+			}
+			return userResp.Payload, nil
 		}
 	}
 
@@ -67,11 +72,10 @@ func (c *HarborClient) CreateUser(ctx context.Context, username, email, realname
 	}
 
 	params := &user.CreateUserParams{
-		User:    userCreationReq,
-		Context: ctx,
+		UserReq: userCreationReq,
 	}
 
-	resp, err := c.V2Client.V2Client.User.CreateUser(params, c.V2Client.AuthInfo)
+	resp, err := c.V2Client.V2Client.User.CreateUser(ctx, params)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to create user")
 	}
@@ -102,9 +106,8 @@ func (c *HarborClient) CreateUser(ctx context.Context, username, email, realname
 		adminParams := &user.SetUserSysAdminParams{
 			UserID:           userID,
 			SysadminFlag:     sysAdminFlag,
-			Context:          ctx,
 		}
-		if _, err := c.V2Client.V2Client.User.SetUserSysAdmin(adminParams, c.V2Client.AuthInfo); err != nil {
+		if _, err := c.V2Client.V2Client.User.SetUserSysAdmin(ctx, adminParams); err != nil {
 			// Try to clean up the created user
 			_ = c.DeleteUser(ctx, userID)
 			return 0, errors.Wrap(err, "failed to set admin flag")
@@ -125,10 +128,9 @@ func (c *HarborClient) UpdateUser(ctx context.Context, userID int64, email, real
 	params := &user.UpdateUserProfileParams{
 		UserID:  userID,
 		Profile: profile,
-		Context: ctx,
 	}
 
-	if _, err := c.V2Client.V2Client.User.UpdateUserProfile(params, c.V2Client.AuthInfo); err != nil {
+	if _, err := c.V2Client.V2Client.User.UpdateUserProfile(ctx, params); err != nil {
 		return errors.Wrap(err, "failed to update user profile")
 	}
 
@@ -139,9 +141,8 @@ func (c *HarborClient) UpdateUser(ctx context.Context, userID int64, email, real
 	adminParams := &user.SetUserSysAdminParams{
 		UserID:       userID,
 		SysadminFlag: sysAdminFlag,
-		Context:      ctx,
 	}
-	if _, err := c.V2Client.V2Client.User.SetUserSysAdmin(adminParams, c.V2Client.AuthInfo); err != nil {
+	if _, err := c.V2Client.V2Client.User.SetUserSysAdmin(ctx, adminParams); err != nil {
 		return errors.Wrap(err, "failed to update admin flag")
 	}
 
@@ -157,17 +158,14 @@ func (c *HarborClient) UpdateUserPassword(ctx context.Context, userID int64, new
 	params := &user.UpdateUserPasswordParams{
 		UserID:      userID,
 		Password:    passwordReq,
-		Context:     ctx,
 	}
 
-	_, err := c.V2Client.V2Client.User.UpdateUserPassword(params, c.V2Client.AuthInfo)
+	_, err := c.V2Client.V2Client.User.UpdateUserPassword(ctx, params)
 	if err != nil {
 		// Check if it's a 400 error (password unchanged)
-		if httpErr, ok := err.(*user.UpdateUserPasswordBadRequest); ok {
-			if httpErr.Code() == http.StatusBadRequest {
-				// Password is the same, not an error in our case
-				return nil
-			}
+		if _, ok := err.(*user.UpdateUserPasswordBadRequest); ok {
+			// Password is the same, not an error in our case
+			return nil
 		}
 		return errors.Wrap(err, "failed to update user password")
 	}
@@ -179,10 +177,9 @@ func (c *HarborClient) UpdateUserPassword(ctx context.Context, userID int64, new
 func (c *HarborClient) DeleteUser(ctx context.Context, userID int64) error {
 	params := &user.DeleteUserParams{
 		UserID:  userID,
-		Context: ctx,
 	}
 
-	_, err := c.V2Client.V2Client.User.DeleteUser(params, c.V2Client.AuthInfo)
+	_, err := c.V2Client.V2Client.User.DeleteUser(ctx, params)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete user")
 	}

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/globallogicuki/provider-harbor/apis/user/v1alpha1"
 	apisv1alpha1 "github.com/globallogicuki/provider-harbor/apis/v1alpha1"
+	apisv1beta1 "github.com/globallogicuki/provider-harbor/apis/v1beta1"
 	harborclients "github.com/globallogicuki/provider-harbor/internal/clients"
 	"github.com/globallogicuki/provider-harbor/internal/features"
 )
@@ -39,9 +40,16 @@ const (
 	errGetPassword  = "cannot get password from secret"
 )
 
+var (
+	// UserKind is the kind string for User
+	UserKind = v1alpha1.CRDGroup + "/" + v1alpha1.CRDVersion + ", Kind=User"
+	// UserKindAPIVersion is the API version and kind for User
+	UserKindAPIVersion = v1alpha1.CRDGroupVersion.WithKind("User")
+)
+
 // Setup adds a controller that reconciles User managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(v1alpha1.UserGroupKind)
+	name := managed.ControllerName(UserKindAPIVersion.GroupKind().String())
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
 	if o.Features.Enabled(features.EnableAlphaExternalSecretStores) {
@@ -49,10 +57,10 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	}
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.UserGroupVersionKind),
+		resource.ManagedKind(UserKindAPIVersion),
 		managed.WithExternalConnecter(&connector{
 			kube:        mgr.GetClient(),
-			usage:       resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			usage:       resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1beta1.ProviderConfigUsage{}),
 			newClientFn: NewHarborClient,
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
@@ -91,7 +99,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &apisv1alpha1.ProviderConfig{}
+	pc := &apisv1beta1.ProviderConfig{}
 	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -283,7 +291,7 @@ func (e *external) getPassword(ctx context.Context, cr *v1alpha1.User) (string, 
 		Namespace: cr.Spec.ForProvider.PasswordSecretRef.Namespace,
 	}
 
-	secret := &v1.Secret{}
+	secret := &corev1.Secret{}
 	if err := e.kube.Get(ctx, nn, secret); err != nil {
 		return "", err
 	}

@@ -7,7 +7,8 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
 
 	"github.com/globallogicuki/provider-harbor/apis/user/v1alpha1"
@@ -225,9 +227,9 @@ func TestCreate(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	_ = v1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
 
-	passwordSecret := &v1.Secret{
+	passwordSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "user-password",
 			Namespace: "default",
@@ -254,12 +256,12 @@ func TestCreate(t *testing.T) {
 							FullName: ptrString("Test User"),
 							Admin:    ptrBool(false),
 							Comment:  ptrString("Test comment"),
-							PasswordSecretRef: v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "user-password",
+							PasswordSecretRef: xpv1.SecretKeySelector{
+								SecretReference: xpv1.SecretReference{
+									Name:      "user-password",
+									Namespace: "default",
 								},
-								Namespace: ptrString("default"),
-								Key:       "password",
+								Key: "password",
 							},
 						},
 					},
@@ -288,12 +290,12 @@ func TestCreate(t *testing.T) {
 						ForProvider: v1alpha1.UserParameters{
 							Username: ptrString("testuser"),
 							Email:    ptrString("test@example.com"),
-							PasswordSecretRef: v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "user-password",
+							PasswordSecretRef: xpv1.SecretKeySelector{
+								SecretReference: xpv1.SecretReference{
+									Name:      "user-password",
+									Namespace: "default",
 								},
-								Namespace: ptrString("default"),
-								Key:       "password",
+								Key: "password",
 							},
 						},
 					},
