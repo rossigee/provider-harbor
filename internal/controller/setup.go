@@ -1,14 +1,18 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 package controller
 
 import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/crossplane/upjet/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/pkg/controller"
 
+	// Native controllers
+	robotaccountnative "github.com/globallogicuki/provider-harbor/internal/controller/robotaccount/native"
+	usernative "github.com/globallogicuki/provider-harbor/internal/controller/user/native"
+
+	// Provider config (not terraform-based)
+	providerconfig "github.com/globallogicuki/provider-harbor/internal/controller/providerconfig"
+
+	// Terraform controllers (to be replaced)
 	configauth "github.com/globallogicuki/provider-harbor/internal/controller/config/configauth"
 	configsecurity "github.com/globallogicuki/provider-harbor/internal/controller/config/configsecurity"
 	configsystem "github.com/globallogicuki/provider-harbor/internal/controller/config/configsystem"
@@ -23,19 +27,24 @@ import (
 	project "github.com/globallogicuki/provider-harbor/internal/controller/project/project"
 	retentionpolicy "github.com/globallogicuki/provider-harbor/internal/controller/project/retentionpolicy"
 	webhook "github.com/globallogicuki/provider-harbor/internal/controller/project/webhook"
-	providerconfig "github.com/globallogicuki/provider-harbor/internal/controller/providerconfig"
 	purgeauditlog "github.com/globallogicuki/provider-harbor/internal/controller/purgeauditlog/purgeauditlog"
 	registry "github.com/globallogicuki/provider-harbor/internal/controller/registry/registry"
 	replication "github.com/globallogicuki/provider-harbor/internal/controller/registry/replication"
-	robotaccount "github.com/globallogicuki/provider-harbor/internal/controller/robotaccount/robotaccount"
 	task "github.com/globallogicuki/provider-harbor/internal/controller/tasks/task"
-	user "github.com/globallogicuki/provider-harbor/internal/controller/user/user"
 )
 
 // Setup creates all controllers with the supplied logger and adds them to
 // the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
+		// Provider config
+		providerconfig.Setup,
+
+		// Native controllers
+		robotaccountnative.Setup,
+		usernative.Setup,
+
+		// Terraform controllers (to be replaced)
 		configauth.Setup,
 		configsecurity.Setup,
 		configsystem.Setup,
@@ -50,13 +59,10 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		project.Setup,
 		retentionpolicy.Setup,
 		webhook.Setup,
-		providerconfig.Setup,
 		purgeauditlog.Setup,
 		registry.Setup,
 		replication.Setup,
-		robotaccount.Setup,
 		task.Setup,
-		user.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
