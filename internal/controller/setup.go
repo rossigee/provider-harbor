@@ -3,7 +3,8 @@ package controller
 import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
+	xpcontroller "github.com/crossplane/crossplane-runtime/pkg/controller"
+	tjcontroller "github.com/crossplane/upjet/pkg/controller"
 
 	// Native controllers
 	robotaccountnative "github.com/globallogicuki/provider-harbor/internal/controller/robotaccount/native"
@@ -33,18 +34,21 @@ import (
 	task "github.com/globallogicuki/provider-harbor/internal/controller/tasks/task"
 )
 
-// Setup creates all controllers with the supplied logger and adds them to
-// the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
-	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		// Provider config
-		providerconfig.Setup,
-
-		// Native controllers
+// SetupMixed sets up both native and terraform controllers
+func SetupMixed(mgr ctrl.Manager, nativeOpts xpcontroller.Options, terraformOpts tjcontroller.Options) error {
+	// Setup native controllers
+	for _, setup := range []func(ctrl.Manager, xpcontroller.Options) error{
 		robotaccountnative.Setup,
 		usernative.Setup,
+	} {
+		if err := setup(mgr, nativeOpts); err != nil {
+			return err
+		}
+	}
 
-		// Terraform controllers (to be replaced)
+	// Setup terraform-based controllers 
+	for _, setup := range []func(ctrl.Manager, tjcontroller.Options) error{
+		providerconfig.Setup,
 		configauth.Setup,
 		configsecurity.Setup,
 		configsystem.Setup,
@@ -64,7 +68,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		replication.Setup,
 		task.Setup,
 	} {
-		if err := setup(mgr, o); err != nil {
+		if err := setup(mgr, terraformOpts); err != nil {
 			return err
 		}
 	}

@@ -17,6 +17,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/terraform"
+	tjcontroller "github.com/crossplane/upjet/pkg/controller"
 	"gopkg.in/alecthomas/kingpin.v2"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,18 +29,24 @@ import (
 
 	"github.com/globallogicuki/provider-harbor/apis"
 	"github.com/globallogicuki/provider-harbor/apis/v1alpha1"
+	"github.com/globallogicuki/provider-harbor/config"
+	"github.com/globallogicuki/provider-harbor/internal/clients"
 	"github.com/globallogicuki/provider-harbor/internal/controller"
 	"github.com/globallogicuki/provider-harbor/internal/features"
 )
 
 func main() {
 	var (
-		app              = kingpin.New(filepath.Base(os.Args[0]), "Native Crossplane provider for Harbor").DefaultEnvars()
+		app              = kingpin.New(filepath.Base(os.Args[0]), "Mixed native/terraform Crossplane provider for Harbor").DefaultEnvars()
 		debug            = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
 		syncPeriod       = app.Flag("sync", "Controller manager sync period such as 300ms, 1.5h, or 2h45m").Short('s').Default("1h").Duration()
 		pollInterval     = app.Flag("poll", "Poll interval controls how often an individual resource should be checked for drift.").Default("10m").Duration()
 		leaderElection   = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may be checked for drift from the desired state.").Default("10").Int()
+
+		terraformVersion = app.Flag("terraform-version", "Terraform version.").Default("1.5.7").Envar("TERRAFORM_VERSION").String()
+		providerSource   = app.Flag("terraform-provider-source", "Terraform provider source.").Default("GOHARBOR/harbor").Envar("TERRAFORM_PROVIDER_SOURCE").String()
+		providerVersion  = app.Flag("terraform-provider-version", "Terraform provider version.").Default("3.10.10").Envar("TERRAFORM_PROVIDER_VERSION").String()
 
 		namespace                  = app.Flag("namespace", "Namespace used to set as default scope in default secret store config.").Default("crossplane-system").Envar("POD_NAMESPACE").String()
 		enableExternalSecretStores = app.Flag("enable-external-secret-stores", "Enable support for ExternalSecretStores.").Default("false").Envar("ENABLE_EXTERNAL_SECRET_STORES").Bool()
@@ -75,7 +83,8 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
 	
-	o := xpcontroller.Options{
+	// Native controller options
+	nativeOpts := xpcontroller.Options{
 		Logger:                  log,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		PollInterval:            *pollInterval,
@@ -83,14 +92,24 @@ func main() {
 		Features:                &feature.Flags{},
 	}
 
+	// Terraform controller options
+	terraformOpts := tjcontroller.Options{
+		Options: nativeOpts,
+		Provider: config.GetProvider(),
+		WorkspaceStore: terraform.NewWorkspaceStore(log),
+		SetupFn:        clients.TerraformSetupBuilder(*terraformVersion, *providerSource, *providerVersion),
+	}
+
 	if *enableExternalSecretStores {
-		// Note: SecretStoreConfigGVK is now part of xpcontroller.Options
 		log.Info("Alpha feature enabled", "flag", features.EnableAlphaExternalSecretStores)
-		o.Features.Enable(features.EnableAlphaExternalSecretStores)
+		nativeOpts.Features.Enable(features.EnableAlphaExternalSecretStores)
+		terraformOpts.SecretStoreConfigGVK = &v1alpha1.StoreConfigGroupVersionKind
 		
 		if *essTLSCertsPath != "" {
 			log.Info("ESS TLS certificates path is set. Loading mTLS configuration.")
-			// TODO: Implement ESS TLS config for native controllers if needed
+			tCfg, err := certificates.LoadMTLSConfig(filepath.Join(*essTLSCertsPath, "ca.crt"), filepath.Join(*essTLSCertsPath, "tls.crt"), filepath.Join(*essTLSCertsPath, "tls.key"), false)
+			kingpin.FatalIfError(err, "Cannot load ESS TLS config.")
+			terraformOpts.ESSOptions = &tjcontroller.ESSOptions{TLSConfig: tCfg}
 		}
 
 		// Ensure default store config exists.
@@ -109,10 +128,11 @@ func main() {
 	}
 
 	if *enableManagementPolicies {
-		o.Features.Enable(features.EnableBetaManagementPolicies)
+		nativeOpts.Features.Enable(features.EnableBetaManagementPolicies)
+		terraformOpts.Features.Enable(features.EnableBetaManagementPolicies)
 		log.Info("Beta feature enabled", "flag", features.EnableBetaManagementPolicies)
 	}
 
-	kingpin.FatalIfError(controller.Setup(mgr, o), "Cannot setup Harbor controllers")
+	kingpin.FatalIfError(controller.SetupMixed(mgr, nativeOpts, terraformOpts), "Cannot setup Harbor controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }
