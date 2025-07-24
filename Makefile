@@ -39,7 +39,7 @@ NPROCS ?= 1
 # to half the number of CPU cores.
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 
-GO_REQUIRED_VERSION ?= 1.19
+GO_REQUIRED_VERSION ?= 1.24.5
 GOLANGCILINT_VERSION ?= 1.50.0
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider $(GO_PROJECT)/cmd/generator
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
@@ -65,10 +65,14 @@ IMAGES = $(PROJECT_NAME)
 # ====================================================================================
 # Setup XPKG
 
-XPKG_REG_ORGS ?= xpkg.upbound.io/globallogicuki
-# NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
-# inferred.
-XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/globallogicuki
+# Standardized registry configuration
+# Primary registry: GitHub Container Registry under rossigee
+XPKG_REG_ORGS ?= ghcr.io/rossigee
+XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/rossigee
+
+# Optional registries (can be enabled via environment variables)
+# To enable Harbor: export ENABLE_HARBOR_PUBLISH=true make publish XPKG_REG_ORGS=harbor.golder.lan/library
+# To enable Upbound: export ENABLE_UPBOUND_PUBLISH=true make publish XPKG_REG_ORGS=xpkg.upbound.io/globallogicuki
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
