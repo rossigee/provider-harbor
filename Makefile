@@ -2,7 +2,7 @@
 # Setup Project
 
 PROJECT_NAME ?= provider-harbor
-PROJECT_REPO ?= github.com/globallogicuki/$(PROJECT_NAME)
+PROJECT_REPO ?= github.com/rossigee/$(PROJECT_NAME)
 
 export TERRAFORM_VERSION ?= 1.10.5
 
@@ -59,7 +59,7 @@ UPTEST_VERSION = v0.5.0
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS ?= xpkg.upbound.io/globallogicuki
+REGISTRY_ORGS ?= ghcr.io/rossigee
 IMAGES = $(PROJECT_NAME)
 -include build/makelib/imagelight.mk
 
@@ -73,7 +73,7 @@ XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/rossigee
 
 # Optional registries (can be enabled via environment variables)
 # To enable Harbor: export ENABLE_HARBOR_PUBLISH=true make publish XPKG_REG_ORGS=harbor.golder.lan/library
-# To enable Upbound: export ENABLE_UPBOUND_PUBLISH=true make publish XPKG_REG_ORGS=xpkg.upbound.io/globallogicuki
+# To enable Upbound: export ENABLE_UPBOUND_PUBLISH=true make publish XPKG_REG_ORGS=xpkg.upbound.io/rossigee
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
