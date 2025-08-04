@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -24,6 +20,18 @@ type RetentionPolicyInitParameters struct {
 
 	// (String) The schedule of when you would like the policy to run. This can be Hourly, Daily, Weekly or can be a custom cron string.
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
+
+	// (String) The project id of which you would like to apply this policy.
+	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/project/v1alpha1.Project
+	Scope *string `json:"scope,omitempty" tf:"scope,omitempty"`
+
+	// Reference to a Project in project to populate scope.
+	// +kubebuilder:validation:Optional
+	ScopeRef *v1.Reference `json:"scopeRef,omitempty" tf:"-"`
+
+	// Selector for a Project in project to populate scope.
+	// +kubebuilder:validation:Optional
+	ScopeSelector *v1.Selector `json:"scopeSelector,omitempty" tf:"-"`
 }
 
 type RetentionPolicyObservation struct {
@@ -220,13 +228,14 @@ type RetentionPolicyStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // RetentionPolicy is the Schema for the RetentionPolicys API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type RetentionPolicy struct {
 	metav1.TypeMeta   `json:",inline"`

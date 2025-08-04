@@ -39,6 +39,24 @@ func (mg *RobotAccount) ResolveReferences(ctx context.Context, c client.Reader) 
 		mg.Spec.ForProvider.Permissions[i3].NamespaceRef = rsp.ResolvedReference
 
 	}
+	for i3 := 0; i3 < len(mg.Spec.InitProvider.Permissions); i3++ {
+		rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.InitProvider.Permissions[i3].Namespace),
+			Extract:      resource.ExtractParamPath("name", true),
+			Reference:    mg.Spec.InitProvider.Permissions[i3].NamespaceRef,
+			Selector:     mg.Spec.InitProvider.Permissions[i3].NamespaceSelector,
+			To: reference.To{
+				List:    &v1alpha1.ProjectList{},
+				Managed: &v1alpha1.Project{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.InitProvider.Permissions[i3].Namespace")
+		}
+		mg.Spec.InitProvider.Permissions[i3].Namespace = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.InitProvider.Permissions[i3].NamespaceRef = rsp.ResolvedReference
+
+	}
 
 	return nil
 }

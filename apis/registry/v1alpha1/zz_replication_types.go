@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -110,6 +106,19 @@ type ReplicationInitParameters struct {
 
 	// (Boolean) Specify whether to override the resources at the destination if a resources with the same name exist. (Default: true)
 	Override *bool `json:"override,omitempty" tf:"override,omitempty"`
+
+	// (Number) The registry ID of the Registry Endpoint.
+	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/registry/v1alpha1.Registry
+	// +crossplane:generate:reference:extractor=github.com/globallogicuki/provider-harbor/config/common.ExtractRegistryID()
+	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
+
+	// Reference to a Registry in registry to populate registryId.
+	// +kubebuilder:validation:Optional
+	RegistryIDRef *v1.Reference `json:"registryIdRef,omitempty" tf:"-"`
+
+	// Selector for a Registry in registry to populate registryId.
+	// +kubebuilder:validation:Optional
+	RegistryIDSelector *v1.Selector `json:"registryIdSelector,omitempty" tf:"-"`
 
 	// (String) The scheduled time of when the container register will be push / pull. In cron base format. Hourly "0 0 * * * *", Daily "0 0 0 * * *", Monthly "0 0 0 * * 0". Can be one of the following: event_based, manual, cron format (Default: manual)
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
@@ -262,13 +271,14 @@ type ReplicationStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // Replication is the Schema for the Replications API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type Replication struct {
 	metav1.TypeMeta   `json:",inline"`

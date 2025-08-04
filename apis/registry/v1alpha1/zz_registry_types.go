@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -21,6 +17,9 @@ type RegistryInitParameters struct {
 
 	// (String) The username / access id for the external container register.
 	AccessID *string `json:"accessId,omitempty" tf:"access_id,omitempty"`
+
+	// (String, Sensitive) The password / access keys / token for the external container register.
+	AccessSecretSecretRef *v1.SecretKeySelector `json:"accessSecretSecretRef,omitempty" tf:"-"`
 
 	// (String) The description of the external container register.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
@@ -126,13 +125,14 @@ type RegistryStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // Registry is the Schema for the Registrys API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type Registry struct {
 	metav1.TypeMeta   `json:",inline"`

@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -63,6 +59,19 @@ type PermissionsInitParameters struct {
 
 	// (String) Either system or project.
 	Kind *string `json:"kind,omitempty" tf:"kind,omitempty"`
+
+	// (String) namespace is the name of your project. For kind system permissions, always use / as namespace. Use * to match all projects.
+	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/project/v1alpha1.Project
+	// +crossplane:generate:reference:extractor=github.com/crossplane/upjet/pkg/resource.ExtractParamPath("name",true)
+	Namespace *string `json:"namespace,omitempty" tf:"namespace,omitempty"`
+
+	// Reference to a Project in project to populate namespace.
+	// +kubebuilder:validation:Optional
+	NamespaceRef *v1.Reference `json:"namespaceRef,omitempty" tf:"-"`
+
+	// Selector for a Project in project to populate namespace.
+	// +kubebuilder:validation:Optional
+	NamespaceSelector *v1.Selector `json:"namespaceSelector,omitempty" tf:"-"`
 }
 
 type PermissionsObservation struct {
@@ -121,6 +130,9 @@ type RobotAccountInitParameters struct {
 
 	// (Block Set, Min: 1) (see below for nested schema)
 	Permissions []PermissionsInitParameters `json:"permissions,omitempty" tf:"permissions,omitempty"`
+
+	// (String, Sensitive) The secret of the robot account used for authentication. Defaults to random generated string from Harbor.
+	SecretSecretRef *v1.SecretKeySelector `json:"secretSecretRef,omitempty" tf:"-"`
 }
 
 type RobotAccountObservation struct {
@@ -208,13 +220,14 @@ type RobotAccountStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // RobotAccount is the Schema for the RobotAccounts API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type RobotAccount struct {
 	metav1.TypeMeta   `json:",inline"`

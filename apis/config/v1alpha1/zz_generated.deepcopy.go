@@ -223,6 +223,11 @@ func (in *ConfigAuthInitParameters) DeepCopyInto(out *ConfigAuthInitParameters) 
 		*out = new(string)
 		**out = **in
 	}
+	if in.LdapSearchPasswordSecretRef != nil {
+		in, out := &in.LdapSearchPasswordSecretRef, &out.LdapSearchPasswordSecretRef
+		*out = new(v1.SecretKeySelector)
+		**out = **in
+	}
 	if in.LdapUID != nil {
 		in, out := &in.LdapUID, &out.LdapUID
 		*out = new(string)
@@ -251,6 +256,11 @@ func (in *ConfigAuthInitParameters) DeepCopyInto(out *ConfigAuthInitParameters) 
 	if in.OidcClientID != nil {
 		in, out := &in.OidcClientID, &out.OidcClientID
 		*out = new(string)
+		**out = **in
+	}
+	if in.OidcClientSecretSecretRef != nil {
+		in, out := &in.OidcClientSecretSecretRef, &out.OidcClientSecretSecretRef
+		*out = new(v1.SecretKeySelector)
 		**out = **in
 	}
 	if in.OidcEndpoint != nil {

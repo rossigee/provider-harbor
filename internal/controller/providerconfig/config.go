@@ -1,15 +1,16 @@
 /*
-Copyright 2021 Upbound Inc.
+Copyright 2022 Upbound Inc.
 */
 
 package providerconfig
 
 import (
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/upjet/pkg/controller"
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/globallogicuki/provider-harbor/apis/v1beta1"
 )
