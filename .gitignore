@@ -9,3 +9,8 @@ cover.out
 # ignore IDE folders
 .vscode/
 .idea/
+
+# ignore binaries and build artifacts
+/provider
+*.xpkg
+/bin/

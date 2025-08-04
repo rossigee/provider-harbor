@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -55,6 +51,9 @@ type ConfigAuthInitParameters struct {
 	// (String) The base DN from which to look up a user in LDAP/AD.
 	LdapSearchDn *string `json:"ldapSearchDn,omitempty" tf:"ldap_search_dn,omitempty"`
 
+	// (String, Sensitive) The password for the user that will perform the LDAP search
+	LdapSearchPasswordSecretRef *v1.SecretKeySelector `json:"ldapSearchPasswordSecretRef,omitempty" tf:"-"`
+
 	// (String) The attribute used in a search to match a user. It could be uid, cn, email, sAMAccountName or other attributes depending on your LDAP/AD.
 	LdapUID *string `json:"ldapUid,omitempty" tf:"ldap_uid,omitempty"`
 
@@ -72,6 +71,9 @@ type ConfigAuthInitParameters struct {
 
 	// (String) The client id for the oidc server.
 	OidcClientID *string `json:"oidcClientId,omitempty" tf:"oidc_client_id,omitempty"`
+
+	// (String, Sensitive) The client secert for the oidc server.
+	OidcClientSecretSecretRef *v1.SecretKeySelector `json:"oidcClientSecretSecretRef,omitempty" tf:"-"`
 
 	// complaint server.
 	OidcEndpoint *string `json:"oidcEndpoint,omitempty" tf:"oidc_endpoint,omitempty"`
@@ -321,13 +323,14 @@ type ConfigAuthStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // ConfigAuth is the Schema for the ConfigAuths API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type ConfigAuth struct {
 	metav1.TypeMeta   `json:",inline"`

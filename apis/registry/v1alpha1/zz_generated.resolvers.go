@@ -36,5 +36,21 @@ func (mg *Replication) ResolveReferences(ctx context.Context, c client.Reader) e
 	mg.Spec.ForProvider.RegistryID = reference.ToFloatPtrValue(rsp.ResolvedValue)
 	mg.Spec.ForProvider.RegistryIDRef = rsp.ResolvedReference
 
+	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
+		CurrentValue: reference.FromFloatPtrValue(mg.Spec.InitProvider.RegistryID),
+		Extract:      common.ExtractRegistryID(),
+		Reference:    mg.Spec.InitProvider.RegistryIDRef,
+		Selector:     mg.Spec.InitProvider.RegistryIDSelector,
+		To: reference.To{
+			List:    &RegistryList{},
+			Managed: &Registry{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.InitProvider.RegistryID")
+	}
+	mg.Spec.InitProvider.RegistryID = reference.ToFloatPtrValue(rsp.ResolvedValue)
+	mg.Spec.InitProvider.RegistryIDRef = rsp.ResolvedReference
+
 	return nil
 }

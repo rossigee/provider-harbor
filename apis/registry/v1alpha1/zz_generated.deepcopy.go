@@ -186,6 +186,11 @@ func (in *RegistryInitParameters) DeepCopyInto(out *RegistryInitParameters) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AccessSecretSecretRef != nil {
+		in, out := &in.AccessSecretSecretRef, &out.AccessSecretSecretRef
+		*out = new(v1.SecretKeySelector)
+		**out = **in
+	}
 	if in.Description != nil {
 		in, out := &in.Description, &out.Description
 		*out = new(string)
@@ -486,6 +491,21 @@ func (in *ReplicationInitParameters) DeepCopyInto(out *ReplicationInitParameters
 		in, out := &in.Override, &out.Override
 		*out = new(bool)
 		**out = **in
+	}
+	if in.RegistryID != nil {
+		in, out := &in.RegistryID, &out.RegistryID
+		*out = new(float64)
+		**out = **in
+	}
+	if in.RegistryIDRef != nil {
+		in, out := &in.RegistryIDRef, &out.RegistryIDRef
+		*out = new(v1.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RegistryIDSelector != nil {
+		in, out := &in.RegistryIDSelector, &out.RegistryIDSelector
+		*out = new(v1.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Schedule != nil {
 		in, out := &in.Schedule, &out.Schedule

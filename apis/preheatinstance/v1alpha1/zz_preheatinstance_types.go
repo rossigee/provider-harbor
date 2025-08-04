@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 The Crossplane Authors <https://crossplane.io>
-//
-// SPDX-License-Identifier: Apache-2.0
-
 /*
 Copyright 2022 Upbound Inc.
 */
@@ -39,6 +35,12 @@ type PreheatInstanceInitParameters struct {
 
 	// (String) The name of the preheat instance.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
+
+	// (String, Sensitive) The password for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
+	PasswordSecretRef *v1.SecretKeySelector `json:"passwordSecretRef,omitempty" tf:"-"`
+
+	// (String, Sensitive) The token for the preheat instance. Required if auth_mode is "OAUTH". Defaults to an empty string.
+	TokenSecretRef *v1.SecretKeySelector `json:"tokenSecretRef,omitempty" tf:"-"`
 
 	// (String) The username for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
@@ -151,13 +153,14 @@ type PreheatInstanceStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // PreheatInstance is the Schema for the PreheatInstances API.
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
 type PreheatInstance struct {
 	metav1.TypeMeta   `json:",inline"`

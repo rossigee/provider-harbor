@@ -1,15 +1,36 @@
 # Provider Harbor
 
+**✅ BUILD STATUS: STABLE** - Successfully migrated to modern stable dependencies (v0.3.0)
+
 `provider-harbor` is a [Crossplane](https://crossplane.io/) provider that
-is built using [Upjet](https://github.com/crossplane/upjet) and exposes XRM-conformant managed resources 
-for the [Harbor](https://goharbor.io/) API.
+is built using [Upjet](https://github.com/crossplane/upjet) v1.9.0 and exposes XRM-conformant managed resources 
+for the [Harbor](https://goharbor.io/) container registry API.
+
+## Migration Success ✅
+**2025-01-27**: Successfully migrated from RC dependencies to stable versions
+- **Upjet**: v0.11.0-rc → v1.9.0 (stable)
+- **Crossplane Runtime**: v1.16.0-rc → v1.20.0 (stable)
+- **Generated Resources**: 20 Harbor resources with modern Crossplane patterns
+- **Build Status**: ✅ Successful compilation and generation
+
+## Features
+- **Registry Management**: External container registry integration (Docker Hub, AWS, Azure, etc.)
+- **Project Management**: Projects, repositories, and member access control
+- **Security Scanning**: Vulnerability scanning, CVE allowlists, and compliance policies
+- **Webhooks**: HTTP/Slack notifications for project events
+- **Replication**: Cross-registry replication with filtering
+- **Robot Accounts**: Automated service accounts for CI/CD
+
+## Container Registry
+- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.3.0`
+- **Harbor**: Available via environment configuration
+- **Upbound**: Available via environment configuration
 
 ## Getting Started
 
-Install the provider by using the following command after changing the image tag
-to the [latest release](https://marketplace.upbound.io/providers/globallogicuki/provider-harbor):
+Install the provider by using the following command:
 ```
-up ctp provider install globallogicuki/provider-harbor:v0.2.2
+up ctp provider install ghcr.io/rossigee/provider-harbor:v0.3.0
 ```
 
 Alternatively, you can use declarative installation:
@@ -20,7 +41,7 @@ kind: Provider
 metadata:
   name: provider-harbor
 spec:
-  package: globallogicuki/provider-harbor:v0.2.2
+  package: ghcr.io/rossigee/provider-harbor:v0.3.0
 EOF
 ```
 
