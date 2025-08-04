@@ -1,0 +1,84 @@
+name: Nightly Security Scanning
+
+on:
+  schedule:
+    # Run comprehensive security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write
+  attestations: write
+
+env:
+  GO_VERSION: '1.24.5'
+
+jobs:
+  comprehensive-security:
+    name: Comprehensive Security Analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:go"
+
+      - name: Check for secrets with TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: master
+          head: HEAD
+          extra_args: --debug --only-verified
+        continue-on-error: true
+
+
+  supply-chain-scan:
+    name: Supply Chain Security
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check for known malicious packages
+        run: |
+          # Use OSV scanner to check for known malicious packages
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          ./osv-scanner --lockfile=go.sum --format=sarif --output=osv-results.sarif || true
+
+      - name: Upload OSV scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('osv-results.sarif') != ''
+        with:
+          sarif_file: osv-results.sarif
