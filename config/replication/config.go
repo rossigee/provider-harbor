@@ -2,7 +2,7 @@ package replication
 
 import (
 	"github.com/crossplane/upjet/pkg/config"
-	"github.com/globallogicuki/provider-harbor/config/common"
+	"github.com/rossigee/provider-harbor/config/common"
 )
 
 // Configure harbor_replication resource

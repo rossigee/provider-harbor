@@ -47,7 +47,7 @@ EOF
 
 Notice that in this example Provider resource is referencing ControllerConfig with debug enabled.
 
-You can see the API reference [here](https://doc.crds.dev/github.com/globallogicuki/provider-harbor).
+You can see the API reference [here](https://doc.crds.dev/github.com/rossigee/provider-harbor).
 
 ## Provider Config
 Note, that the ProviderConfig uses basic auth and requires a local user. A robot user can be used, 
@@ -81,4 +81,4 @@ make build
 ## Report a Bug
 
 For filing bugs, suggesting improvements, or requesting new features, please
-open an [issue](https://github.com/globallogicuki/provider-harbor/issues).
+open an [issue](https://github.com/rossigee/provider-harbor/issues).

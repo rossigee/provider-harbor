@@ -108,8 +108,8 @@ type ReplicationInitParameters struct {
 	Override *bool `json:"override,omitempty" tf:"override,omitempty"`
 
 	// (Number) The registry ID of the Registry Endpoint.
-	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/registry/v1alpha1.Registry
-	// +crossplane:generate:reference:extractor=github.com/globallogicuki/provider-harbor/config/common.ExtractRegistryID()
+	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/registry/v1alpha1.Registry
+	// +crossplane:generate:reference:extractor=github.com/rossigee/provider-harbor/config/common.ExtractRegistryID()
 	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
 
 	// Reference to a Registry in registry to populate registryId.
@@ -225,8 +225,8 @@ type ReplicationParameters struct {
 	Override *bool `json:"override,omitempty" tf:"override,omitempty"`
 
 	// (Number) The registry ID of the Registry Endpoint.
-	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/registry/v1alpha1.Registry
-	// +crossplane:generate:reference:extractor=github.com/globallogicuki/provider-harbor/config/common.ExtractRegistryID()
+	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/registry/v1alpha1.Registry
+	// +crossplane:generate:reference:extractor=github.com/rossigee/provider-harbor/config/common.ExtractRegistryID()
 	// +kubebuilder:validation:Optional
 	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
 

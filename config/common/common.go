@@ -27,7 +27,7 @@ import (
 
 const (
 	// SelfPackagePath is the golang path for this package.
-	SelfPackagePath = "github.com/globallogicuki/provider-harbor/config/common"
+	SelfPackagePath = "github.com/rossigee/provider-harbor/config/common"
 
 	// RegistryIDExtractor is the golang path to ExtractAccessor function
 	// in this package.

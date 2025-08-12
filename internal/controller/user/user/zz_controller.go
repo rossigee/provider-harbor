@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	v1alpha1 "github.com/globallogicuki/provider-harbor/apis/user/v1alpha1"
-	features "github.com/globallogicuki/provider-harbor/internal/features"
+	v1alpha1 "github.com/rossigee/provider-harbor/apis/user/v1alpha1"
+	features "github.com/rossigee/provider-harbor/internal/features"
 )
 
 // Setup adds a controller that reconciles User managed resources.

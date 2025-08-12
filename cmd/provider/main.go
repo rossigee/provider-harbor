@@ -28,12 +28,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/globallogicuki/provider-harbor/apis"
-	"github.com/globallogicuki/provider-harbor/apis/v1alpha1"
-	"github.com/globallogicuki/provider-harbor/config"
-	"github.com/globallogicuki/provider-harbor/internal/clients"
-	"github.com/globallogicuki/provider-harbor/internal/controller"
-	"github.com/globallogicuki/provider-harbor/internal/features"
+	"github.com/rossigee/provider-harbor/apis"
+	"github.com/rossigee/provider-harbor/apis/v1alpha1"
+	"github.com/rossigee/provider-harbor/config"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"github.com/rossigee/provider-harbor/internal/controller"
+	"github.com/rossigee/provider-harbor/internal/features"
 )
 
 func main() {
