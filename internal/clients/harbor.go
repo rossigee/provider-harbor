@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/globallogicuki/provider-harbor/apis/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/v1beta1"
 )
 
 const (

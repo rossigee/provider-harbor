@@ -8,8 +8,8 @@ package v1alpha1
 import (
 	"context"
 	reference "github.com/crossplane/crossplane-runtime/pkg/reference"
-	v1alpha1 "github.com/globallogicuki/provider-harbor/apis/project/v1alpha1"
 	errors "github.com/pkg/errors"
+	v1alpha1 "github.com/rossigee/provider-harbor/apis/project/v1alpha1"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

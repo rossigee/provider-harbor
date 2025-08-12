@@ -8,9 +8,9 @@ package v1alpha1
 import (
 	"context"
 	reference "github.com/crossplane/crossplane-runtime/pkg/reference"
-	v1alpha1 "github.com/globallogicuki/provider-harbor/apis/registry/v1alpha1"
-	common "github.com/globallogicuki/provider-harbor/config/common"
 	errors "github.com/pkg/errors"
+	v1alpha1 "github.com/rossigee/provider-harbor/apis/registry/v1alpha1"
+	common "github.com/rossigee/provider-harbor/config/common"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

@@ -19,7 +19,7 @@ type ImmutableTagRuleInitParameters struct {
 	Disabled *bool `json:"disabled,omitempty" tf:"disabled,omitempty"`
 
 	// (String) The project id of which you would like to apply this policy.
-	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/project/v1alpha1.Project
+	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
 	// Reference to a Project in project to populate projectId.
@@ -82,7 +82,7 @@ type ImmutableTagRuleParameters struct {
 	Disabled *bool `json:"disabled,omitempty" tf:"disabled,omitempty"`
 
 	// (String) The project id of which you would like to apply this policy.
-	// +crossplane:generate:reference:type=github.com/globallogicuki/provider-harbor/apis/project/v1alpha1.Project
+	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 

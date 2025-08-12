@@ -1,8 +1,6 @@
-module github.com/globallogicuki/provider-harbor
+module github.com/rossigee/provider-harbor
 
 go 1.24.5
-
-toolchain go1.24.5
 
 require (
 	dario.cat/mergo v1.0.1

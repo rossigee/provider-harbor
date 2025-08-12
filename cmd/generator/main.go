@@ -11,7 +11,7 @@ import (
 
 	"github.com/crossplane/upjet/pkg/pipeline"
 
-	"github.com/globallogicuki/provider-harbor/config"
+	"github.com/rossigee/provider-harbor/config"
 )
 
 func main() {
