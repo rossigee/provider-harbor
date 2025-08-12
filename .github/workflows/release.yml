@@ -77,9 +77,21 @@ jobs:
 
       - name: Tag and Push Docker Image
         run: |
-          # Find the built image name
-          BUILT_IMAGE=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep provider-harbor | grep -v latest | head -1)
+          # List all images to debug
+          echo "Available Docker images:"
+          docker images
+          
+          # Find the built image name (looking for build-* pattern)
+          BUILT_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep build-.*/provider-harbor | head -1)
           echo "Built image: $BUILT_IMAGE"
+          
+          if [ -z "$BUILT_IMAGE" ]; then
+            echo "Error: No built image found"
+            echo "Available images:"
+            docker images
+            exit 1
+          fi
+          
           docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
           docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:latest
           docker push ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
