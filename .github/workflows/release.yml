@@ -49,9 +49,8 @@ jobs:
 
       - name: Install Crossplane CLI
         run: |
-          mkdir -p .cache/tools/linux_x86_64
-          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v1.20.0 --create-dirs https://releases.crossplane.io/stable/v1.20.0/bin/linux_amd64/crank?source=build
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v1.20.0
+          CROSSPLANE_CLI_PATH=$(make build.vars | grep CROSSPLANE_CLI= | cut -d= -f2)
+          make "$CROSSPLANE_CLI_PATH"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -69,73 +68,53 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Build Artifacts
+      - name: Build
         run: |
-          make build.all VERSION=${{ steps.version.outputs.version }}
+          make build
         env:
-          BUILD_ARGS: "--load"
+          VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Tag and Push Docker Image
+      - name: Publish
         run: |
-          # List all images to debug
-          echo "Available Docker images:"
-          docker images
-          
-          # Find the built image name (looking for build-* pattern)
-          BUILT_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep build-.*/provider-harbor | head -1)
-          echo "Built image: $BUILT_IMAGE"
-          
-          if [ -z "$BUILT_IMAGE" ]; then
-            echo "Error: No built image found"
-            echo "Available images:"
-            docker images
-            exit 1
-          fi
-          
-          docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-          docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-          docker push ghcr.io/${{ github.repository }}:latest
+          make publish
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REGISTRY_ORGS: ghcr.io/${{ github.repository_owner }}
+          XPKG_REG_ORGS: ghcr.io/${{ github.repository_owner }}
 
-      - name: Generate Release Notes
-        id: release_notes
+      - name: Generate Changelog
+        id: changelog
         run: |
           # Simple changelog generation
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREVIOUS_TAG" ]; then
             echo "## Changes since $PREVIOUS_TAG" > changelog.txt
-            git log --oneline --no-merges $PREVIOUS_TAG..HEAD >> changelog.txt
+            git log --oneline $PREVIOUS_TAG..HEAD >> changelog.txt
           else
             echo "## Initial Release" > changelog.txt
-            echo "First release of provider-harbor v${{ steps.version.outputs.version }}" >> changelog.txt
+            echo "First release of provider-harbor for Crossplane" >> changelog.txt
+            echo "" >> changelog.txt
+            echo "### Features" >> changelog.txt
+            echo "- Harbor container registry management" >> changelog.txt
+            echo "- Projects, users, and robot accounts" >> changelog.txt
+            echo "- Registry configurations and replication" >> changelog.txt
+            echo "- GitOps-ready container registry management" >> changelog.txt
           fi
-          
-          echo "## Installation" >> changelog.txt
-          echo '```bash' >> changelog.txt
-          echo "kubectl crossplane install provider ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}" >> changelog.txt
-          echo '```' >> changelog.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        id: create_release
+        uses: softprops/action-gh-release@v2
         with:
+          name: Release ${{ steps.version.outputs.version }}
           body_path: changelog.txt
-          files: |
-            _output/bin/*
-            _output/xpkg/*.xpkg
+          files: _output/xpkg/*.xpkg
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
 
-      - name: Upload Package to GHCR
-        if: "!contains(steps.version.outputs.version, '-')"
-        run: |
-          echo "Uploading Crossplane package to GHCR..."
-          make xpkg.push PACKAGE_REGISTRY=ghcr.io/${{ github.repository_owner }} VERSION=${{ steps.version.outputs.version }}
 
       - name: Release Summary
         run: |
           echo "🎉 Provider Harbor ${{ steps.version.outputs.version }} has been released!"
-          echo "📦 Docker: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
+          echo "📦 Docker: ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"
           echo "📦 Package: ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"
           echo "📦 Install: kubectl crossplane install provider ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"
