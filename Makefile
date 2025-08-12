@@ -59,14 +59,15 @@ UPTEST_VERSION = v0.5.0
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS ?= ghcr.io/rossigee
 IMAGES = $(PROJECT_NAME)
+# Force registry override (can be overridden by make command arguments)
+REGISTRY_ORGS = ghcr.io/rossigee
 -include build/makelib/imagelight.mk
 
 # ====================================================================================
 # Setup XPKG
 
-# Standardized registry configuration
+# Setup XPKG - Standardized registry configuration
 # Primary registry: GitHub Container Registry under rossigee
 XPKG_REG_ORGS ?= ghcr.io/rossigee
 XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/rossigee
