@@ -71,16 +71,17 @@ jobs:
 
       - name: Build Artifacts
         run: |
-          make build VERSION=${{ steps.version.outputs.version }}
-          make docker-build VERSION=${{ steps.version.outputs.version }}
-          make xpkg.build VERSION=${{ steps.version.outputs.version }}
+          make build.all VERSION=${{ steps.version.outputs.version }}
         env:
           BUILD_ARGS: "--load"
 
       - name: Tag and Push Docker Image
         run: |
-          docker tag provider-harbor:${{ steps.version.outputs.version }} ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-          docker tag provider-harbor:${{ steps.version.outputs.version }} ghcr.io/${{ github.repository }}:latest
+          # Find the built image name
+          BUILT_IMAGE=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep provider-harbor | grep -v latest | head -1)
+          echo "Built image: $BUILT_IMAGE"
+          docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+          docker tag $BUILT_IMAGE ghcr.io/${{ github.repository }}:latest
           docker push ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
           docker push ghcr.io/${{ github.repository }}:latest
 
