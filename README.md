@@ -19,10 +19,10 @@ for the [Harbor](https://goharbor.io/) container registry API.
 - **Security Scanning**: Vulnerability scanning, CVE allowlists, and compliance policies
 - **Webhooks**: HTTP/Slack notifications for project events
 - **Replication**: Cross-registry replication with filtering
-- **Robot Accounts**: Automated service accounts for CI/CD
+- **Robot Accounts**: Automated service accounts for CI/CD with Docker config JSON support
 
 ## Container Registry
-- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.3.0`
+- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.5.3`
 - **Harbor**: Available via environment configuration
 - **Upbound**: Available via environment configuration
 
@@ -30,7 +30,7 @@ for the [Harbor](https://goharbor.io/) container registry API.
 
 Install the provider by using the following command:
 ```
-up ctp provider install ghcr.io/rossigee/provider-harbor:v0.3.0
+up ctp provider install ghcr.io/rossigee/provider-harbor:v0.5.3
 ```
 
 Alternatively, you can use declarative installation:
@@ -41,13 +41,49 @@ kind: Provider
 metadata:
   name: provider-harbor
 spec:
-  package: ghcr.io/rossigee/provider-harbor:v0.3.0
+  package: ghcr.io/rossigee/provider-harbor:v0.5.3
 EOF
 ```
 
 Notice that in this example Provider resource is referencing ControllerConfig with debug enabled.
 
 You can see the API reference [here](https://doc.crds.dev/github.com/rossigee/provider-harbor).
+
+## Docker Config JSON Support
+
+**New in v0.5.3**: RobotAccount resources now support creating Docker config JSON style secrets while maintaining 100% backward compatibility.
+
+### Enhanced Connection Details
+
+All RobotAccount resources now provide:
+- **Legacy fields**: `username`, `password`, `robot_id` (unchanged)
+- **Docker config helpers**: `docker-config-template`, `docker-auth`, etc. (new)
+
+### Quick Example
+
+```yaml
+apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+kind: RobotAccount
+metadata:
+  name: docker-config-robot
+spec:
+  forProvider:
+    level: project
+    name: my-robot
+    permissions:
+      - access:
+          - action: pull
+            resource: repository
+        kind: project
+        namespace: myproject
+  writeConnectionSecretToRef:
+    name: robot-credentials
+    namespace: default
+```
+
+The resulting secret contains both legacy fields and Docker config JSON helpers that can be used to create `kubernetes.io/dockerconfigjson` secrets for image pull authentication.
+
+📖 **Full Documentation**: [RobotAccount Docker Config JSON Guide](docs/ROBOTACCOUNT-DOCKER-CONFIG.md)
 
 ## Provider Config
 Note, that the ProviderConfig uses basic auth and requires a local user. A robot user can be used, 

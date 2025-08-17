@@ -1,0 +1,93 @@
+# Legacy usage - individual credential fields (backward compatible)
+apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+kind: RobotAccount
+metadata:
+  name: legacy-robot-account
+spec:
+  forProvider:
+    description: Traditional robot account with individual credential fields
+    level: project
+    name: legacy-robot
+    permissions:
+      - access:
+          - action: pull
+            resource: repository
+        kind: project
+        namespace: "myproject"
+  writeConnectionSecretToRef:
+    name: legacy-robot-credentials
+    namespace: default
+    # This creates a secret with individual fields:
+    # - username: robot account full name
+    # - password: robot account secret
+    # - robot_id: robot account ID
+
+---
+# Enhanced usage - Docker config JSON helpers
+apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+kind: RobotAccount
+metadata:
+  name: enhanced-robot-account
+spec:
+  forProvider:
+    description: Robot account with Docker config JSON helpers
+    level: project
+    name: enhanced-robot
+    permissions:
+      - access:
+          - action: pull
+            resource: repository
+          - action: push
+            resource: repository
+        kind: project
+        namespace: "myproject"
+  writeConnectionSecretToRef:
+    name: enhanced-robot-credentials
+    namespace: default
+    # This creates a secret with both legacy fields AND Docker config helpers:
+    # - username: robot account full name
+    # - password: robot account secret  
+    # - robot_id: robot account ID
+    # - docker-username: same as username
+    # - docker-password: same as password
+    # - docker-auth: base64 encoded username:password
+    # - docker-config-template: Docker config JSON with REGISTRY_URL_PLACEHOLDER
+
+---
+# Example Composition or Function that creates Docker config JSON
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-docker-config
+  namespace: default
+type: kubernetes.io/dockerconfigjson
+data:
+  # A Composition or Function would read the enhanced-robot-credentials secret
+  # and create a proper .dockerconfigjson by:
+  # 1. Reading docker-config-template from enhanced-robot-credentials
+  # 2. Replacing REGISTRY_URL_PLACEHOLDER with actual Harbor registry URL
+  # 3. Setting this secret's type to kubernetes.io/dockerconfigjson
+  .dockerconfigjson: |
+    # Example of what the final Docker config would look like:
+    # {
+    #   "auths": {
+    #     "harbor.example.com": {
+    #       "username": "robot$enhanced-robot",
+    #       "password": "generated-secret",
+    #       "auth": "base64-encoded-credentials"
+    #     }
+    #   }
+    # }
+
+---
+# Example of using the Docker config secret as image pull secret
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - name: test
+    image: harbor.example.com/myproject/myimage:latest
+  imagePullSecrets:
+  - name: harbor-docker-config  # The kubernetes.io/dockerconfigjson secret
