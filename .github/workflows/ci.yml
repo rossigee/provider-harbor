@@ -118,6 +118,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: ${{ env.GOLANGCI_VERSION }}
+          args: --timeout=10m
 
   check-diff:
     runs-on: ubuntu-24.04
@@ -300,6 +301,12 @@ jobs:
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
+
+      - name: Install Crossplane CLI
+        run: |
+          mkdir -p .cache/tools/linux_x86_64
+          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v1.20.0 --create-dirs https://releases.crossplane.io/stable/v1.20.0/bin/linux_amd64/crank?source=build
+          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v1.20.0
 
       - name: Deploying locally built provider package
         run: make local-deploy
