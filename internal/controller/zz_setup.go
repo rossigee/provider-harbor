@@ -30,7 +30,6 @@ import (
 	robotaccount "github.com/rossigee/provider-harbor/internal/controller/robotaccount/robotaccount"
 	task "github.com/rossigee/provider-harbor/internal/controller/tasks/task"
 	user "github.com/rossigee/provider-harbor/internal/controller/user/user"
-	usergen "github.com/rossigee/provider-harbor/internal/controller/user/usergen"
 )
 
 // Setup creates all controllers with the supplied logger and adds them to
@@ -58,7 +57,6 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		robotaccount.Setup,
 		task.Setup,
 		user.Setup,
-		usergen.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
