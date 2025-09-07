@@ -1,6 +1,6 @@
 module github.com/rossigee/provider-harbor
 
-go 1.24.5
+go 1.25.1
 
 require (
 	dario.cat/mergo v1.0.1
