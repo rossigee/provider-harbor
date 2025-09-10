@@ -42,8 +42,8 @@ NPROCS ?= 1
 # to half the number of CPU cores.
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 
-# Override golangci-lint version for modern Go support
-GOLANGCILINT_VERSION ?= 2.3.1
+# Override golangci-lint version for modern Go support  
+GOLANGCILINT_VERSION ?= 2.4.0
 GO_REQUIRED_VERSION ?= 1.25
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider $(GO_PROJECT)/cmd/generator
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
