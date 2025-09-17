@@ -20,6 +20,7 @@ import (
 	v1alpha1purgeauditlog "github.com/rossigee/provider-harbor/apis/purgeauditlog/v1alpha1"
 	v1alpha1registry "github.com/rossigee/provider-harbor/apis/registry/v1alpha1"
 	v1alpha1robotaccount "github.com/rossigee/provider-harbor/apis/robotaccount/v1alpha1"
+	v1alpha1scanner "github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
 	v1alpha1tasks "github.com/rossigee/provider-harbor/apis/tasks/v1alpha1"
 	v1alpha1user "github.com/rossigee/provider-harbor/apis/user/v1alpha1"
 	v1alpha1apis "github.com/rossigee/provider-harbor/apis/v1alpha1"
@@ -39,6 +40,7 @@ func init() {
 		v1alpha1purgeauditlog.SchemeBuilder.AddToScheme,
 		v1alpha1registry.SchemeBuilder.AddToScheme,
 		v1alpha1robotaccount.SchemeBuilder.AddToScheme,
+		v1alpha1scanner.SchemeBuilder.AddToScheme,
 		v1alpha1tasks.SchemeBuilder.AddToScheme,
 		v1alpha1user.SchemeBuilder.AddToScheme,
 		v1alpha1apis.SchemeBuilder.AddToScheme,

@@ -27,6 +27,7 @@ import (
 	"github.com/rossigee/provider-harbor/config/replication"
 	"github.com/rossigee/provider-harbor/config/retentionpolicy"
 	"github.com/rossigee/provider-harbor/config/robotaccount"
+	"github.com/rossigee/provider-harbor/config/scanner"
 	"github.com/rossigee/provider-harbor/config/tasks"
 	"github.com/rossigee/provider-harbor/config/user"
 	"github.com/rossigee/provider-harbor/config/webhook"
@@ -78,6 +79,7 @@ func GetProvider() *ujconfig.Provider {
 		replication.Configure,
 		retentionpolicy.Configure,
 		robotaccount.Configure,
+		scanner.Configure,
 		tasks.Configure,
 		user.Configure,
 	} {
