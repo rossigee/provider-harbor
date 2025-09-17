@@ -54,13 +54,19 @@ type Options struct {
 func Setup(mgr ctrl.Manager, opts Options) error {
 	opts.Logger.Info("Setting up Harbor controllers")
 
+	opts.Logger.Info("About to setup project controller")
 	if err := setupProjectController(mgr, opts); err != nil {
+		opts.Logger.Error(err, "Failed to setup project controller")
 		return err
 	}
+	opts.Logger.Info("Project controller setup completed")
 
+	opts.Logger.Info("About to setup scanner controller")
 	if err := setupScannerController(mgr, opts); err != nil {
+		opts.Logger.Error(err, "Failed to setup scanner controller")
 		return err
 	}
+	opts.Logger.Info("Scanner controller setup completed")
 
 	opts.Logger.Info("Harbor controllers setup completed")
 	return nil
