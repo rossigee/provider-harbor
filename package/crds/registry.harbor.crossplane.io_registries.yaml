@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Registry is the Schema for the Registrys API.
+        description: Registry is the Schema for the Registrys API. <no value>
         properties:
           apiVersion:
             description: |-
@@ -73,12 +73,10 @@ spec:
               forProvider:
                 properties:
                   accessId:
-                    description: (String) The username / access id for the external
-                      container register.
                     type: string
                   accessSecretSecretRef:
-                    description: (String, Sensitive) The password / access keys /
-                      token for the external container register.
+                    description: A SecretKeySelector is a reference to a secret key
+                      in an arbitrary namespace.
                     properties:
                       key:
                         description: The key to select.
@@ -95,24 +93,17 @@ spec:
                     - namespace
                     type: object
                   description:
-                    description: (String) The description of the external container
-                      register.
                     type: string
                   endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
                     type: string
                   insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
                     type: boolean
                   name:
-                    description: (String) The name of the register.
                     type: string
                   providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
+                    description: 'Can be one of: alibaba, artifact-hub, aws, azure,
+                      docker-hub, docker-registry, gitlab, github, google, harbor,
+                      huawei, jfrog, quay'
                     type: string
                 type: object
               initProvider:
@@ -129,12 +120,10 @@ spec:
                   autoscaler.
                 properties:
                   accessId:
-                    description: (String) The username / access id for the external
-                      container register.
                     type: string
                   accessSecretSecretRef:
-                    description: (String, Sensitive) The password / access keys /
-                      token for the external container register.
+                    description: A SecretKeySelector is a reference to a secret key
+                      in an arbitrary namespace.
                     properties:
                       key:
                         description: The key to select.
@@ -151,24 +140,17 @@ spec:
                     - namespace
                     type: object
                   description:
-                    description: (String) The description of the external container
-                      register.
                     type: string
                   endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
                     type: string
                   insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
                     type: boolean
                   name:
-                    description: (String) The name of the register.
                     type: string
                   providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
+                    description: 'Can be one of: alibaba, artifact-hub, aws, azure,
+                      docker-hub, docker-registry, gitlab, github, google, harbor,
+                      huawei, jfrog, quay'
                     type: string
                 type: object
               managementPolicies:
@@ -357,37 +339,25 @@ spec:
               atProvider:
                 properties:
                   accessId:
-                    description: (String) The username / access id for the external
-                      container register.
                     type: string
                   description:
-                    description: (String) The description of the external container
-                      register.
                     type: string
                   endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
                     type: string
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
                     type: boolean
                   name:
-                    description: (String) The name of the register.
                     type: string
                   providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
+                    description: 'Can be one of: alibaba, artifact-hub, aws, azure,
+                      docker-hub, docker-registry, gitlab, github, google, harbor,
+                      huawei, jfrog, quay'
                     type: string
                   registryId:
-                    description: (Number)
                     type: number
                   status:
-                    description: (String)
                     type: string
                 type: object
               conditions:

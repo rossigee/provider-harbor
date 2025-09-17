@@ -14,17 +14,12 @@ import (
 )
 
 type MemberGroupInitParameters struct {
-
-	// (Number) 3. Note: group type 3 is OIDC group.
 	GroupID *float64 `json:"groupId,omitempty" tf:"group_id,omitempty"`
 
-	// (String) The name of the group member entity.
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 
-	// (String) The project id of the project that the entity will have access to.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
@@ -36,55 +31,40 @@ type MemberGroupInitParameters struct {
 	// +kubebuilder:validation:Optional
 	ProjectIDSelector *v1.Selector `json:"projectIdSelector,omitempty" tf:"-"`
 
-	// (String) The permissions that the entity will be granted.
 	Role *string `json:"role,omitempty" tf:"role,omitempty"`
 
-	// (String) The group type.  Can be set to "ldap", "internal" or "oidc".
 	Type *string `json:"type,omitempty" tf:"type,omitempty"`
 }
 
 type MemberGroupObservation struct {
-
-	// (Number) 3. Note: group type 3 is OIDC group.
 	GroupID *float64 `json:"groupId,omitempty" tf:"group_id,omitempty"`
 
-	// (String) The name of the group member entity.
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 
-	// (Number)
 	MemberID *float64 `json:"memberId,omitempty" tf:"member_id,omitempty"`
 
-	// (String) The project id of the project that the entity will have access to.
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
-	// (String) The permissions that the entity will be granted.
 	Role *string `json:"role,omitempty" tf:"role,omitempty"`
 
-	// (String) The group type.  Can be set to "ldap", "internal" or "oidc".
 	Type *string `json:"type,omitempty" tf:"type,omitempty"`
 }
 
 type MemberGroupParameters struct {
 
-	// (Number) 3. Note: group type 3 is OIDC group.
 	// +kubebuilder:validation:Optional
 	GroupID *float64 `json:"groupId,omitempty" tf:"group_id,omitempty"`
 
-	// (String) The name of the group member entity.
 	// +kubebuilder:validation:Optional
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	// +kubebuilder:validation:Optional
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 
-	// (String) The project id of the project that the entity will have access to.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
@@ -97,11 +77,9 @@ type MemberGroupParameters struct {
 	// +kubebuilder:validation:Optional
 	ProjectIDSelector *v1.Selector `json:"projectIdSelector,omitempty" tf:"-"`
 
-	// (String) The permissions that the entity will be granted.
 	// +kubebuilder:validation:Optional
 	Role *string `json:"role,omitempty" tf:"role,omitempty"`
 
-	// (String) The group type.  Can be set to "ldap", "internal" or "oidc".
 	// +kubebuilder:validation:Optional
 	Type *string `json:"type,omitempty" tf:"type,omitempty"`
 }
@@ -133,7 +111,7 @@ type MemberGroupStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// MemberGroup is the Schema for the MemberGroups API.
+// MemberGroup is the Schema for the MemberGroups API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

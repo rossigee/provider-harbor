@@ -34,7 +34,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: RetentionPolicy is the Schema for the RetentionPolicys API.
+        description: RetentionPolicy is the Schema for the RetentionPolicys API. <no
+          value>
         properties:
           apiVersion:
             description: |-
@@ -73,67 +74,39 @@ spec:
               forProvider:
                 properties:
                   rule:
-                    description: '(Block List, Min: 1, Max: 15) (see below for nested
-                      schema)'
                     items:
                       properties:
                         alwaysRetain:
-                          description: (Boolean) retain always.
                           type: boolean
                         disabled:
-                          description: (Boolean) Specify if the rule is disable or
-                            not. Defaults to false
                           type: boolean
                         mostRecentlyPulled:
-                          description: (Number) retain the most recently pulled n
-                            artifacts.
                           type: number
                         mostRecentlyPushed:
-                          description: (Number) retain the most recently pushed n
-                            artifacts.
                           type: number
                         nDaysSinceLastPull:
-                          description: (Number) retains the artifacts pulled within
-                            the lasts n days.
                           type: number
                         nDaysSinceLastPush:
-                          description: (Number) retains the artifacts pushed within
-                            the lasts n days.
                           type: number
                         repoExcluding:
-                          description: |-
-                            (String) For the repositories excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         repoMatching:
-                          description: |-
-                            (String) For the repositories matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagExcluding:
-                          description: |-
-                            (String) For the tag excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagMatching:
-                          description: |-
-                            (String) For the tag matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         untaggedArtifacts:
-                          description: (Boolean) with untagged artifacts. Defaults
-                            to true
                           type: boolean
                       type: object
                     type: array
                   schedule:
-                    description: (String) The schedule of when you would like the
-                      policy to run. This can be Hourly, Daily, Weekly or can be a
-                      custom cron string.
                     type: string
                   scope:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                   scopeRef:
                     description: Reference to a Project in project to populate scope.
@@ -224,67 +197,39 @@ spec:
                   autoscaler.
                 properties:
                   rule:
-                    description: '(Block List, Min: 1, Max: 15) (see below for nested
-                      schema)'
                     items:
                       properties:
                         alwaysRetain:
-                          description: (Boolean) retain always.
                           type: boolean
                         disabled:
-                          description: (Boolean) Specify if the rule is disable or
-                            not. Defaults to false
                           type: boolean
                         mostRecentlyPulled:
-                          description: (Number) retain the most recently pulled n
-                            artifacts.
                           type: number
                         mostRecentlyPushed:
-                          description: (Number) retain the most recently pushed n
-                            artifacts.
                           type: number
                         nDaysSinceLastPull:
-                          description: (Number) retains the artifacts pulled within
-                            the lasts n days.
                           type: number
                         nDaysSinceLastPush:
-                          description: (Number) retains the artifacts pushed within
-                            the lasts n days.
                           type: number
                         repoExcluding:
-                          description: |-
-                            (String) For the repositories excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         repoMatching:
-                          description: |-
-                            (String) For the repositories matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagExcluding:
-                          description: |-
-                            (String) For the tag excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagMatching:
-                          description: |-
-                            (String) For the tag matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         untaggedArtifacts:
-                          description: (Boolean) with untagged artifacts. Defaults
-                            to true
                           type: boolean
                       type: object
                     type: array
                   schedule:
-                    description: (String) The schedule of when you would like the
-                      policy to run. This can be Hourly, Daily, Weekly or can be a
-                      custom cron string.
                     type: string
                   scope:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                   scopeRef:
                     description: Reference to a Project in project to populate scope.
@@ -539,70 +484,41 @@ spec:
               atProvider:
                 properties:
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   rule:
-                    description: '(Block List, Min: 1, Max: 15) (see below for nested
-                      schema)'
                     items:
                       properties:
                         alwaysRetain:
-                          description: (Boolean) retain always.
                           type: boolean
                         disabled:
-                          description: (Boolean) Specify if the rule is disable or
-                            not. Defaults to false
                           type: boolean
                         mostRecentlyPulled:
-                          description: (Number) retain the most recently pulled n
-                            artifacts.
                           type: number
                         mostRecentlyPushed:
-                          description: (Number) retain the most recently pushed n
-                            artifacts.
                           type: number
                         nDaysSinceLastPull:
-                          description: (Number) retains the artifacts pulled within
-                            the lasts n days.
                           type: number
                         nDaysSinceLastPush:
-                          description: (Number) retains the artifacts pushed within
-                            the lasts n days.
                           type: number
                         repoExcluding:
-                          description: |-
-                            (String) For the repositories excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         repoMatching:
-                          description: |-
-                            (String) For the repositories matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagExcluding:
-                          description: |-
-                            (String) For the tag excluding.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         tagMatching:
-                          description: |-
-                            (String) For the tag matching.
-                            Use doublestar pattern for path matching.
+                          description: Use doublestar pattern for path matching.
                           type: string
                         untaggedArtifacts:
-                          description: (Boolean) with untagged artifacts. Defaults
-                            to true
                           type: boolean
                       type: object
                     type: array
                   schedule:
-                    description: (String) The schedule of when you would like the
-                      policy to run. This can be Hourly, Daily, Weekly or can be a
-                      custom cron string.
                     type: string
                   scope:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                 type: object
               conditions:

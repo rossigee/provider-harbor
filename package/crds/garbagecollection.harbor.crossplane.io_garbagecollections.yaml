@@ -35,6 +35,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: GarbageCollection is the Schema for the GarbageCollections API.
+          <no value>
         properties:
           apiVersion:
             description: |-
@@ -73,16 +74,10 @@ spec:
               forProvider:
                 properties:
                   deleteUntagged:
-                    description: (Boolean) Allow garbage collection on untagged artifacts.
                     type: boolean
                   schedule:
-                    description: (String) Sets the schedule how often the Garbage
-                      Collection will run.  Can be to "hourly", "daily", "weekly"
-                      or can be a custom cron string ie, "0 5 4 * * *"
                     type: string
                   workers:
-                    description: (Number) Number of workers to run the garbage collection,
-                      value must be between 1 and 5.
                     type: number
                 type: object
               initProvider:
@@ -99,16 +94,10 @@ spec:
                   autoscaler.
                 properties:
                   deleteUntagged:
-                    description: (Boolean) Allow garbage collection on untagged artifacts.
                     type: boolean
                   schedule:
-                    description: (String) Sets the schedule how often the Garbage
-                      Collection will run.  Can be to "hourly", "daily", "weekly"
-                      or can be a custom cron string ie, "0 5 4 * * *"
                     type: string
                   workers:
-                    description: (Number) Number of workers to run the garbage collection,
-                      value must be between 1 and 5.
                     type: number
                 type: object
               managementPolicies:
@@ -289,19 +278,12 @@ spec:
               atProvider:
                 properties:
                   deleteUntagged:
-                    description: (Boolean) Allow garbage collection on untagged artifacts.
                     type: boolean
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   schedule:
-                    description: (String) Sets the schedule how often the Garbage
-                      Collection will run.  Can be to "hourly", "daily", "weekly"
-                      or can be a custom cron string ie, "0 5 4 * * *"
                     type: string
                   workers:
-                    description: (Number) Number of workers to run the garbage collection,
-                      value must be between 1 and 5.
                     type: number
                 type: object
               conditions:

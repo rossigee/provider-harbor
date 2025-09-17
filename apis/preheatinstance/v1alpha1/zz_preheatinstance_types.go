@@ -14,117 +14,83 @@ import (
 )
 
 type PreheatInstanceInitParameters struct {
-
-	// (String) The authentication mode for the preheat instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults to "NONE".
 	AuthMode *string `json:"authMode,omitempty" tf:"auth_mode,omitempty"`
 
-	// (Boolean) Whether the preheat instance is the default instance. Defaults to false.
 	Default *bool `json:"default,omitempty" tf:"default,omitempty"`
 
-	// (String) The description of the preheat instance. Defaults to an empty string.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Whether the preheat instance is enabled. Defaults to true.
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
-	// (String) The endpoint of the preheat instance.
 	Endpoint *string `json:"endpoint,omitempty" tf:"endpoint,omitempty"`
 
-	// (Boolean) Whether to allow insecure connections to the preheat instance. Defaults to false.
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the preheat instance.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String, Sensitive) The password for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	PasswordSecretRef *v1.SecretKeySelector `json:"passwordSecretRef,omitempty" tf:"-"`
 
-	// (String, Sensitive) The token for the preheat instance. Required if auth_mode is "OAUTH". Defaults to an empty string.
 	TokenSecretRef *v1.SecretKeySelector `json:"tokenSecretRef,omitempty" tf:"-"`
 
-	// (String) The username for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 
-	// (String) The vendor of the preheat instance. Must be either "dragonfly" or "kraken".
 	Vendor *string `json:"vendor,omitempty" tf:"vendor,omitempty"`
 }
 
 type PreheatInstanceObservation struct {
-
-	// (String) The authentication mode for the preheat instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults to "NONE".
 	AuthMode *string `json:"authMode,omitempty" tf:"auth_mode,omitempty"`
 
-	// (Boolean) Whether the preheat instance is the default instance. Defaults to false.
 	Default *bool `json:"default,omitempty" tf:"default,omitempty"`
 
-	// (String) The description of the preheat instance. Defaults to an empty string.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Whether the preheat instance is enabled. Defaults to true.
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
-	// (String) The endpoint of the preheat instance.
 	Endpoint *string `json:"endpoint,omitempty" tf:"endpoint,omitempty"`
 
-	// (String) The ID of the preheat instance.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (Boolean) Whether to allow insecure connections to the preheat instance. Defaults to false.
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the preheat instance.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String) The username for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 
-	// (String) The vendor of the preheat instance. Must be either "dragonfly" or "kraken".
 	Vendor *string `json:"vendor,omitempty" tf:"vendor,omitempty"`
 }
 
 type PreheatInstanceParameters struct {
 
-	// (String) The authentication mode for the preheat instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults to "NONE".
 	// +kubebuilder:validation:Optional
 	AuthMode *string `json:"authMode,omitempty" tf:"auth_mode,omitempty"`
 
-	// (Boolean) Whether the preheat instance is the default instance. Defaults to false.
 	// +kubebuilder:validation:Optional
 	Default *bool `json:"default,omitempty" tf:"default,omitempty"`
 
-	// (String) The description of the preheat instance. Defaults to an empty string.
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Whether the preheat instance is enabled. Defaults to true.
 	// +kubebuilder:validation:Optional
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
-	// (String) The endpoint of the preheat instance.
 	// +kubebuilder:validation:Optional
 	Endpoint *string `json:"endpoint,omitempty" tf:"endpoint,omitempty"`
 
-	// (Boolean) Whether to allow insecure connections to the preheat instance. Defaults to false.
 	// +kubebuilder:validation:Optional
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the preheat instance.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String, Sensitive) The password for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	// +kubebuilder:validation:Optional
 	PasswordSecretRef *v1.SecretKeySelector `json:"passwordSecretRef,omitempty" tf:"-"`
 
-	// (String, Sensitive) The token for the preheat instance. Required if auth_mode is "OAUTH". Defaults to an empty string.
 	// +kubebuilder:validation:Optional
 	TokenSecretRef *v1.SecretKeySelector `json:"tokenSecretRef,omitempty" tf:"-"`
 
-	// (String) The username for the preheat instance. Required if auth_mode is "BASIC". Defaults to an empty string.
 	// +kubebuilder:validation:Optional
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 
-	// (String) The vendor of the preheat instance. Must be either "dragonfly" or "kraken".
 	// +kubebuilder:validation:Optional
 	Vendor *string `json:"vendor,omitempty" tf:"vendor,omitempty"`
 }
@@ -156,7 +122,7 @@ type PreheatInstanceStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// PreheatInstance is the Schema for the PreheatInstances API.
+// PreheatInstance is the Schema for the PreheatInstances API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

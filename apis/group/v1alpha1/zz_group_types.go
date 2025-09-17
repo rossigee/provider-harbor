@@ -14,43 +14,31 @@ import (
 )
 
 type GroupInitParameters struct {
-
-	// (String) The name of the group.
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (Number) 3. Note: group type 3 is OIDC group.
 	GroupType *float64 `json:"groupType,omitempty" tf:"group_type,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 }
 
 type GroupObservation struct {
-
-	// (String) The name of the group.
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (Number) 3. Note: group type 3 is OIDC group.
 	GroupType *float64 `json:"groupType,omitempty" tf:"group_type,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 }
 
 type GroupParameters struct {
 
-	// (String) The name of the group.
 	// +kubebuilder:validation:Optional
 	GroupName *string `json:"groupName,omitempty" tf:"group_name,omitempty"`
 
-	// (Number) 3. Note: group type 3 is OIDC group.
 	// +kubebuilder:validation:Optional
 	GroupType *float64 `json:"groupType,omitempty" tf:"group_type,omitempty"`
 
-	// (String) The distinguished name of the group within AD/LDAP.
 	// +kubebuilder:validation:Optional
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty" tf:"ldap_group_dn,omitempty"`
 }
@@ -82,7 +70,7 @@ type GroupStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Group is the Schema for the Groups API.
+// Group is the Schema for the Groups API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

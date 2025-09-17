@@ -14,70 +14,50 @@ import (
 )
 
 type UserInitParameters struct {
-
-	// (Boolean) If the user will have admin rights within Harbor (Default: false)
 	Admin *bool `json:"admin,omitempty" tf:"admin,omitempty"`
 
-	// (String) Any comments for that are need for the internal user.
 	Comment *string `json:"comment,omitempty" tf:"comment,omitempty"`
 
-	// (String) The email address of the internal user.
 	Email *string `json:"email,omitempty" tf:"email,omitempty"`
 
-	// (String) The Full Name of the internal user.
 	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
 
-	// (String, Sensitive) The password for the internal user.
 	PasswordSecretRef v1.SecretKeySelector `json:"passwordSecretRef" tf:"-"`
 
-	// (String) The username of the internal user.
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 }
 
 type UserObservation struct {
-
-	// (Boolean) If the user will have admin rights within Harbor (Default: false)
 	Admin *bool `json:"admin,omitempty" tf:"admin,omitempty"`
 
-	// (String) Any comments for that are need for the internal user.
 	Comment *string `json:"comment,omitempty" tf:"comment,omitempty"`
 
-	// (String) The email address of the internal user.
 	Email *string `json:"email,omitempty" tf:"email,omitempty"`
 
-	// (String) The Full Name of the internal user.
 	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) The username of the internal user.
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 }
 
 type UserParameters struct {
 
-	// (Boolean) If the user will have admin rights within Harbor (Default: false)
 	// +kubebuilder:validation:Optional
 	Admin *bool `json:"admin,omitempty" tf:"admin,omitempty"`
 
-	// (String) Any comments for that are need for the internal user.
 	// +kubebuilder:validation:Optional
 	Comment *string `json:"comment,omitempty" tf:"comment,omitempty"`
 
-	// (String) The email address of the internal user.
 	// +kubebuilder:validation:Optional
 	Email *string `json:"email,omitempty" tf:"email,omitempty"`
 
-	// (String) The Full Name of the internal user.
 	// +kubebuilder:validation:Optional
 	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
 
-	// (String, Sensitive) The password for the internal user.
 	// +kubebuilder:validation:Optional
 	PasswordSecretRef v1.SecretKeySelector `json:"passwordSecretRef" tf:"-"`
 
-	// (String) The username of the internal user.
 	// +kubebuilder:validation:Optional
 	Username *string `json:"username,omitempty" tf:"username,omitempty"`
 }
@@ -109,7 +89,7 @@ type UserStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// User is the Schema for the Users API.
+// User is the Schema for the Users API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

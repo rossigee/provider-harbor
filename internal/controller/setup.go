@@ -33,6 +33,7 @@ import (
 	"github.com/rossigee/provider-harbor/apis/project/v1alpha1"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
+	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 )
 
 const (
@@ -52,11 +53,15 @@ type Options struct {
 // Setup creates all Harbor controllers using the native Harbor client
 func Setup(mgr ctrl.Manager, opts Options) error {
 	opts.Logger.Info("Setting up Harbor controllers")
-	
+
 	if err := setupProjectController(mgr, opts); err != nil {
 		return err
 	}
-	
+
+	if err := setupScannerController(mgr, opts); err != nil {
+		return err
+	}
+
 	opts.Logger.Info("Harbor controllers setup completed")
 	return nil
 }
@@ -83,6 +88,18 @@ func setupProjectController(mgr ctrl.Manager, opts Options) error {
 			managed.WithPollInterval(10*time.Minute),
 			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 			managed.WithConnectionPublishers(cps...)))
+}
+
+// setupScannerController sets up a controller for Harbor scanner registrations
+func setupScannerController(mgr ctrl.Manager, opts Options) error {
+	opts.Logger.Info("Setting up Harbor ScannerRegistration controller")
+
+	scannerOpts := scannercontroller.Options{
+		Logger:       opts.Logger,
+		PollInterval: opts.PollInterval,
+	}
+
+	return scannercontroller.Setup(mgr, scannerOpts)
 }
 
 // connector is responsible for producing ExternalClients.

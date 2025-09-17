@@ -35,6 +35,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: ImmutableTagRule is the Schema for the ImmutableTagRules API.
+          <no value>
         properties:
           apiVersion:
             description: |-
@@ -73,12 +74,8 @@ spec:
               forProvider:
                 properties:
                   disabled:
-                    description: (Boolean) Specify if the rule is disable or not.
-                      Defaults to false
                     type: boolean
                   projectId:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -155,24 +152,16 @@ spec:
                         type: object
                     type: object
                   repoExcluding:
-                    description: |-
-                      (String) For the repositories excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   repoMatching:
-                    description: |-
-                      (String) For the repositories matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagExcluding:
-                    description: |-
-                      (String) For the tag excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagMatching:
-                    description: |-
-                      (String) For the tag matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                 type: object
               initProvider:
@@ -189,12 +178,8 @@ spec:
                   autoscaler.
                 properties:
                   disabled:
-                    description: (Boolean) Specify if the rule is disable or not.
-                      Defaults to false
                     type: boolean
                   projectId:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -271,24 +256,16 @@ spec:
                         type: object
                     type: object
                   repoExcluding:
-                    description: |-
-                      (String) For the repositories excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   repoMatching:
-                    description: |-
-                      (String) For the repositories matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagExcluding:
-                    description: |-
-                      (String) For the tag excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagMatching:
-                    description: |-
-                      (String) For the tag matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                 type: object
               managementPolicies:
@@ -464,35 +441,22 @@ spec:
               atProvider:
                 properties:
                   disabled:
-                    description: (Boolean) Specify if the rule is disable or not.
-                      Defaults to false
                     type: boolean
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   projectId:
-                    description: (String) The project id of which you would like to
-                      apply this policy.
                     type: string
                   repoExcluding:
-                    description: |-
-                      (String) For the repositories excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   repoMatching:
-                    description: |-
-                      (String) For the repositories matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagExcluding:
-                    description: |-
-                      (String) For the tag excluding.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                   tagMatching:
-                    description: |-
-                      (String) For the tag matching.
-                      Use doublestar pattern for path matching.
+                    description: Use doublestar pattern for path matching.
                     type: string
                 type: object
               conditions:

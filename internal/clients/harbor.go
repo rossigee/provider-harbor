@@ -72,6 +72,27 @@ type ProjectStatus struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ScannerSpec defines the desired state of a Harbor scanner registration
+type ScannerSpec struct {
+	Name             string  `json:"name"`
+	Description      *string `json:"description,omitempty"`
+	URL              string  `json:"url"`
+	Auth             *string `json:"auth,omitempty"`
+	AccessCredential *string `json:"access_credential,omitempty"`
+}
+
+// ScannerStatus represents the status of a Harbor scanner registration
+type ScannerStatus struct {
+	UUID             string    `json:"uuid"`
+	Name             string    `json:"name"`
+	Description      *string   `json:"description,omitempty"`
+	URL              string    `json:"url"`
+	Auth             *string   `json:"auth,omitempty"`
+	AccessCredential *string   `json:"access_credential,omitempty"`
+	CreateTime       time.Time `json:"create_time"`
+	UpdateTime       time.Time `json:"update_time"`
+}
+
 // NewHarborClient creates a new Harbor client
 func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	if config == nil {
@@ -266,4 +287,104 @@ func (c *HarborClient) GetVersion(ctx context.Context) (string, error) {
 // GetMemoryFootprint returns estimated memory usage for this client
 func (c *HarborClient) GetMemoryFootprint() string {
 	return "~5-10MB (Harbor Go client + minimal overhead)"
+}
+
+// CreateScannerRegistration creates a new Harbor scanner registration
+func (c *HarborClient) CreateScannerRegistration(ctx context.Context, spec *ScannerSpec) (*ScannerStatus, error) {
+	if spec == nil {
+		return nil, errors.New("scanner spec is required")
+	}
+	if spec.Name == "" {
+		return nil, errors.New("scanner name is required")
+	}
+	if spec.URL == "" {
+		return nil, errors.New("scanner URL is required")
+	}
+
+	// TODO: Implement actual Harbor API calls when ready
+	// For now, return mock response to validate architecture
+	status := &ScannerStatus{
+		UUID:             "mock-uuid-" + spec.Name,
+		Name:             spec.Name,
+		Description:      spec.Description,
+		URL:              spec.URL,
+		Auth:             spec.Auth,
+		AccessCredential: spec.AccessCredential,
+		CreateTime:       time.Now(),
+		UpdateTime:       time.Now(),
+	}
+
+	return status, nil
+}
+
+// GetScannerRegistration retrieves a Harbor scanner registration by UUID or name
+func (c *HarborClient) GetScannerRegistration(ctx context.Context, scannerID string) (*ScannerStatus, error) {
+	if scannerID == "" {
+		return nil, errors.New("scanner ID is required")
+	}
+
+	// TODO: Implement actual Harbor API calls
+	status := &ScannerStatus{
+		UUID:        "mock-uuid-" + scannerID,
+		Name:        "Trivy Scanner",
+		Description: func() *string { s := "External Trivy vulnerability scanner"; return &s }(),
+		URL:         "http://trivy.trivy.svc.cluster.local:4954",
+		Auth:        func() *string { s := "Bearer"; return &s }(),
+		CreateTime:  time.Now().Add(-24 * time.Hour),
+		UpdateTime:  time.Now().Add(-24 * time.Hour),
+	}
+
+	return status, nil
+}
+
+// UpdateScannerRegistration updates an existing Harbor scanner registration
+func (c *HarborClient) UpdateScannerRegistration(ctx context.Context, scannerID string, spec *ScannerSpec) (*ScannerStatus, error) {
+	if scannerID == "" {
+		return nil, errors.New("scanner ID is required")
+	}
+	if spec == nil {
+		return nil, errors.New("scanner spec is required")
+	}
+
+	// TODO: Implement actual Harbor API calls
+	status := &ScannerStatus{
+		UUID:             scannerID,
+		Name:             spec.Name,
+		Description:      spec.Description,
+		URL:              spec.URL,
+		Auth:             spec.Auth,
+		AccessCredential: spec.AccessCredential,
+		CreateTime:       time.Now().Add(-24 * time.Hour),
+		UpdateTime:       time.Now(),
+	}
+
+	return status, nil
+}
+
+// DeleteScannerRegistration deletes a Harbor scanner registration
+func (c *HarborClient) DeleteScannerRegistration(ctx context.Context, scannerID string) error {
+	if scannerID == "" {
+		return errors.New("scanner ID is required")
+	}
+
+	// TODO: Implement actual Harbor API calls
+	return nil
+}
+
+// ListScannerRegistrations lists Harbor scanner registrations
+func (c *HarborClient) ListScannerRegistrations(ctx context.Context) ([]*ScannerStatus, error) {
+	// TODO: Implement actual Harbor API calls
+	scanners := []*ScannerStatus{
+		{
+			UUID:        "mock-uuid-trivy",
+			Name:        "Trivy Scanner",
+			Description: func() *string { s := "External Trivy vulnerability scanner"; return &s }(),
+			URL:         "http://trivy.trivy.svc.cluster.local:4954",
+			Auth:        func() *string { s := "Bearer"; return &s }(),
+			CreateTime:  time.Now().Add(-7 * 24 * time.Hour),
+			UpdateTime:  time.Now().Add(-7 * 24 * time.Hour),
+		},
+	}
+
+	return scanners, nil
 }

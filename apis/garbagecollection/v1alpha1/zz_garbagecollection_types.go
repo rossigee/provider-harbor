@@ -14,43 +14,31 @@ import (
 )
 
 type GarbageCollectionInitParameters struct {
-
-	// (Boolean) Allow garbage collection on untagged artifacts.
 	DeleteUntagged *bool `json:"deleteUntagged,omitempty" tf:"delete_untagged,omitempty"`
 
-	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "hourly", "daily", "weekly" or can be a custom cron string ie, "0 5 4 * * *"
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 
-	// (Number) Number of workers to run the garbage collection, value must be between 1 and 5.
 	Workers *float64 `json:"workers,omitempty" tf:"workers,omitempty"`
 }
 
 type GarbageCollectionObservation struct {
-
-	// (Boolean) Allow garbage collection on untagged artifacts.
 	DeleteUntagged *bool `json:"deleteUntagged,omitempty" tf:"delete_untagged,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "hourly", "daily", "weekly" or can be a custom cron string ie, "0 5 4 * * *"
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 
-	// (Number) Number of workers to run the garbage collection, value must be between 1 and 5.
 	Workers *float64 `json:"workers,omitempty" tf:"workers,omitempty"`
 }
 
 type GarbageCollectionParameters struct {
 
-	// (Boolean) Allow garbage collection on untagged artifacts.
 	// +kubebuilder:validation:Optional
 	DeleteUntagged *bool `json:"deleteUntagged,omitempty" tf:"delete_untagged,omitempty"`
 
-	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "hourly", "daily", "weekly" or can be a custom cron string ie, "0 5 4 * * *"
 	// +kubebuilder:validation:Optional
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 
-	// (Number) Number of workers to run the garbage collection, value must be between 1 and 5.
 	// +kubebuilder:validation:Optional
 	Workers *float64 `json:"workers,omitempty" tf:"workers,omitempty"`
 }
@@ -82,7 +70,7 @@ type GarbageCollectionStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// GarbageCollection is the Schema for the GarbageCollections API.
+// GarbageCollection is the Schema for the GarbageCollections API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
