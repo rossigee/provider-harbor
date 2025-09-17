@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ConfigSystem is the Schema for the ConfigSystems API.
+        description: ConfigSystem is the Schema for the ConfigSystems API. <no value>
         properties:
           apiVersion:
             description: |-
@@ -73,57 +73,35 @@ spec:
               forProvider:
                 properties:
                   auditLogForwardEndpoint:
-                    description: (String) The endpoint to forward audit logs to.
                     type: string
                   bannerMessage:
-                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         closable:
-                          description: (Boolean) Whether or not the banner message
-                            is closable.
                           type: boolean
                         fromDate:
-                          description: '(String) The date the banner message will
-                            start displaying. (Format: MM/DD/YYYY)'
                           type: string
                         message:
-                          description: (String) The message to display in the banner.
                           type: string
                         toDate:
-                          description: '(String) The date the banner message will
-                            stop displaying. (Format: MM/DD/YYYY)'
                           type: string
                         type:
-                          description: (String) The type of banner message. Can be
-                            "info", "warning", "success" or "danger".
                           type: string
                       type: object
                     type: array
                   projectCreationRestriction:
-                    description: (String) Who can create projects within Harbor. Can
-                      be "adminonly" or "everyone"
                     type: string
                   readOnly:
-                    description: (Boolean) Whether or not the system is in read only
-                      mode.
                     type: boolean
                   robotNamePrefix:
-                    description: (String) Robot account prefix.
                     type: string
                   robotTokenExpiration:
-                    description: (Number) The amount of time in days a robot account
-                      will expire.
                     type: number
                   scannerSkipUpdatePulltime:
-                    description: (Boolean) Whether or not to skip update pull time
-                      for scanner.
                     type: boolean
                   skipAuditLogDatabase:
-                    description: (Boolean) Whether or not to skip audit log database.
                     type: boolean
                   storagePerProject:
-                    description: 1 (unlimited).
                     type: number
                 type: object
               initProvider:
@@ -140,57 +118,35 @@ spec:
                   autoscaler.
                 properties:
                   auditLogForwardEndpoint:
-                    description: (String) The endpoint to forward audit logs to.
                     type: string
                   bannerMessage:
-                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         closable:
-                          description: (Boolean) Whether or not the banner message
-                            is closable.
                           type: boolean
                         fromDate:
-                          description: '(String) The date the banner message will
-                            start displaying. (Format: MM/DD/YYYY)'
                           type: string
                         message:
-                          description: (String) The message to display in the banner.
                           type: string
                         toDate:
-                          description: '(String) The date the banner message will
-                            stop displaying. (Format: MM/DD/YYYY)'
                           type: string
                         type:
-                          description: (String) The type of banner message. Can be
-                            "info", "warning", "success" or "danger".
                           type: string
                       type: object
                     type: array
                   projectCreationRestriction:
-                    description: (String) Who can create projects within Harbor. Can
-                      be "adminonly" or "everyone"
                     type: string
                   readOnly:
-                    description: (Boolean) Whether or not the system is in read only
-                      mode.
                     type: boolean
                   robotNamePrefix:
-                    description: (String) Robot account prefix.
                     type: string
                   robotTokenExpiration:
-                    description: (Number) The amount of time in days a robot account
-                      will expire.
                     type: number
                   scannerSkipUpdatePulltime:
-                    description: (Boolean) Whether or not to skip update pull time
-                      for scanner.
                     type: boolean
                   skipAuditLogDatabase:
-                    description: (Boolean) Whether or not to skip audit log database.
                     type: boolean
                   storagePerProject:
-                    description: 1 (unlimited).
                     type: number
                 type: object
               managementPolicies:
@@ -366,60 +322,37 @@ spec:
               atProvider:
                 properties:
                   auditLogForwardEndpoint:
-                    description: (String) The endpoint to forward audit logs to.
                     type: string
                   bannerMessage:
-                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         closable:
-                          description: (Boolean) Whether or not the banner message
-                            is closable.
                           type: boolean
                         fromDate:
-                          description: '(String) The date the banner message will
-                            start displaying. (Format: MM/DD/YYYY)'
                           type: string
                         message:
-                          description: (String) The message to display in the banner.
                           type: string
                         toDate:
-                          description: '(String) The date the banner message will
-                            stop displaying. (Format: MM/DD/YYYY)'
                           type: string
                         type:
-                          description: (String) The type of banner message. Can be
-                            "info", "warning", "success" or "danger".
                           type: string
                       type: object
                     type: array
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   projectCreationRestriction:
-                    description: (String) Who can create projects within Harbor. Can
-                      be "adminonly" or "everyone"
                     type: string
                   readOnly:
-                    description: (Boolean) Whether or not the system is in read only
-                      mode.
                     type: boolean
                   robotNamePrefix:
-                    description: (String) Robot account prefix.
                     type: string
                   robotTokenExpiration:
-                    description: (Number) The amount of time in days a robot account
-                      will expire.
                     type: number
                   scannerSkipUpdatePulltime:
-                    description: (Boolean) Whether or not to skip update pull time
-                      for scanner.
                     type: boolean
                   skipAuditLogDatabase:
-                    description: (Boolean) Whether or not to skip audit log database.
                     type: boolean
                   storagePerProject:
-                    description: 1 (unlimited).
                     type: number
                 type: object
               conditions:

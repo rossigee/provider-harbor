@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: MemberGroup is the Schema for the MemberGroups API.
+        description: MemberGroup is the Schema for the MemberGroups API. <no value>
         properties:
           apiVersion:
             description: |-
@@ -73,18 +73,12 @@ spec:
               forProvider:
                 properties:
                   groupId:
-                    description: '(Number) 3. Note: group type 3 is OIDC group.'
                     type: number
                   groupName:
-                    description: (String) The name of the group member entity.
                     type: string
                   ldapGroupDn:
-                    description: (String) The distinguished name of the group within
-                      AD/LDAP.
                     type: string
                   projectId:
-                    description: (String) The project id of the project that the entity
-                      will have access to.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -161,12 +155,8 @@ spec:
                         type: object
                     type: object
                   role:
-                    description: (String) The permissions that the entity will be
-                      granted.
                     type: string
                   type:
-                    description: (String) The group type.  Can be set to "ldap", "internal"
-                      or "oidc".
                     type: string
                 type: object
               initProvider:
@@ -183,18 +173,12 @@ spec:
                   autoscaler.
                 properties:
                   groupId:
-                    description: '(Number) 3. Note: group type 3 is OIDC group.'
                     type: number
                   groupName:
-                    description: (String) The name of the group member entity.
                     type: string
                   ldapGroupDn:
-                    description: (String) The distinguished name of the group within
-                      AD/LDAP.
                     type: string
                   projectId:
-                    description: (String) The project id of the project that the entity
-                      will have access to.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -271,12 +255,8 @@ spec:
                         type: object
                     type: object
                   role:
-                    description: (String) The permissions that the entity will be
-                      granted.
                     type: string
                   type:
-                    description: (String) The group type.  Can be set to "ldap", "internal"
-                      or "oidc".
                     type: string
                 type: object
               managementPolicies:
@@ -461,32 +441,20 @@ spec:
               atProvider:
                 properties:
                   groupId:
-                    description: '(Number) 3. Note: group type 3 is OIDC group.'
                     type: number
                   groupName:
-                    description: (String) The name of the group member entity.
                     type: string
                   id:
-                    description: (String) The ID of this resource.
                     type: string
                   ldapGroupDn:
-                    description: (String) The distinguished name of the group within
-                      AD/LDAP.
                     type: string
                   memberId:
-                    description: (Number)
                     type: number
                   projectId:
-                    description: (String) The project id of the project that the entity
-                      will have access to.
                     type: string
                   role:
-                    description: (String) The permissions that the entity will be
-                      granted.
                     type: string
                   type:
-                    description: (String) The group type.  Can be set to "ldap", "internal"
-                      or "oidc".
                     type: string
                 type: object
               conditions:

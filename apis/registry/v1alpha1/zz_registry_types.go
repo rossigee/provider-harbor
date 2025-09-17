@@ -14,88 +14,63 @@ import (
 )
 
 type RegistryInitParameters struct {
-
-	// (String) The username / access id for the external container register.
 	AccessID *string `json:"accessId,omitempty" tf:"access_id,omitempty"`
 
-	// (String, Sensitive) The password / access keys / token for the external container register.
 	AccessSecretSecretRef *v1.SecretKeySelector `json:"accessSecretSecretRef,omitempty" tf:"-"`
 
-	// (String) The description of the external container register.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (String) The url endpoint for the external container register ie "https://hub.docker.com"
 	EndpointURL *string `json:"endpointUrl,omitempty" tf:"endpoint_url,omitempty"`
 
-	// (Boolean) Verifies the certificate of the external container register. (Default: false)
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the register.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String) The name of the provider.
 	// Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
 	ProviderName *string `json:"providerName,omitempty" tf:"provider_name,omitempty"`
 }
 
 type RegistryObservation struct {
-
-	// (String) The username / access id for the external container register.
 	AccessID *string `json:"accessId,omitempty" tf:"access_id,omitempty"`
 
-	// (String) The description of the external container register.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (String) The url endpoint for the external container register ie "https://hub.docker.com"
 	EndpointURL *string `json:"endpointUrl,omitempty" tf:"endpoint_url,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (Boolean) Verifies the certificate of the external container register. (Default: false)
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the register.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String) The name of the provider.
 	// Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
 	ProviderName *string `json:"providerName,omitempty" tf:"provider_name,omitempty"`
 
-	// (Number)
 	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
 
-	// (String)
 	Status *string `json:"status,omitempty" tf:"status,omitempty"`
 }
 
 type RegistryParameters struct {
 
-	// (String) The username / access id for the external container register.
 	// +kubebuilder:validation:Optional
 	AccessID *string `json:"accessId,omitempty" tf:"access_id,omitempty"`
 
-	// (String, Sensitive) The password / access keys / token for the external container register.
 	// +kubebuilder:validation:Optional
 	AccessSecretSecretRef *v1.SecretKeySelector `json:"accessSecretSecretRef,omitempty" tf:"-"`
 
-	// (String) The description of the external container register.
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (String) The url endpoint for the external container register ie "https://hub.docker.com"
 	// +kubebuilder:validation:Optional
 	EndpointURL *string `json:"endpointUrl,omitempty" tf:"endpoint_url,omitempty"`
 
-	// (Boolean) Verifies the certificate of the external container register. (Default: false)
 	// +kubebuilder:validation:Optional
 	Insecure *bool `json:"insecure,omitempty" tf:"insecure,omitempty"`
 
-	// (String) The name of the register.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (String) The name of the provider.
 	// Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
 	// +kubebuilder:validation:Optional
 	ProviderName *string `json:"providerName,omitempty" tf:"provider_name,omitempty"`
@@ -128,7 +103,7 @@ type RegistryStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Registry is the Schema for the Registrys API.
+// Registry is the Schema for the Registrys API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

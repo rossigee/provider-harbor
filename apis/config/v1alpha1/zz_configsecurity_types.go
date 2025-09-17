@@ -14,39 +14,28 @@ import (
 )
 
 type ConfigSecurityInitParameters struct {
-
-	// 123", "CVE-145"] or ["CVE-123"]
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
-	// (Number) The time for expiration of the allowlist, in the form of seconds since epoch. This is an optional attribute, if it's not set the CVE allowlist does not expire.
 	ExpiresAt *float64 `json:"expiresAt,omitempty" tf:"expires_at,omitempty"`
 }
 
 type ConfigSecurityObservation struct {
-
-	// (String) Time of creation of the list.
 	CreationTime *string `json:"creationTime,omitempty" tf:"creation_time,omitempty"`
 
-	// 123", "CVE-145"] or ["CVE-123"]
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
-	// (Number) The time for expiration of the allowlist, in the form of seconds since epoch. This is an optional attribute, if it's not set the CVE allowlist does not expire.
 	ExpiresAt *float64 `json:"expiresAt,omitempty" tf:"expires_at,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) Time of update of the list.
 	UpdateTime *string `json:"updateTime,omitempty" tf:"update_time,omitempty"`
 }
 
 type ConfigSecurityParameters struct {
 
-	// 123", "CVE-145"] or ["CVE-123"]
 	// +kubebuilder:validation:Optional
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
-	// (Number) The time for expiration of the allowlist, in the form of seconds since epoch. This is an optional attribute, if it's not set the CVE allowlist does not expire.
 	// +kubebuilder:validation:Optional
 	ExpiresAt *float64 `json:"expiresAt,omitempty" tf:"expires_at,omitempty"`
 }
@@ -78,7 +67,7 @@ type ConfigSecurityStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// ConfigSecurity is the Schema for the ConfigSecuritys API.
+// ConfigSecurity is the Schema for the ConfigSecuritys API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

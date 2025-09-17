@@ -14,23 +14,17 @@ import (
 )
 
 type TaskInitParameters struct {
-
-	// (String) The frequency of the vulnerability scanning is done. Can be to "hourly", "daily" or "weekly"
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
 
 type TaskObservation struct {
-
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) The frequency of the vulnerability scanning is done. Can be to "hourly", "daily" or "weekly"
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
 
 type TaskParameters struct {
 
-	// (String) The frequency of the vulnerability scanning is done. Can be to "hourly", "daily" or "weekly"
 	// +kubebuilder:validation:Optional
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
@@ -62,7 +56,7 @@ type TaskStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Task is the Schema for the Tasks API.
+// Task is the Schema for the Tasks API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

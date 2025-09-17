@@ -14,53 +14,38 @@ import (
 )
 
 type AccessInitParameters struct {
-
-	// (String) Eg. push, pull, read, etc. Check available actions.
 	Action *string `json:"action,omitempty" tf:"action,omitempty"`
 
-	// (String) Either allow or deny. Defaults to allow.
 	Effect *string `json:"effect,omitempty" tf:"effect,omitempty"`
 
-	// (String) Eg. repository, labels, etc. Check available resources.
 	Resource *string `json:"resource,omitempty" tf:"resource,omitempty"`
 }
 
 type AccessObservation struct {
-
-	// (String) Eg. push, pull, read, etc. Check available actions.
 	Action *string `json:"action,omitempty" tf:"action,omitempty"`
 
-	// (String) Either allow or deny. Defaults to allow.
 	Effect *string `json:"effect,omitempty" tf:"effect,omitempty"`
 
-	// (String) Eg. repository, labels, etc. Check available resources.
 	Resource *string `json:"resource,omitempty" tf:"resource,omitempty"`
 }
 
 type AccessParameters struct {
 
-	// (String) Eg. push, pull, read, etc. Check available actions.
 	// +kubebuilder:validation:Optional
 	Action *string `json:"action" tf:"action,omitempty"`
 
-	// (String) Either allow or deny. Defaults to allow.
 	// +kubebuilder:validation:Optional
 	Effect *string `json:"effect,omitempty" tf:"effect,omitempty"`
 
-	// (String) Eg. repository, labels, etc. Check available resources.
 	// +kubebuilder:validation:Optional
 	Resource *string `json:"resource" tf:"resource,omitempty"`
 }
 
 type PermissionsInitParameters struct {
-
-	// (Block Set, Min: 1) (see below for nested schema)
 	Access []AccessInitParameters `json:"access,omitempty" tf:"access,omitempty"`
 
-	// (String) Either system or project.
 	Kind *string `json:"kind,omitempty" tf:"kind,omitempty"`
 
-	// (String) namespace is the name of your project. For kind system permissions, always use / as namespace. Use * to match all projects.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +crossplane:generate:reference:extractor=github.com/crossplane/upjet/pkg/resource.ExtractParamPath("name",true)
 	Namespace *string `json:"namespace,omitempty" tf:"namespace,omitempty"`
@@ -75,28 +60,21 @@ type PermissionsInitParameters struct {
 }
 
 type PermissionsObservation struct {
-
-	// (Block Set, Min: 1) (see below for nested schema)
 	Access []AccessObservation `json:"access,omitempty" tf:"access,omitempty"`
 
-	// (String) Either system or project.
 	Kind *string `json:"kind,omitempty" tf:"kind,omitempty"`
 
-	// (String) namespace is the name of your project. For kind system permissions, always use / as namespace. Use * to match all projects.
 	Namespace *string `json:"namespace,omitempty" tf:"namespace,omitempty"`
 }
 
 type PermissionsParameters struct {
 
-	// (Block Set, Min: 1) (see below for nested schema)
 	// +kubebuilder:validation:Optional
 	Access []AccessParameters `json:"access" tf:"access,omitempty"`
 
-	// (String) Either system or project.
 	// +kubebuilder:validation:Optional
 	Kind *string `json:"kind" tf:"kind,omitempty"`
 
-	// (String) namespace is the name of your project. For kind system permissions, always use / as namespace. Use * to match all projects.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +crossplane:generate:reference:extractor=github.com/crossplane/upjet/pkg/resource.ExtractParamPath("name",true)
 	// +kubebuilder:validation:Optional
@@ -112,86 +90,61 @@ type PermissionsParameters struct {
 }
 
 type RobotAccountInitParameters struct {
-
-	// (String) The description of the robot account will be displayed in harbor.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Disables the robot account when set to true.
 	Disable *bool `json:"disable,omitempty" tf:"disable,omitempty"`
 
-	// (Number) By default, the robot account will not expire. Set it to the amount of days until the account should expire.
 	Duration *float64 `json:"duration,omitempty" tf:"duration,omitempty"`
 
-	// (String) Level of the robot account, currently either system or project.
 	Level *string `json:"level,omitempty" tf:"level,omitempty"`
 
-	// (String) The name of the project that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (Block Set, Min: 1) (see below for nested schema)
 	Permissions []PermissionsInitParameters `json:"permissions,omitempty" tf:"permissions,omitempty"`
 
-	// (String, Sensitive) The secret of the robot account used for authentication. Defaults to random generated string from Harbor.
 	SecretSecretRef *v1.SecretKeySelector `json:"secretSecretRef,omitempty" tf:"-"`
 }
 
 type RobotAccountObservation struct {
-
-	// (String) The description of the robot account will be displayed in harbor.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Disables the robot account when set to true.
 	Disable *bool `json:"disable,omitempty" tf:"disable,omitempty"`
 
-	// (Number) By default, the robot account will not expire. Set it to the amount of days until the account should expire.
 	Duration *float64 `json:"duration,omitempty" tf:"duration,omitempty"`
 
-	// (String)
 	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
 
-	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
-	// (String) Level of the robot account, currently either system or project.
 	Level *string `json:"level,omitempty" tf:"level,omitempty"`
 
-	// (String) The name of the project that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (Block Set, Min: 1) (see below for nested schema)
 	Permissions []PermissionsObservation `json:"permissions,omitempty" tf:"permissions,omitempty"`
 
-	// (String)
 	RobotID *string `json:"robotId,omitempty" tf:"robot_id,omitempty"`
 }
 
 type RobotAccountParameters struct {
 
-	// (String) The description of the robot account will be displayed in harbor.
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
-	// (Boolean) Disables the robot account when set to true.
 	// +kubebuilder:validation:Optional
 	Disable *bool `json:"disable,omitempty" tf:"disable,omitempty"`
 
-	// (Number) By default, the robot account will not expire. Set it to the amount of days until the account should expire.
 	// +kubebuilder:validation:Optional
 	Duration *float64 `json:"duration,omitempty" tf:"duration,omitempty"`
 
-	// (String) Level of the robot account, currently either system or project.
 	// +kubebuilder:validation:Optional
 	Level *string `json:"level,omitempty" tf:"level,omitempty"`
 
-	// (String) The name of the project that will be created in harbor.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
-	// (Block Set, Min: 1) (see below for nested schema)
 	// +kubebuilder:validation:Optional
 	Permissions []PermissionsParameters `json:"permissions,omitempty" tf:"permissions,omitempty"`
 
-	// (String, Sensitive) The secret of the robot account used for authentication. Defaults to random generated string from Harbor.
 	// +kubebuilder:validation:Optional
 	SecretSecretRef *v1.SecretKeySelector `json:"secretSecretRef,omitempty" tf:"-"`
 }
@@ -223,7 +176,7 @@ type RobotAccountStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// RobotAccount is the Schema for the RobotAccounts API.
+// RobotAccount is the Schema for the RobotAccounts API. <no value>
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
