@@ -14,73 +14,103 @@ import (
 )
 
 type WebhookInitParameters struct {
+
+	// (String) The address of the webhook.
 	Address *string `json:"address,omitempty" tf:"address,omitempty"`
 
+	// (String) authentication header for you the webhook.
 	AuthHeader *string `json:"authHeader,omitempty" tf:"auth_header,omitempty"`
 
+	// (String) A description of the webhook.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (Boolean) To enable / disable the webhook. Default true.
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
+	// (List of String) The type events you want to subscript to can be
 	EventsTypes []*string `json:"eventsTypes,omitempty" tf:"events_types,omitempty"`
 
+	// (String) The name of the webhook that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The notification type either http or slack.
 	NotifyType *string `json:"notifyType,omitempty" tf:"notify_type,omitempty"`
 
+	// (String) The project id of the harbor that webhook related to.
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (Boolean) checks the for validate SSL certificate.
 	SkipCertVerify *bool `json:"skipCertVerify,omitempty" tf:"skip_cert_verify,omitempty"`
 }
 
 type WebhookObservation struct {
+
+	// (String) The address of the webhook.
 	Address *string `json:"address,omitempty" tf:"address,omitempty"`
 
+	// (String) authentication header for you the webhook.
 	AuthHeader *string `json:"authHeader,omitempty" tf:"auth_header,omitempty"`
 
+	// (String) A description of the webhook.
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (Boolean) To enable / disable the webhook. Default true.
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
+	// (List of String) The type events you want to subscript to can be
 	EventsTypes []*string `json:"eventsTypes,omitempty" tf:"events_types,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) The name of the webhook that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The notification type either http or slack.
 	NotifyType *string `json:"notifyType,omitempty" tf:"notify_type,omitempty"`
 
+	// (String) The project id of the harbor that webhook related to.
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (Boolean) checks the for validate SSL certificate.
 	SkipCertVerify *bool `json:"skipCertVerify,omitempty" tf:"skip_cert_verify,omitempty"`
 }
 
 type WebhookParameters struct {
 
+	// (String) The address of the webhook.
 	// +kubebuilder:validation:Optional
 	Address *string `json:"address,omitempty" tf:"address,omitempty"`
 
+	// (String) authentication header for you the webhook.
 	// +kubebuilder:validation:Optional
 	AuthHeader *string `json:"authHeader,omitempty" tf:"auth_header,omitempty"`
 
+	// (String) A description of the webhook.
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (Boolean) To enable / disable the webhook. Default true.
 	// +kubebuilder:validation:Optional
 	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
 
+	// (List of String) The type events you want to subscript to can be
 	// +kubebuilder:validation:Optional
 	EventsTypes []*string `json:"eventsTypes,omitempty" tf:"events_types,omitempty"`
 
+	// (String) The name of the webhook that will be created in harbor.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The notification type either http or slack.
 	// +kubebuilder:validation:Optional
 	NotifyType *string `json:"notifyType,omitempty" tf:"notify_type,omitempty"`
 
+	// (String) The project id of the harbor that webhook related to.
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (Boolean) checks the for validate SSL certificate.
 	// +kubebuilder:validation:Optional
 	SkipCertVerify *bool `json:"skipCertVerify,omitempty" tf:"skip_cert_verify,omitempty"`
 }
@@ -112,7 +142,7 @@ type WebhookStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Webhook is the Schema for the Webhooks API. <no value>
+// Webhook is the Schema for the Webhooks API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

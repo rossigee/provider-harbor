@@ -34,8 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PreheatInstance is the Schema for the PreheatInstances API. <no
-          value>
+        description: PreheatInstance is the Schema for the PreheatInstances API.
         properties:
           apiVersion:
             description: |-
@@ -74,22 +73,36 @@ spec:
               forProvider:
                 properties:
                   authMode:
+                    description: (String) The authentication mode for the preheat
+                      instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults
+                      to "NONE".
                     type: string
                   default:
+                    description: (Boolean) Whether the preheat instance is the default
+                      instance. Defaults to false.
                     type: boolean
                   description:
+                    description: (String) The description of the preheat instance.
+                      Defaults to an empty string.
                     type: string
                   enabled:
+                    description: (Boolean) Whether the preheat instance is enabled.
+                      Defaults to true.
                     type: boolean
                   endpoint:
+                    description: (String) The endpoint of the preheat instance.
                     type: string
                   insecure:
+                    description: (Boolean) Whether to allow insecure connections to
+                      the preheat instance. Defaults to false.
                     type: boolean
                   name:
+                    description: (String) The name of the preheat instance.
                     type: string
                   passwordSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The password for the preheat
+                      instance. Required if auth_mode is "BASIC". Defaults to an empty
+                      string.
                     properties:
                       key:
                         description: The key to select.
@@ -106,8 +119,8 @@ spec:
                     - namespace
                     type: object
                   tokenSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The token for the preheat instance.
+                      Required if auth_mode is "OAUTH". Defaults to an empty string.
                     properties:
                       key:
                         description: The key to select.
@@ -124,8 +137,12 @@ spec:
                     - namespace
                     type: object
                   username:
+                    description: (String) The username for the preheat instance. Required
+                      if auth_mode is "BASIC". Defaults to an empty string.
                     type: string
                   vendor:
+                    description: (String) The vendor of the preheat instance. Must
+                      be either "dragonfly" or "kraken".
                     type: string
                 type: object
               initProvider:
@@ -142,22 +159,36 @@ spec:
                   autoscaler.
                 properties:
                   authMode:
+                    description: (String) The authentication mode for the preheat
+                      instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults
+                      to "NONE".
                     type: string
                   default:
+                    description: (Boolean) Whether the preheat instance is the default
+                      instance. Defaults to false.
                     type: boolean
                   description:
+                    description: (String) The description of the preheat instance.
+                      Defaults to an empty string.
                     type: string
                   enabled:
+                    description: (Boolean) Whether the preheat instance is enabled.
+                      Defaults to true.
                     type: boolean
                   endpoint:
+                    description: (String) The endpoint of the preheat instance.
                     type: string
                   insecure:
+                    description: (Boolean) Whether to allow insecure connections to
+                      the preheat instance. Defaults to false.
                     type: boolean
                   name:
+                    description: (String) The name of the preheat instance.
                     type: string
                   passwordSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The password for the preheat
+                      instance. Required if auth_mode is "BASIC". Defaults to an empty
+                      string.
                     properties:
                       key:
                         description: The key to select.
@@ -174,8 +205,8 @@ spec:
                     - namespace
                     type: object
                   tokenSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The token for the preheat instance.
+                      Required if auth_mode is "OAUTH". Defaults to an empty string.
                     properties:
                       key:
                         description: The key to select.
@@ -192,8 +223,12 @@ spec:
                     - namespace
                     type: object
                   username:
+                    description: (String) The username for the preheat instance. Required
+                      if auth_mode is "BASIC". Defaults to an empty string.
                     type: string
                   vendor:
+                    description: (String) The vendor of the preheat instance. Must
+                      be either "dragonfly" or "kraken".
                     type: string
                 type: object
               managementPolicies:
@@ -382,24 +417,42 @@ spec:
               atProvider:
                 properties:
                   authMode:
+                    description: (String) The authentication mode for the preheat
+                      instance. Must be either "NONE", "BASIC", or "OAUTH". Defaults
+                      to "NONE".
                     type: string
                   default:
+                    description: (Boolean) Whether the preheat instance is the default
+                      instance. Defaults to false.
                     type: boolean
                   description:
+                    description: (String) The description of the preheat instance.
+                      Defaults to an empty string.
                     type: string
                   enabled:
+                    description: (Boolean) Whether the preheat instance is enabled.
+                      Defaults to true.
                     type: boolean
                   endpoint:
+                    description: (String) The endpoint of the preheat instance.
                     type: string
                   id:
+                    description: (String) The ID of the preheat instance.
                     type: string
                   insecure:
+                    description: (Boolean) Whether to allow insecure connections to
+                      the preheat instance. Defaults to false.
                     type: boolean
                   name:
+                    description: (String) The name of the preheat instance.
                     type: string
                   username:
+                    description: (String) The username for the preheat instance. Required
+                      if auth_mode is "BASIC". Defaults to an empty string.
                     type: string
                   vendor:
+                    description: (String) The vendor of the preheat instance. Must
+                      be either "dragonfly" or "kraken".
                     type: string
                 type: object
               conditions:

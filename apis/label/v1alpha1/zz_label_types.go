@@ -14,12 +14,17 @@ import (
 )
 
 type LabelInitParameters struct {
+
+	// (String) The color of the label within harbor (Default: #FFFFF)
 	Color *string `json:"color,omitempty" tf:"color,omitempty"`
 
+	// (String) The Description of the label within harbor
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (String) The of name of the label within harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The id of the project with harbor.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
@@ -33,30 +38,41 @@ type LabelInitParameters struct {
 }
 
 type LabelObservation struct {
+
+	// (String) The color of the label within harbor (Default: #FFFFF)
 	Color *string `json:"color,omitempty" tf:"color,omitempty"`
 
+	// (String) The Description of the label within harbor
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) The of name of the label within harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The id of the project with harbor.
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (String)
 	Scope *string `json:"scope,omitempty" tf:"scope,omitempty"`
 }
 
 type LabelParameters struct {
 
+	// (String) The color of the label within harbor (Default: #FFFFF)
 	// +kubebuilder:validation:Optional
 	Color *string `json:"color,omitempty" tf:"color,omitempty"`
 
+	// (String) The Description of the label within harbor
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty" tf:"description,omitempty"`
 
+	// (String) The of name of the label within harbor.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (String) The id of the project with harbor.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
@@ -97,7 +113,7 @@ type LabelStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Label is the Schema for the Labels API. <no value>
+// Label is the Schema for the Labels API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

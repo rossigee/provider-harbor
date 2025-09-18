@@ -14,8 +14,11 @@ import (
 )
 
 type ImmutableTagRuleInitParameters struct {
+
+	// (Boolean) Specify if the rule is disable or not. Defaults to false
 	Disabled *bool `json:"disabled,omitempty" tf:"disabled,omitempty"`
 
+	// (String) The project id of which you would like to apply this policy.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
@@ -27,44 +30,58 @@ type ImmutableTagRuleInitParameters struct {
 	// +kubebuilder:validation:Optional
 	ProjectIDSelector *v1.Selector `json:"projectIdSelector,omitempty" tf:"-"`
 
+	// (String) For the repositories excluding.
 	// Use doublestar pattern for path matching.
 	RepoExcluding *string `json:"repoExcluding,omitempty" tf:"repo_excluding,omitempty"`
 
+	// (String) For the repositories matching.
 	// Use doublestar pattern for path matching.
 	RepoMatching *string `json:"repoMatching,omitempty" tf:"repo_matching,omitempty"`
 
+	// (String) For the tag excluding.
 	// Use doublestar pattern for path matching.
 	TagExcluding *string `json:"tagExcluding,omitempty" tf:"tag_excluding,omitempty"`
 
+	// (String) For the tag matching.
 	// Use doublestar pattern for path matching.
 	TagMatching *string `json:"tagMatching,omitempty" tf:"tag_matching,omitempty"`
 }
 
 type ImmutableTagRuleObservation struct {
+
+	// (Boolean) Specify if the rule is disable or not. Defaults to false
 	Disabled *bool `json:"disabled,omitempty" tf:"disabled,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) The project id of which you would like to apply this policy.
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (String) For the repositories excluding.
 	// Use doublestar pattern for path matching.
 	RepoExcluding *string `json:"repoExcluding,omitempty" tf:"repo_excluding,omitempty"`
 
+	// (String) For the repositories matching.
 	// Use doublestar pattern for path matching.
 	RepoMatching *string `json:"repoMatching,omitempty" tf:"repo_matching,omitempty"`
 
+	// (String) For the tag excluding.
 	// Use doublestar pattern for path matching.
 	TagExcluding *string `json:"tagExcluding,omitempty" tf:"tag_excluding,omitempty"`
 
+	// (String) For the tag matching.
 	// Use doublestar pattern for path matching.
 	TagMatching *string `json:"tagMatching,omitempty" tf:"tag_matching,omitempty"`
 }
 
 type ImmutableTagRuleParameters struct {
 
+	// (Boolean) Specify if the rule is disable or not. Defaults to false
 	// +kubebuilder:validation:Optional
 	Disabled *bool `json:"disabled,omitempty" tf:"disabled,omitempty"`
 
+	// (String) The project id of which you would like to apply this policy.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/project/v1alpha1.Project
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty" tf:"project_id,omitempty"`
@@ -77,18 +94,22 @@ type ImmutableTagRuleParameters struct {
 	// +kubebuilder:validation:Optional
 	ProjectIDSelector *v1.Selector `json:"projectIdSelector,omitempty" tf:"-"`
 
+	// (String) For the repositories excluding.
 	// Use doublestar pattern for path matching.
 	// +kubebuilder:validation:Optional
 	RepoExcluding *string `json:"repoExcluding,omitempty" tf:"repo_excluding,omitempty"`
 
+	// (String) For the repositories matching.
 	// Use doublestar pattern for path matching.
 	// +kubebuilder:validation:Optional
 	RepoMatching *string `json:"repoMatching,omitempty" tf:"repo_matching,omitempty"`
 
+	// (String) For the tag excluding.
 	// Use doublestar pattern for path matching.
 	// +kubebuilder:validation:Optional
 	TagExcluding *string `json:"tagExcluding,omitempty" tf:"tag_excluding,omitempty"`
 
+	// (String) For the tag matching.
 	// Use doublestar pattern for path matching.
 	// +kubebuilder:validation:Optional
 	TagMatching *string `json:"tagMatching,omitempty" tf:"tag_matching,omitempty"`
@@ -121,7 +142,7 @@ type ImmutableTagRuleStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// ImmutableTagRule is the Schema for the ImmutableTagRules API. <no value>
+// ImmutableTagRule is the Schema for the ImmutableTagRules API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

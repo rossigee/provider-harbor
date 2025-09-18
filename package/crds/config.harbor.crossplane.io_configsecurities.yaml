@@ -34,8 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ConfigSecurity is the Schema for the ConfigSecuritys API. <no
-          value>
+        description: ConfigSecurity is the Schema for the ConfigSecuritys API.
         properties:
           apiVersion:
             description: |-
@@ -74,10 +73,14 @@ spec:
               forProvider:
                 properties:
                   cveAllowlist:
+                    description: 123", "CVE-145"] or ["CVE-123"]
                     items:
                       type: string
                     type: array
                   expiresAt:
+                    description: (Number) The time for expiration of the allowlist,
+                      in the form of seconds since epoch. This is an optional attribute,
+                      if it's not set the CVE allowlist does not expire.
                     type: number
                 type: object
               initProvider:
@@ -94,10 +97,14 @@ spec:
                   autoscaler.
                 properties:
                   cveAllowlist:
+                    description: 123", "CVE-145"] or ["CVE-123"]
                     items:
                       type: string
                     type: array
                   expiresAt:
+                    description: (Number) The time for expiration of the allowlist,
+                      in the form of seconds since epoch. This is an optional attribute,
+                      if it's not set the CVE allowlist does not expire.
                     type: number
                 type: object
               managementPolicies:
@@ -278,16 +285,23 @@ spec:
               atProvider:
                 properties:
                   creationTime:
+                    description: (String) Time of creation of the list.
                     type: string
                   cveAllowlist:
+                    description: 123", "CVE-145"] or ["CVE-123"]
                     items:
                       type: string
                     type: array
                   expiresAt:
+                    description: (Number) The time for expiration of the allowlist,
+                      in the form of seconds since epoch. This is an optional attribute,
+                      if it's not set the CVE allowlist does not expire.
                     type: number
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   updateTime:
+                    description: (String) Time of update of the list.
                     type: string
                 type: object
               conditions:

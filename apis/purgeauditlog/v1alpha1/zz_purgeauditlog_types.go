@@ -14,31 +14,43 @@ import (
 )
 
 type PurgeAuditLogInitParameters struct {
+
+	// (Number) To configure how long audit logs should be kept. For example, if you set this to 24 Harbor will only purge audit logs that are 24 or more hours old.
 	AuditRetentionHour *float64 `json:"auditRetentionHour,omitempty" tf:"audit_retention_hour,omitempty"`
 
+	// (String) Valid values are create delete pull, thoses values can be comma separated. When Create, Delete, or Pull is set, Harbor will include audit logs for those operations in the purge.
 	IncludeOperations *string `json:"includeOperations,omitempty" tf:"include_operations,omitempty"`
 
+	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "Hourly", "Daily", "Weekly" or can be a custom cron string ie, "5 4 * * *"
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 }
 
 type PurgeAuditLogObservation struct {
+
+	// (Number) To configure how long audit logs should be kept. For example, if you set this to 24 Harbor will only purge audit logs that are 24 or more hours old.
 	AuditRetentionHour *float64 `json:"auditRetentionHour,omitempty" tf:"audit_retention_hour,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) Valid values are create delete pull, thoses values can be comma separated. When Create, Delete, or Pull is set, Harbor will include audit logs for those operations in the purge.
 	IncludeOperations *string `json:"includeOperations,omitempty" tf:"include_operations,omitempty"`
 
+	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "Hourly", "Daily", "Weekly" or can be a custom cron string ie, "5 4 * * *"
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 }
 
 type PurgeAuditLogParameters struct {
 
+	// (Number) To configure how long audit logs should be kept. For example, if you set this to 24 Harbor will only purge audit logs that are 24 or more hours old.
 	// +kubebuilder:validation:Optional
 	AuditRetentionHour *float64 `json:"auditRetentionHour,omitempty" tf:"audit_retention_hour,omitempty"`
 
+	// (String) Valid values are create delete pull, thoses values can be comma separated. When Create, Delete, or Pull is set, Harbor will include audit logs for those operations in the purge.
 	// +kubebuilder:validation:Optional
 	IncludeOperations *string `json:"includeOperations,omitempty" tf:"include_operations,omitempty"`
 
+	// (String) Sets the schedule how often the Garbage Collection will run.  Can be to "Hourly", "Daily", "Weekly" or can be a custom cron string ie, "5 4 * * *"
 	// +kubebuilder:validation:Optional
 	Schedule *string `json:"schedule,omitempty" tf:"schedule,omitempty"`
 }
@@ -70,7 +82,7 @@ type PurgeAuditLogStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// PurgeAuditLog is the Schema for the PurgeAuditLogs API. <no value>
+// PurgeAuditLog is the Schema for the PurgeAuditLogs API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

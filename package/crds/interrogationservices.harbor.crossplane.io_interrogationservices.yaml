@@ -35,7 +35,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: InterrogationServices is the Schema for the InterrogationServicess
-          API. <no value>
+          API.
         properties:
           apiVersion:
             description: |-
@@ -74,8 +74,12 @@ spec:
               forProvider:
                 properties:
                   defaultScanner:
+                    description: (String) Sets the default interrogation service "Clair"
                     type: string
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. This can be Daily, Weekly, Monthly or can be a custom
+                      cron string.
                     type: string
                 type: object
               initProvider:
@@ -92,8 +96,12 @@ spec:
                   autoscaler.
                 properties:
                   defaultScanner:
+                    description: (String) Sets the default interrogation service "Clair"
                     type: string
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. This can be Daily, Weekly, Monthly or can be a custom
+                      cron string.
                     type: string
                 type: object
               managementPolicies:
@@ -275,10 +283,15 @@ spec:
               atProvider:
                 properties:
                   defaultScanner:
+                    description: (String) Sets the default interrogation service "Clair"
                     type: string
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. This can be Daily, Weekly, Monthly or can be a custom
+                      cron string.
                     type: string
                 type: object
               conditions:

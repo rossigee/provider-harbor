@@ -14,24 +14,33 @@ import (
 )
 
 type InterrogationServicesInitParameters struct {
+
+	// (String) Sets the default interrogation service "Clair"
 	DefaultScanner *string `json:"defaultScanner,omitempty" tf:"default_scanner,omitempty"`
 
+	// (String) The frequency of the vulnerability scanning is done. This can be Daily, Weekly, Monthly or can be a custom cron string.
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
 
 type InterrogationServicesObservation struct {
+
+	// (String) Sets the default interrogation service "Clair"
 	DefaultScanner *string `json:"defaultScanner,omitempty" tf:"default_scanner,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) The frequency of the vulnerability scanning is done. This can be Daily, Weekly, Monthly or can be a custom cron string.
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
 
 type InterrogationServicesParameters struct {
 
+	// (String) Sets the default interrogation service "Clair"
 	// +kubebuilder:validation:Optional
 	DefaultScanner *string `json:"defaultScanner,omitempty" tf:"default_scanner,omitempty"`
 
+	// (String) The frequency of the vulnerability scanning is done. This can be Daily, Weekly, Monthly or can be a custom cron string.
 	// +kubebuilder:validation:Optional
 	VulnerabilityScanPolicy *string `json:"vulnerabilityScanPolicy,omitempty" tf:"vulnerability_scan_policy,omitempty"`
 }
@@ -63,7 +72,7 @@ type InterrogationServicesStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// InterrogationServices is the Schema for the InterrogationServicess API. <no value>
+// InterrogationServices is the Schema for the InterrogationServicess API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

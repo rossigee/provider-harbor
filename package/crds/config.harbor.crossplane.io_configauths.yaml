@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ConfigAuth is the Schema for the ConfigAuths API. <no value>
+        description: ConfigAuth is the Schema for the ConfigAuths API.
         properties:
           apiVersion:
             description: |-
@@ -73,32 +73,52 @@ spec:
               forProvider:
                 properties:
                   authMode:
+                    description: '(String) Harbor authentication mode. Can be "oidc_auth",
+                      "db_auth" or "ldap_auth". (Default: "db_auth")'
                     type: string
                   ldapBaseDn:
+                    description: (String) A user's DN who has the permission to search
+                      the LDAP/AD server.
                     type: string
                   ldapFilter:
+                    description: (String) ldap filters
                     type: string
                   ldapGroupAdminDn:
+                    description: (String) Specify an LDAP group DN. All LDAP user
+                      in this group will have harbor admin privilege
                     type: string
                   ldapGroupBaseDn:
+                    description: (String) The base DN from which to look up a group
+                      in LDAP/AD
                     type: string
                   ldapGroupFilter:
+                    description: (String) The filter to look up an LDAP/AD group
                     type: string
                   ldapGroupGid:
+                    description: (String) The attribute used in a search to match
+                      a group
                     type: string
                   ldapGroupMembership:
+                    description: (String) The attribute indicates the membership of
+                      LDAP group
                     type: string
                   ldapGroupScope:
+                    description: (String) The scope to search for groups
                     type: string
                   ldapGroupUid:
+                    description: (String) The attribute used in a search to match
+                      a user
                     type: string
                   ldapScope:
+                    description: (String) LDAP Group Scope
                     type: string
                   ldapSearchDn:
+                    description: (String) The base DN from which to look up a user
+                      in LDAP/AD.
                     type: string
                   ldapSearchPasswordSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The password for the user that
+                      will perform the LDAP search
                     properties:
                       key:
                         description: The key to select.
@@ -115,20 +135,32 @@ spec:
                     - namespace
                     type: object
                   ldapUid:
+                    description: (String) The attribute used in a search to match
+                      a user. It could be uid, cn, email, sAMAccountName or other
+                      attributes depending on your LDAP/AD.
                     type: string
                   ldapUrl:
+                    description: (String) The ldap server. Required when auth_mode
+                      is set to ldap.
                     type: string
                   ldapVerifyCert:
+                    description: (Boolean) Verify Cert from LDAP Server.
                     type: boolean
                   oidcAdminGroup:
+                    description: (String) All members of this group get Harbor admin
+                      permissions.
                     type: string
                   oidcAutoOnboard:
+                    description: (Boolean) Default is "false", set to "true" if you
+                      want to skip the user onboarding screen, so user cannot change
+                      its username
                     type: boolean
                   oidcClientId:
+                    description: (String) The client id for the oidc server.
                     type: string
                   oidcClientSecretSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The client secert for the oidc
+                      server.
                     properties:
                       key:
                         description: The key to select.
@@ -145,20 +177,32 @@ spec:
                     - namespace
                     type: object
                   oidcEndpoint:
+                    description: complaint server.
                     type: string
                   oidcGroupFilter:
+                    description: (String) The OIDC group filter to filter which groups
+                      could be onboarded to Harbor.
                     type: string
                   oidcGroupsClaim:
+                    description: (String) The name of the claim in the token whose
+                      values is the list of group names.
                     type: string
                   oidcName:
+                    description: (String) The name of the oidc provider name.
                     type: string
                   oidcScope:
+                    description: (String) The scope sent to OIDC server during authentication.
+                      It has to contain “openid”.
                     type: string
                   oidcUserClaim:
+                    description: (String) Default is name
                     type: string
                   oidcVerifyCert:
+                    description: signed certificate.
                     type: boolean
                   primaryAuthMode:
+                    description: (Boolean) Default is false, set to true if you want
+                      to use the OIDC or LDAP mode as the primary auth mode.
                     type: boolean
                 type: object
               initProvider:
@@ -175,32 +219,52 @@ spec:
                   autoscaler.
                 properties:
                   authMode:
+                    description: '(String) Harbor authentication mode. Can be "oidc_auth",
+                      "db_auth" or "ldap_auth". (Default: "db_auth")'
                     type: string
                   ldapBaseDn:
+                    description: (String) A user's DN who has the permission to search
+                      the LDAP/AD server.
                     type: string
                   ldapFilter:
+                    description: (String) ldap filters
                     type: string
                   ldapGroupAdminDn:
+                    description: (String) Specify an LDAP group DN. All LDAP user
+                      in this group will have harbor admin privilege
                     type: string
                   ldapGroupBaseDn:
+                    description: (String) The base DN from which to look up a group
+                      in LDAP/AD
                     type: string
                   ldapGroupFilter:
+                    description: (String) The filter to look up an LDAP/AD group
                     type: string
                   ldapGroupGid:
+                    description: (String) The attribute used in a search to match
+                      a group
                     type: string
                   ldapGroupMembership:
+                    description: (String) The attribute indicates the membership of
+                      LDAP group
                     type: string
                   ldapGroupScope:
+                    description: (String) The scope to search for groups
                     type: string
                   ldapGroupUid:
+                    description: (String) The attribute used in a search to match
+                      a user
                     type: string
                   ldapScope:
+                    description: (String) LDAP Group Scope
                     type: string
                   ldapSearchDn:
+                    description: (String) The base DN from which to look up a user
+                      in LDAP/AD.
                     type: string
                   ldapSearchPasswordSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The password for the user that
+                      will perform the LDAP search
                     properties:
                       key:
                         description: The key to select.
@@ -217,20 +281,32 @@ spec:
                     - namespace
                     type: object
                   ldapUid:
+                    description: (String) The attribute used in a search to match
+                      a user. It could be uid, cn, email, sAMAccountName or other
+                      attributes depending on your LDAP/AD.
                     type: string
                   ldapUrl:
+                    description: (String) The ldap server. Required when auth_mode
+                      is set to ldap.
                     type: string
                   ldapVerifyCert:
+                    description: (Boolean) Verify Cert from LDAP Server.
                     type: boolean
                   oidcAdminGroup:
+                    description: (String) All members of this group get Harbor admin
+                      permissions.
                     type: string
                   oidcAutoOnboard:
+                    description: (Boolean) Default is "false", set to "true" if you
+                      want to skip the user onboarding screen, so user cannot change
+                      its username
                     type: boolean
                   oidcClientId:
+                    description: (String) The client id for the oidc server.
                     type: string
                   oidcClientSecretSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The client secert for the oidc
+                      server.
                     properties:
                       key:
                         description: The key to select.
@@ -247,20 +323,32 @@ spec:
                     - namespace
                     type: object
                   oidcEndpoint:
+                    description: complaint server.
                     type: string
                   oidcGroupFilter:
+                    description: (String) The OIDC group filter to filter which groups
+                      could be onboarded to Harbor.
                     type: string
                   oidcGroupsClaim:
+                    description: (String) The name of the claim in the token whose
+                      values is the list of group names.
                     type: string
                   oidcName:
+                    description: (String) The name of the oidc provider name.
                     type: string
                   oidcScope:
+                    description: (String) The scope sent to OIDC server during authentication.
+                      It has to contain “openid”.
                     type: string
                   oidcUserClaim:
+                    description: (String) Default is name
                     type: string
                   oidcVerifyCert:
+                    description: signed certificate.
                     type: boolean
                   primaryAuthMode:
+                    description: (Boolean) Default is false, set to true if you want
+                      to use the OIDC or LDAP mode as the primary auth mode.
                     type: boolean
                 type: object
               managementPolicies:
@@ -441,58 +529,103 @@ spec:
               atProvider:
                 properties:
                   authMode:
+                    description: '(String) Harbor authentication mode. Can be "oidc_auth",
+                      "db_auth" or "ldap_auth". (Default: "db_auth")'
                     type: string
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   ldapBaseDn:
+                    description: (String) A user's DN who has the permission to search
+                      the LDAP/AD server.
                     type: string
                   ldapFilter:
+                    description: (String) ldap filters
                     type: string
                   ldapGroupAdminDn:
+                    description: (String) Specify an LDAP group DN. All LDAP user
+                      in this group will have harbor admin privilege
                     type: string
                   ldapGroupBaseDn:
+                    description: (String) The base DN from which to look up a group
+                      in LDAP/AD
                     type: string
                   ldapGroupFilter:
+                    description: (String) The filter to look up an LDAP/AD group
                     type: string
                   ldapGroupGid:
+                    description: (String) The attribute used in a search to match
+                      a group
                     type: string
                   ldapGroupMembership:
+                    description: (String) The attribute indicates the membership of
+                      LDAP group
                     type: string
                   ldapGroupScope:
+                    description: (String) The scope to search for groups
                     type: string
                   ldapGroupUid:
+                    description: (String) The attribute used in a search to match
+                      a user
                     type: string
                   ldapScope:
+                    description: (String) LDAP Group Scope
                     type: string
                   ldapSearchDn:
+                    description: (String) The base DN from which to look up a user
+                      in LDAP/AD.
                     type: string
                   ldapUid:
+                    description: (String) The attribute used in a search to match
+                      a user. It could be uid, cn, email, sAMAccountName or other
+                      attributes depending on your LDAP/AD.
                     type: string
                   ldapUrl:
+                    description: (String) The ldap server. Required when auth_mode
+                      is set to ldap.
                     type: string
                   ldapVerifyCert:
+                    description: (Boolean) Verify Cert from LDAP Server.
                     type: boolean
                   oidcAdminGroup:
+                    description: (String) All members of this group get Harbor admin
+                      permissions.
                     type: string
                   oidcAutoOnboard:
+                    description: (Boolean) Default is "false", set to "true" if you
+                      want to skip the user onboarding screen, so user cannot change
+                      its username
                     type: boolean
                   oidcClientId:
+                    description: (String) The client id for the oidc server.
                     type: string
                   oidcEndpoint:
+                    description: complaint server.
                     type: string
                   oidcGroupFilter:
+                    description: (String) The OIDC group filter to filter which groups
+                      could be onboarded to Harbor.
                     type: string
                   oidcGroupsClaim:
+                    description: (String) The name of the claim in the token whose
+                      values is the list of group names.
                     type: string
                   oidcName:
+                    description: (String) The name of the oidc provider name.
                     type: string
                   oidcScope:
+                    description: (String) The scope sent to OIDC server during authentication.
+                      It has to contain “openid”.
                     type: string
                   oidcUserClaim:
+                    description: (String) Default is name
                     type: string
                   oidcVerifyCert:
+                    description: signed certificate.
                     type: boolean
                   primaryAuthMode:
+                    description: (Boolean) Default is false, set to true if you want
+                      to use the OIDC or LDAP mode as the primary auth mode.
                     type: boolean
                 type: object
               conditions:

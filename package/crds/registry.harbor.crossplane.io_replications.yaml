@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Replication is the Schema for the Replications API. <no value>
+        description: Replication is the Schema for the Replications API.
         properties:
           apiVersion:
             description: |-
@@ -73,43 +73,73 @@ spec:
               forProvider:
                 properties:
                   action:
+                    description: (String)
                     type: string
                   copyByChunk:
+                    description: '(Boolean) Specify whether to enable the artifact
+                      blobs copied by chunks. (Default: false)'
                     type: boolean
                   deletion:
+                    description: '(Boolean) Specify whether to delete the remote resources
+                      when locally deleted. (Default: false)'
                     type: boolean
                   description:
+                    description: (String) Description of the replication policy.
                     type: string
                   destNamespace:
+                    description: (String) Specify the destination namespace. if empty,
+                      the resource will be put under the same namespace as the source.
                     type: string
                   destNamespaceReplace:
+                    description: '1 to 3 are valid values in the harbor API. A value
+                      of -1 will ''Flatten All Levels'', 0 means ''No Flattening'',
+                      1 ''Flatten 1 Level'', 2 ''Flatten 2 Levels'', 3 ''Flatten 3
+                      Levels'' (Default: -1, see Replication Rules for more details)'
                     type: number
                   enabled:
+                    description: '(Boolean) Specify whether the replication is enabled.
+                      (Default: true)'
                     type: boolean
                   executeOnChanged:
+                    description: '(Boolean) Specify whether to execute the replication
+                      rule if new or modified. (Default: false)'
                     type: boolean
                   filters:
+                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         decoration:
+                          description: (String) Matches or excludes the result. Can
+                            be one of the following. matches, excludes
                           type: string
                         labels:
+                          description: (List of String) Filter on the resource according
+                            to labels.
                           items:
                             type: string
                           type: array
                         name:
+                          description: (String) The name of the replication.
                           type: string
                         resource:
+                          description: (String) Filter on the resource type. Can be
+                            one of the following types. chart, artifact
                           type: string
                         tag:
+                          description: (String) Filter on the tag/version of the resource.
                           type: string
                       type: object
                     type: array
                   name:
+                    description: (String) The name of the replication.
                     type: string
                   override:
+                    description: '(Boolean) Specify whether to override the resources
+                      at the destination if a resources with the same name exist.
+                      (Default: true)'
                     type: boolean
                   registryId:
+                    description: (Number) The registry ID of the Registry Endpoint.
                     type: number
                   registryIdRef:
                     description: Reference to a Registry in registry to populate registryId.
@@ -186,8 +216,14 @@ spec:
                         type: object
                     type: object
                   schedule:
+                    description: '(String) The scheduled time of when the container
+                      register will be push / pull. In cron base format. Hourly "0
+                      0 * * * *", Daily "0 0 0 * * *", Monthly "0 0 0 * * 0". Can
+                      be one of the following: event_based, manual, cron format (Default:
+                      manual)'
                     type: string
                   speed:
+                    description: 1 (unlimited).
                     type: number
                 type: object
               initProvider:
@@ -204,43 +240,73 @@ spec:
                   autoscaler.
                 properties:
                   action:
+                    description: (String)
                     type: string
                   copyByChunk:
+                    description: '(Boolean) Specify whether to enable the artifact
+                      blobs copied by chunks. (Default: false)'
                     type: boolean
                   deletion:
+                    description: '(Boolean) Specify whether to delete the remote resources
+                      when locally deleted. (Default: false)'
                     type: boolean
                   description:
+                    description: (String) Description of the replication policy.
                     type: string
                   destNamespace:
+                    description: (String) Specify the destination namespace. if empty,
+                      the resource will be put under the same namespace as the source.
                     type: string
                   destNamespaceReplace:
+                    description: '1 to 3 are valid values in the harbor API. A value
+                      of -1 will ''Flatten All Levels'', 0 means ''No Flattening'',
+                      1 ''Flatten 1 Level'', 2 ''Flatten 2 Levels'', 3 ''Flatten 3
+                      Levels'' (Default: -1, see Replication Rules for more details)'
                     type: number
                   enabled:
+                    description: '(Boolean) Specify whether the replication is enabled.
+                      (Default: true)'
                     type: boolean
                   executeOnChanged:
+                    description: '(Boolean) Specify whether to execute the replication
+                      rule if new or modified. (Default: false)'
                     type: boolean
                   filters:
+                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         decoration:
+                          description: (String) Matches or excludes the result. Can
+                            be one of the following. matches, excludes
                           type: string
                         labels:
+                          description: (List of String) Filter on the resource according
+                            to labels.
                           items:
                             type: string
                           type: array
                         name:
+                          description: (String) The name of the replication.
                           type: string
                         resource:
+                          description: (String) Filter on the resource type. Can be
+                            one of the following types. chart, artifact
                           type: string
                         tag:
+                          description: (String) Filter on the tag/version of the resource.
                           type: string
                       type: object
                     type: array
                   name:
+                    description: (String) The name of the replication.
                     type: string
                   override:
+                    description: '(Boolean) Specify whether to override the resources
+                      at the destination if a resources with the same name exist.
+                      (Default: true)'
                     type: boolean
                   registryId:
+                    description: (Number) The registry ID of the Registry Endpoint.
                     type: number
                   registryIdRef:
                     description: Reference to a Registry in registry to populate registryId.
@@ -317,8 +383,14 @@ spec:
                         type: object
                     type: object
                   schedule:
+                    description: '(String) The scheduled time of when the container
+                      register will be push / pull. In cron base format. Hourly "0
+                      0 * * * *", Daily "0 0 0 * * *", Monthly "0 0 0 * * 0". Can
+                      be one of the following: event_based, manual, cron format (Default:
+                      manual)'
                     type: string
                   speed:
+                    description: 1 (unlimited).
                     type: number
                 type: object
               managementPolicies:
@@ -503,51 +575,89 @@ spec:
               atProvider:
                 properties:
                   action:
+                    description: (String)
                     type: string
                   copyByChunk:
+                    description: '(Boolean) Specify whether to enable the artifact
+                      blobs copied by chunks. (Default: false)'
                     type: boolean
                   deletion:
+                    description: '(Boolean) Specify whether to delete the remote resources
+                      when locally deleted. (Default: false)'
                     type: boolean
                   description:
+                    description: (String) Description of the replication policy.
                     type: string
                   destNamespace:
+                    description: (String) Specify the destination namespace. if empty,
+                      the resource will be put under the same namespace as the source.
                     type: string
                   destNamespaceReplace:
+                    description: '1 to 3 are valid values in the harbor API. A value
+                      of -1 will ''Flatten All Levels'', 0 means ''No Flattening'',
+                      1 ''Flatten 1 Level'', 2 ''Flatten 2 Levels'', 3 ''Flatten 3
+                      Levels'' (Default: -1, see Replication Rules for more details)'
                     type: number
                   enabled:
+                    description: '(Boolean) Specify whether the replication is enabled.
+                      (Default: true)'
                     type: boolean
                   executeOnChanged:
+                    description: '(Boolean) Specify whether to execute the replication
+                      rule if new or modified. (Default: false)'
                     type: boolean
                   filters:
+                    description: (Block Set) (see below for nested schema)
                     items:
                       properties:
                         decoration:
+                          description: (String) Matches or excludes the result. Can
+                            be one of the following. matches, excludes
                           type: string
                         labels:
+                          description: (List of String) Filter on the resource according
+                            to labels.
                           items:
                             type: string
                           type: array
                         name:
+                          description: (String) The name of the replication.
                           type: string
                         resource:
+                          description: (String) Filter on the resource type. Can be
+                            one of the following types. chart, artifact
                           type: string
                         tag:
+                          description: (String) Filter on the tag/version of the resource.
                           type: string
                       type: object
                     type: array
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   name:
+                    description: (String) The name of the replication.
                     type: string
                   override:
+                    description: '(Boolean) Specify whether to override the resources
+                      at the destination if a resources with the same name exist.
+                      (Default: true)'
                     type: boolean
                   registryId:
+                    description: (Number) The registry ID of the Registry Endpoint.
                     type: number
                   replicationPolicyId:
+                    description: (Number)
                     type: number
                   schedule:
+                    description: '(String) The scheduled time of when the container
+                      register will be push / pull. In cron base format. Hourly "0
+                      0 * * * *", Daily "0 0 0 * * *", Monthly "0 0 0 * * 0". Can
+                      be one of the following: event_based, manual, cron format (Default:
+                      manual)'
                     type: string
                   speed:
+                    description: 1 (unlimited).
                     type: number
                 type: object
               conditions:

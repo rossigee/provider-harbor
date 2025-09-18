@@ -34,8 +34,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ScannerRegistration is the Schema for the ScannerRegistrations
-          API. Provides a Harbor Scanner Registration resource.
+        description: A ScannerRegistration is a managed resource that represents a
+          Harbor scanner registration.
         properties:
           apiVersion:
             description: |-
@@ -55,7 +55,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: ScannerRegistrationSpec defines the desired state of ScannerRegistration
+            description: A ScannerRegistrationSpec defines the desired state of a
+              ScannerRegistration.
             properties:
               deletionPolicy:
                 default: Delete
@@ -72,57 +73,31 @@ spec:
                 - Delete
                 type: string
               forProvider:
+                description: ScannerRegistrationParameters defines the desired state
+                  of ScannerRegistration
                 properties:
                   accessCredential:
-                    description: (String) An optional value of the HTTP Authorization
-                      header sent with each request to the Scanner Adapter API.
+                    description: |-
+                      AccessCredential is an optional value of the HTTP Authorization header
+                      sent with each request to the Scanner Adapter API
                     type: string
                   auth:
-                    description: '(String) Specify what authentication approach is
-                      adopted for the HTTP communications. Supported types: "Basic",
-                      "Bearer", "X-ScannerAdapter-API-Key"'
+                    description: |-
+                      Auth specifies the authentication approach for HTTP communications
+                      Supported types: "Basic", "Bearer", "X-ScannerAdapter-API-Key"
                     type: string
                   description:
-                    description: (String) An optional description of this registration.
+                    description: Description is an optional description of this registration
                     type: string
                   name:
-                    description: (String) The name of this registration
+                    description: Name is the name of this scanner registration
                     type: string
                   url:
-                    description: (String) A base URL of the scanner adapter.
+                    description: URL is the base URL of the scanner adapter
                     type: string
-                type: object
-              initProvider:
-                description: |-
-                  THIS IS A BETA FIELD. It will be honored
-                  unless the Management Policies feature flag is disabled.
-                  InitProvider holds the same fields as ForProvider, with the exception
-                  of Identifier and other resource reference fields. The fields that are
-                  in InitProvider are merged into ForProvider when the resource is created.
-                  The same fields are also added to the terraform ignore_changes hook, to
-                  avoid updating them after creation. This is useful for fields that are
-                  required on creation, but we do not desire to update them after creation,
-                  for example because of an external controller is managing them, like an
-                  autoscaler.
-                properties:
-                  accessCredential:
-                    description: (String) An optional value of the HTTP Authorization
-                      header sent with each request to the Scanner Adapter API.
-                    type: string
-                  auth:
-                    description: '(String) Specify what authentication approach is
-                      adopted for the HTTP communications. Supported types: "Basic",
-                      "Bearer", "X-ScannerAdapter-API-Key"'
-                    type: string
-                  description:
-                    description: (String) An optional description of this registration.
-                    type: string
-                  name:
-                    description: (String) The name of this registration
-                    type: string
-                  url:
-                    description: (String) A base URL of the scanner adapter.
-                    type: string
+                required:
+                - name
+                - url
                 type: object
               managementPolicies:
                 default:
@@ -291,51 +266,43 @@ spec:
             required:
             - forProvider
             type: object
-            x-kubernetes-validations:
-            - message: spec.forProvider.name is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.name)
-                || (has(self.initProvider) && has(self.initProvider.name))'
-            - message: spec.forProvider.url is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.url)
-                || (has(self.initProvider) && has(self.initProvider.url))'
           status:
-            description: ScannerRegistrationStatus defines the observed state of ScannerRegistration.
+            description: A ScannerRegistrationStatus represents the observed state
+              of a ScannerRegistration.
             properties:
               atProvider:
+                description: ScannerRegistrationObservation defines the observed state
+                  of ScannerRegistration
                 properties:
                   accessCredential:
-                    description: (String) An optional value of the HTTP Authorization
-                      header sent with each request to the Scanner Adapter API.
+                    description: AccessCredential is the HTTP Authorization header
+                      value
                     type: string
                   auth:
-                    description: '(String) Specify what authentication approach is
-                      adopted for the HTTP communications. Supported types: "Basic",
-                      "Bearer", "X-ScannerAdapter-API-Key"'
+                    description: Auth is the authentication approach for HTTP communications
                     type: string
                   createTime:
-                    description: (String) The date and time the scanner registration
-                      was created.
+                    description: CreateTime is the date and time the scanner registration
+                      was created
                     type: string
                   description:
-                    description: (String) An optional description of this registration.
+                    description: Description is the description of this registration
                     type: string
                   id:
-                    description: (String) Unique identifier of the scanner registration.
+                    description: ID is the unique identifier of the scanner registration
                     type: string
                   name:
-                    description: (String) The name of this registration
+                    description: Name is the name of this scanner registration
                     type: string
                   updateTime:
-                    description: (String) The date and time the scanner registration
-                      was last updated.
+                    description: UpdateTime is the date and time the scanner registration
+                      was last updated
                     type: string
                   url:
-                    description: (String) A base URL of the scanner adapter.
+                    description: URL is the base URL of the scanner adapter
                     type: string
                   uuid:
-                    description: (String) The UUID of this scanner registration.
+                    description: UUID is the UUID of this scanner registration
                     type: string
                 type: object
               conditions:

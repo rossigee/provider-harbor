@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Label is the Schema for the Labels API. <no value>
+        description: Label is the Schema for the Labels API.
         properties:
           apiVersion:
             description: |-
@@ -73,12 +73,17 @@ spec:
               forProvider:
                 properties:
                   color:
+                    description: '(String) The color of the label within harbor (Default:
+                      #FFFFF)'
                     type: string
                   description:
+                    description: (String) The Description of the label within harbor
                     type: string
                   name:
+                    description: (String) The of name of the label within harbor.
                     type: string
                   projectId:
+                    description: (String) The id of the project with harbor.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -169,12 +174,17 @@ spec:
                   autoscaler.
                 properties:
                   color:
+                    description: '(String) The color of the label within harbor (Default:
+                      #FFFFF)'
                     type: string
                   description:
+                    description: (String) The Description of the label within harbor
                     type: string
                   name:
+                    description: (String) The of name of the label within harbor.
                     type: string
                   projectId:
+                    description: (String) The id of the project with harbor.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -429,16 +439,23 @@ spec:
               atProvider:
                 properties:
                   color:
+                    description: '(String) The color of the label within harbor (Default:
+                      #FFFFF)'
                     type: string
                   description:
+                    description: (String) The Description of the label within harbor
                     type: string
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   name:
+                    description: (String) The of name of the label within harbor.
                     type: string
                   projectId:
+                    description: (String) The id of the project with harbor.
                     type: string
                   scope:
+                    description: (String)
                     type: string
                 type: object
               conditions:
