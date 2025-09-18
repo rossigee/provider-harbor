@@ -35,10 +35,10 @@ import (
 
 const (
 	errNotScannerRegistration = "managed resource is not a ScannerRegistration custom resource"
-	errTrackPCUsage          = "cannot track ProviderConfig usage"
-	errGetPC                 = "cannot get ProviderConfig"
-	errGetCreds              = "cannot get credentials"
-	errNewClient             = "cannot create new Service"
+	errTrackPCUsage           = "cannot track ProviderConfig usage"
+	errGetPC                  = "cannot get ProviderConfig"
+	errGetCreds               = "cannot get credentials"
+	errNewClient              = "cannot create new Service"
 )
 
 // Options contains options for controller setup
@@ -136,8 +136,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &updateTimeStr
 
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: c.isUpToDate(cr, status),
+		ResourceExists:    true,
+		ResourceUpToDate:  c.isUpToDate(cr, status),
 		ConnectionDetails: managed.ConnectionDetails{},
 	}, nil
 }

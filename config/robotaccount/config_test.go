@@ -21,12 +21,12 @@ func TestAdditionalConnectionDetailsFn(t *testing.T) {
 				"robot_id":  "123",
 			},
 			want: map[string][]byte{
-				"username":              []byte("robot$test-robot"),
-				"password":              []byte("test-secret-password"),
-				"robot_id":              []byte("123"),
-				"docker-username":       []byte("robot$test-robot"),
-				"docker-password":       []byte("test-secret-password"),
-				"docker-auth":           []byte(base64.StdEncoding.EncodeToString([]byte("robot$test-robot:test-secret-password"))),
+				"username":        []byte("robot$test-robot"),
+				"password":        []byte("test-secret-password"),
+				"robot_id":        []byte("123"),
+				"docker-username": []byte("robot$test-robot"),
+				"docker-password": []byte("test-secret-password"),
+				"docker-auth":     []byte(base64.StdEncoding.EncodeToString([]byte("robot$test-robot:test-secret-password"))),
 				"docker-config-template": mustMarshalDockerConfig(map[string]interface{}{
 					"auths": map[string]interface{}{
 						"REGISTRY_URL_PLACEHOLDER": map[string]interface{}{
@@ -67,7 +67,7 @@ func TestAdditionalConnectionDetailsFn(t *testing.T) {
 				"secret":    "",
 				"robot_id":  "",
 			},
-			want: map[string][]byte{},
+			want:   map[string][]byte{},
 			reason: "Should not generate fields for empty strings",
 		},
 		"OnlyRobotId": {
@@ -81,9 +81,9 @@ func TestAdditionalConnectionDetailsFn(t *testing.T) {
 		},
 		"TypeMismatch": {
 			input: map[string]any{
-				"full_name": 123,    // wrong type
-				"secret":    true,   // wrong type
-				"robot_id":  "789",  // correct type
+				"full_name": 123,   // wrong type
+				"secret":    true,  // wrong type
+				"robot_id":  "789", // correct type
 			},
 			want: map[string][]byte{
 				"robot_id": []byte("789"),
