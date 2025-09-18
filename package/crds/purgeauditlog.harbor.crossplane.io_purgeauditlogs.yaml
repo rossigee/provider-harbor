@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PurgeAuditLog is the Schema for the PurgeAuditLogs API. <no value>
+        description: PurgeAuditLog is the Schema for the PurgeAuditLogs API.
         properties:
           apiVersion:
             description: |-
@@ -73,10 +73,20 @@ spec:
               forProvider:
                 properties:
                   auditRetentionHour:
+                    description: (Number) To configure how long audit logs should
+                      be kept. For example, if you set this to 24 Harbor will only
+                      purge audit logs that are 24 or more hours old.
                     type: number
                   includeOperations:
+                    description: (String) Valid values are create delete pull, thoses
+                      values can be comma separated. When Create, Delete, or Pull
+                      is set, Harbor will include audit logs for those operations
+                      in the purge.
                     type: string
                   schedule:
+                    description: (String) Sets the schedule how often the Garbage
+                      Collection will run.  Can be to "Hourly", "Daily", "Weekly"
+                      or can be a custom cron string ie, "5 4 * * *"
                     type: string
                 type: object
               initProvider:
@@ -93,10 +103,20 @@ spec:
                   autoscaler.
                 properties:
                   auditRetentionHour:
+                    description: (Number) To configure how long audit logs should
+                      be kept. For example, if you set this to 24 Harbor will only
+                      purge audit logs that are 24 or more hours old.
                     type: number
                   includeOperations:
+                    description: (String) Valid values are create delete pull, thoses
+                      values can be comma separated. When Create, Delete, or Pull
+                      is set, Harbor will include audit logs for those operations
+                      in the purge.
                     type: string
                   schedule:
+                    description: (String) Sets the schedule how often the Garbage
+                      Collection will run.  Can be to "Hourly", "Daily", "Weekly"
+                      or can be a custom cron string ie, "5 4 * * *"
                     type: string
                 type: object
               managementPolicies:
@@ -285,12 +305,23 @@ spec:
               atProvider:
                 properties:
                   auditRetentionHour:
+                    description: (Number) To configure how long audit logs should
+                      be kept. For example, if you set this to 24 Harbor will only
+                      purge audit logs that are 24 or more hours old.
                     type: number
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   includeOperations:
+                    description: (String) Valid values are create delete pull, thoses
+                      values can be comma separated. When Create, Delete, or Pull
+                      is set, Harbor will include audit logs for those operations
+                      in the purge.
                     type: string
                   schedule:
+                    description: (String) Sets the schedule how often the Garbage
+                      Collection will run.  Can be to "Hourly", "Daily", "Weekly"
+                      or can be a custom cron string ie, "5 4 * * *"
                     type: string
                 type: object
               conditions:

@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Task is the Schema for the Tasks API. <no value>
+        description: Task is the Schema for the Tasks API.
         properties:
           apiVersion:
             description: |-
@@ -73,6 +73,8 @@ spec:
               forProvider:
                 properties:
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. Can be to "hourly", "daily" or "weekly"
                     type: string
                 type: object
               initProvider:
@@ -89,6 +91,8 @@ spec:
                   autoscaler.
                 properties:
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. Can be to "hourly", "daily" or "weekly"
                     type: string
                 type: object
               managementPolicies:
@@ -269,8 +273,11 @@ spec:
               atProvider:
                 properties:
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   vulnerabilityScanPolicy:
+                    description: (String) The frequency of the vulnerability scanning
+                      is done. Can be to "hourly", "daily" or "weekly"
                     type: string
                 type: object
               conditions:

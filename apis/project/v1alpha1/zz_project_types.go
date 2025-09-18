@@ -14,22 +14,32 @@ import (
 )
 
 type ProjectInitParameters struct {
+
+	// (Boolean) Automatically generate SBOM for images pushed to this project. (Default: false) can only be used with Harbor version v2.11.0 and above
 	AutoSbomGeneration *bool `json:"autoSbomGeneration,omitempty" tf:"auto_sbom_generation,omitempty"`
 
+	// 123", "CVE-145"] or ["CVE-123"]
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
+	// empty)
 	DeploymentSecurity *string `json:"deploymentSecurity,omitempty" tf:"deployment_security,omitempty"`
 
+	// (Boolean) Enables Content Trust for project. When enabled it queries the embedded docker notary server. (Default: false).
 	EnableContentTrust *bool `json:"enableContentTrust,omitempty" tf:"enable_content_trust,omitempty"`
 
+	// (Boolean) Enables Content Trust Cosign for project. When enabled it queries Cosign. (Default: false)
 	EnableContentTrustCosign *bool `json:"enableContentTrustCosign,omitempty" tf:"enable_content_trust_cosign,omitempty"`
 
+	// (Boolean) A boolean that indicates all repositories should be deleted from the project so that the project can be destroyed without error. These repositories are not recoverable.
 	ForceDestroy *bool `json:"forceDestroy,omitempty" tf:"force_destroy,omitempty"`
 
+	// (String) The name of the project that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (Boolean) The project will be public accessibility.(Default: false)
 	Public *bool `json:"public,omitempty" tf:"public,omitempty"`
 
+	// (Number) To enable project as Proxy Cache.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/registry/v1alpha1.Registry
 	// +crossplane:generate:reference:extractor=github.com/rossigee/provider-harbor/config/common.ExtractRegistryID()
 	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
@@ -42,65 +52,90 @@ type ProjectInitParameters struct {
 	// +kubebuilder:validation:Optional
 	RegistryIDSelector *v1.Selector `json:"registryIdSelector,omitempty" tf:"-"`
 
+	// (Number) The storage quota of the project in GB's.
 	StorageQuota *float64 `json:"storageQuota,omitempty" tf:"storage_quota,omitempty"`
 
+	// (Boolean) Images will be scanned for vulnerabilities when push to harbor. (Default: true)
 	VulnerabilityScanning *bool `json:"vulnerabilityScanning,omitempty" tf:"vulnerability_scanning,omitempty"`
 }
 
 type ProjectObservation struct {
+
+	// (Boolean) Automatically generate SBOM for images pushed to this project. (Default: false) can only be used with Harbor version v2.11.0 and above
 	AutoSbomGeneration *bool `json:"autoSbomGeneration,omitempty" tf:"auto_sbom_generation,omitempty"`
 
+	// 123", "CVE-145"] or ["CVE-123"]
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
+	// empty)
 	DeploymentSecurity *string `json:"deploymentSecurity,omitempty" tf:"deployment_security,omitempty"`
 
+	// (Boolean) Enables Content Trust for project. When enabled it queries the embedded docker notary server. (Default: false).
 	EnableContentTrust *bool `json:"enableContentTrust,omitempty" tf:"enable_content_trust,omitempty"`
 
+	// (Boolean) Enables Content Trust Cosign for project. When enabled it queries Cosign. (Default: false)
 	EnableContentTrustCosign *bool `json:"enableContentTrustCosign,omitempty" tf:"enable_content_trust_cosign,omitempty"`
 
+	// (Boolean) A boolean that indicates all repositories should be deleted from the project so that the project can be destroyed without error. These repositories are not recoverable.
 	ForceDestroy *bool `json:"forceDestroy,omitempty" tf:"force_destroy,omitempty"`
 
+	// (String) The ID of this resource.
 	ID *string `json:"id,omitempty" tf:"id,omitempty"`
 
+	// (String) The name of the project that will be created in harbor.
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (Number) The project id of this resource.
 	ProjectID *float64 `json:"projectId,omitempty" tf:"project_id,omitempty"`
 
+	// (Boolean) The project will be public accessibility.(Default: false)
 	Public *bool `json:"public,omitempty" tf:"public,omitempty"`
 
+	// (Number) To enable project as Proxy Cache.
 	RegistryID *float64 `json:"registryId,omitempty" tf:"registry_id,omitempty"`
 
+	// (Number) The storage quota of the project in GB's.
 	StorageQuota *float64 `json:"storageQuota,omitempty" tf:"storage_quota,omitempty"`
 
+	// (Boolean) Images will be scanned for vulnerabilities when push to harbor. (Default: true)
 	VulnerabilityScanning *bool `json:"vulnerabilityScanning,omitempty" tf:"vulnerability_scanning,omitempty"`
 }
 
 type ProjectParameters struct {
 
+	// (Boolean) Automatically generate SBOM for images pushed to this project. (Default: false) can only be used with Harbor version v2.11.0 and above
 	// +kubebuilder:validation:Optional
 	AutoSbomGeneration *bool `json:"autoSbomGeneration,omitempty" tf:"auto_sbom_generation,omitempty"`
 
+	// 123", "CVE-145"] or ["CVE-123"]
 	// +kubebuilder:validation:Optional
 	CveAllowlist []*string `json:"cveAllowlist,omitempty" tf:"cve_allowlist,omitempty"`
 
+	// empty)
 	// +kubebuilder:validation:Optional
 	DeploymentSecurity *string `json:"deploymentSecurity,omitempty" tf:"deployment_security,omitempty"`
 
+	// (Boolean) Enables Content Trust for project. When enabled it queries the embedded docker notary server. (Default: false).
 	// +kubebuilder:validation:Optional
 	EnableContentTrust *bool `json:"enableContentTrust,omitempty" tf:"enable_content_trust,omitempty"`
 
+	// (Boolean) Enables Content Trust Cosign for project. When enabled it queries Cosign. (Default: false)
 	// +kubebuilder:validation:Optional
 	EnableContentTrustCosign *bool `json:"enableContentTrustCosign,omitempty" tf:"enable_content_trust_cosign,omitempty"`
 
+	// (Boolean) A boolean that indicates all repositories should be deleted from the project so that the project can be destroyed without error. These repositories are not recoverable.
 	// +kubebuilder:validation:Optional
 	ForceDestroy *bool `json:"forceDestroy,omitempty" tf:"force_destroy,omitempty"`
 
+	// (String) The name of the project that will be created in harbor.
 	// +kubebuilder:validation:Optional
 	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
+	// (Boolean) The project will be public accessibility.(Default: false)
 	// +kubebuilder:validation:Optional
 	Public *bool `json:"public,omitempty" tf:"public,omitempty"`
 
+	// (Number) To enable project as Proxy Cache.
 	// +crossplane:generate:reference:type=github.com/rossigee/provider-harbor/apis/registry/v1alpha1.Registry
 	// +crossplane:generate:reference:extractor=github.com/rossigee/provider-harbor/config/common.ExtractRegistryID()
 	// +kubebuilder:validation:Optional
@@ -114,9 +149,11 @@ type ProjectParameters struct {
 	// +kubebuilder:validation:Optional
 	RegistryIDSelector *v1.Selector `json:"registryIdSelector,omitempty" tf:"-"`
 
+	// (Number) The storage quota of the project in GB's.
 	// +kubebuilder:validation:Optional
 	StorageQuota *float64 `json:"storageQuota,omitempty" tf:"storage_quota,omitempty"`
 
+	// (Boolean) Images will be scanned for vulnerabilities when push to harbor. (Default: true)
 	// +kubebuilder:validation:Optional
 	VulnerabilityScanning *bool `json:"vulnerabilityScanning,omitempty" tf:"vulnerability_scanning,omitempty"`
 }
@@ -148,7 +185,7 @@ type ProjectStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// Project is the Schema for the Projects API. <no value>
+// Project is the Schema for the Projects API.
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"

@@ -50,8 +50,8 @@ type Options struct {
 	PollInterval string
 }
 
-// Setup creates all Harbor controllers using the native Harbor client
-func Setup(mgr ctrl.Manager, opts Options) error {
+// SetupNative creates all native Harbor controllers using the native Harbor client
+func SetupNative(mgr ctrl.Manager, opts Options) error {
 	opts.Logger.Info("Setting up Harbor controllers")
 
 	opts.Logger.Info("About to setup project controller")

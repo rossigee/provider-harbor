@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: MemberUser is the Schema for the MemberUsers API. <no value>
+        description: MemberUser is the Schema for the MemberUsers API.
         properties:
           apiVersion:
             description: |-
@@ -73,6 +73,8 @@ spec:
               forProvider:
                 properties:
                   projectId:
+                    description: (String) The project id of the project that the entity
+                      will have access to.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -149,8 +151,11 @@ spec:
                         type: object
                     type: object
                   role:
+                    description: (String) The permissions that the entity will be
+                      granted.
                     type: string
                   userName:
+                    description: (String) The name of the member entity.
                     type: string
                 type: object
               initProvider:
@@ -167,6 +172,8 @@ spec:
                   autoscaler.
                 properties:
                   projectId:
+                    description: (String) The project id of the project that the entity
+                      will have access to.
                     type: string
                   projectIdRef:
                     description: Reference to a Project in project to populate projectId.
@@ -243,8 +250,11 @@ spec:
                         type: object
                     type: object
                   role:
+                    description: (String) The permissions that the entity will be
+                      granted.
                     type: string
                   userName:
+                    description: (String) The name of the member entity.
                     type: string
                 type: object
               managementPolicies:
@@ -429,14 +439,21 @@ spec:
               atProvider:
                 properties:
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   memberId:
+                    description: (Number) The member id of the member.
                     type: number
                   projectId:
+                    description: (String) The project id of the project that the entity
+                      will have access to.
                     type: string
                   role:
+                    description: (String) The permissions that the entity will be
+                      granted.
                     type: string
                   userName:
+                    description: (String) The name of the member entity.
                     type: string
                 type: object
               conditions:

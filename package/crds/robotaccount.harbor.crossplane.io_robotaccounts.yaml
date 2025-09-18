@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: RobotAccount is the Schema for the RobotAccounts API. <no value>
+        description: RobotAccount is the Schema for the RobotAccounts API.
         properties:
           apiVersion:
             description: |-
@@ -73,32 +73,55 @@ spec:
               forProvider:
                 properties:
                   description:
+                    description: (String) The description of the robot account will
+                      be displayed in harbor.
                     type: string
                   disable:
+                    description: (Boolean) Disables the robot account when set to
+                      true.
                     type: boolean
                   duration:
+                    description: (Number) By default, the robot account will not expire.
+                      Set it to the amount of days until the account should expire.
                     type: number
                   level:
+                    description: (String) Level of the robot account, currently either
+                      system or project.
                     type: string
                   name:
+                    description: (String) The name of the project that will be created
+                      in harbor.
                     type: string
                   permissions:
+                    description: '(Block Set, Min: 1) (see below for nested schema)'
                     items:
                       properties:
                         access:
+                          description: '(Block Set, Min: 1) (see below for nested
+                            schema)'
                           items:
                             properties:
                               action:
+                                description: (String) Eg. push, pull, read, etc. Check
+                                  available actions.
                                 type: string
                               effect:
+                                description: (String) Either allow or deny. Defaults
+                                  to allow.
                                 type: string
                               resource:
+                                description: (String) Eg. repository, labels, etc.
+                                  Check available resources.
                                 type: string
                             type: object
                           type: array
                         kind:
+                          description: (String) Either system or project.
                           type: string
                         namespace:
+                          description: (String) namespace is the name of your project.
+                            For kind system permissions, always use / as namespace.
+                            Use * to match all projects.
                           type: string
                         namespaceRef:
                           description: Reference to a Project in project to populate
@@ -179,8 +202,9 @@ spec:
                       type: object
                     type: array
                   secretSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The secret of the robot account
+                      used for authentication. Defaults to random generated string
+                      from Harbor.
                     properties:
                       key:
                         description: The key to select.
@@ -211,32 +235,55 @@ spec:
                   autoscaler.
                 properties:
                   description:
+                    description: (String) The description of the robot account will
+                      be displayed in harbor.
                     type: string
                   disable:
+                    description: (Boolean) Disables the robot account when set to
+                      true.
                     type: boolean
                   duration:
+                    description: (Number) By default, the robot account will not expire.
+                      Set it to the amount of days until the account should expire.
                     type: number
                   level:
+                    description: (String) Level of the robot account, currently either
+                      system or project.
                     type: string
                   name:
+                    description: (String) The name of the project that will be created
+                      in harbor.
                     type: string
                   permissions:
+                    description: '(Block Set, Min: 1) (see below for nested schema)'
                     items:
                       properties:
                         access:
+                          description: '(Block Set, Min: 1) (see below for nested
+                            schema)'
                           items:
                             properties:
                               action:
+                                description: (String) Eg. push, pull, read, etc. Check
+                                  available actions.
                                 type: string
                               effect:
+                                description: (String) Either allow or deny. Defaults
+                                  to allow.
                                 type: string
                               resource:
+                                description: (String) Eg. repository, labels, etc.
+                                  Check available resources.
                                 type: string
                             type: object
                           type: array
                         kind:
+                          description: (String) Either system or project.
                           type: string
                         namespace:
+                          description: (String) namespace is the name of your project.
+                            For kind system permissions, always use / as namespace.
+                            Use * to match all projects.
                           type: string
                         namespaceRef:
                           description: Reference to a Project in project to populate
@@ -317,8 +364,9 @@ spec:
                       type: object
                     type: array
                   secretSecretRef:
-                    description: A SecretKeySelector is a reference to a secret key
-                      in an arbitrary namespace.
+                    description: (String, Sensitive) The secret of the robot account
+                      used for authentication. Defaults to random generated string
+                      from Harbor.
                     properties:
                       key:
                         description: The key to select.
@@ -521,40 +569,66 @@ spec:
               atProvider:
                 properties:
                   description:
+                    description: (String) The description of the robot account will
+                      be displayed in harbor.
                     type: string
                   disable:
+                    description: (Boolean) Disables the robot account when set to
+                      true.
                     type: boolean
                   duration:
+                    description: (Number) By default, the robot account will not expire.
+                      Set it to the amount of days until the account should expire.
                     type: number
                   fullName:
+                    description: (String)
                     type: string
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   level:
+                    description: (String) Level of the robot account, currently either
+                      system or project.
                     type: string
                   name:
+                    description: (String) The name of the project that will be created
+                      in harbor.
                     type: string
                   permissions:
+                    description: '(Block Set, Min: 1) (see below for nested schema)'
                     items:
                       properties:
                         access:
+                          description: '(Block Set, Min: 1) (see below for nested
+                            schema)'
                           items:
                             properties:
                               action:
+                                description: (String) Eg. push, pull, read, etc. Check
+                                  available actions.
                                 type: string
                               effect:
+                                description: (String) Either allow or deny. Defaults
+                                  to allow.
                                 type: string
                               resource:
+                                description: (String) Eg. repository, labels, etc.
+                                  Check available resources.
                                 type: string
                             type: object
                           type: array
                         kind:
+                          description: (String) Either system or project.
                           type: string
                         namespace:
+                          description: (String) namespace is the name of your project.
+                            For kind system permissions, always use / as namespace.
+                            Use * to match all projects.
                           type: string
                       type: object
                     type: array
                   robotId:
+                    description: (String)
                     type: string
                 type: object
               conditions:

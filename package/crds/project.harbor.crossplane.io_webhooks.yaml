@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Webhook is the Schema for the Webhooks API. <no value>
+        description: Webhook is the Schema for the Webhooks API.
         properties:
           apiVersion:
             description: |-
@@ -73,24 +73,37 @@ spec:
               forProvider:
                 properties:
                   address:
+                    description: (String) The address of the webhook.
                     type: string
                   authHeader:
+                    description: (String) authentication header for you the webhook.
                     type: string
                   description:
+                    description: (String) A description of the webhook.
                     type: string
                   enabled:
+                    description: (Boolean) To enable / disable the webhook. Default
+                      true.
                     type: boolean
                   eventsTypes:
+                    description: (List of String) The type events you want to subscript
+                      to can be
                     items:
                       type: string
                     type: array
                   name:
+                    description: (String) The name of the webhook that will be created
+                      in harbor.
                     type: string
                   notifyType:
+                    description: (String) The notification type either http or slack.
                     type: string
                   projectId:
+                    description: (String) The project id of the harbor that webhook
+                      related to.
                     type: string
                   skipCertVerify:
+                    description: (Boolean) checks the for validate SSL certificate.
                     type: boolean
                 type: object
               initProvider:
@@ -107,24 +120,37 @@ spec:
                   autoscaler.
                 properties:
                   address:
+                    description: (String) The address of the webhook.
                     type: string
                   authHeader:
+                    description: (String) authentication header for you the webhook.
                     type: string
                   description:
+                    description: (String) A description of the webhook.
                     type: string
                   enabled:
+                    description: (Boolean) To enable / disable the webhook. Default
+                      true.
                     type: boolean
                   eventsTypes:
+                    description: (List of String) The type events you want to subscript
+                      to can be
                     items:
                       type: string
                     type: array
                   name:
+                    description: (String) The name of the webhook that will be created
+                      in harbor.
                     type: string
                   notifyType:
+                    description: (String) The notification type either http or slack.
                     type: string
                   projectId:
+                    description: (String) The project id of the harbor that webhook
+                      related to.
                     type: string
                   skipCertVerify:
+                    description: (Boolean) checks the for validate SSL certificate.
                     type: boolean
                 type: object
               managementPolicies:
@@ -321,26 +347,40 @@ spec:
               atProvider:
                 properties:
                   address:
+                    description: (String) The address of the webhook.
                     type: string
                   authHeader:
+                    description: (String) authentication header for you the webhook.
                     type: string
                   description:
+                    description: (String) A description of the webhook.
                     type: string
                   enabled:
+                    description: (Boolean) To enable / disable the webhook. Default
+                      true.
                     type: boolean
                   eventsTypes:
+                    description: (List of String) The type events you want to subscript
+                      to can be
                     items:
                       type: string
                     type: array
                   id:
+                    description: (String) The ID of this resource.
                     type: string
                   name:
+                    description: (String) The name of the webhook that will be created
+                      in harbor.
                     type: string
                   notifyType:
+                    description: (String) The notification type either http or slack.
                     type: string
                   projectId:
+                    description: (String) The project id of the harbor that webhook
+                      related to.
                     type: string
                   skipCertVerify:
+                    description: (Boolean) checks the for validate SSL certificate.
                     type: boolean
                 type: object
               conditions:

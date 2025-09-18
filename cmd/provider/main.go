@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/upjet/pkg/controller"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
-	"github.com/rossigee/provider-harbor/internal/controller"
+	harbourcontroller "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 func main() {
@@ -71,12 +72,16 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
 
-	// Setup controllers
-	opts := controller.Options{
+	// Setup upjet controllers (generated from Terraform provider)
+	upjetOpts := controller.Options{}
+	kingpin.FatalIfError(harbourcontroller.Setup(mgr, upjetOpts), "Cannot setup upjet Harbor controllers")
+
+	// Setup native controllers (native Harbor API)
+	nativeOpts := harbourcontroller.Options{
 		Logger:       log,
 		PollInterval: pollInterval.String(),
 	}
-	kingpin.FatalIfError(controller.Setup(mgr, opts), "Cannot setup Harbor controllers")
+	kingpin.FatalIfError(harbourcontroller.SetupNative(mgr, nativeOpts), "Cannot setup native Harbor controllers")
 
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }
