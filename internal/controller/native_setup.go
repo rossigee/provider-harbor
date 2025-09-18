@@ -37,11 +37,11 @@ import (
 )
 
 const (
-	errNotProject    = "managed resource is not a Project custom resource"
-	errTrackPCUsage  = "cannot track ProviderConfig usage"
-	errGetPC         = "cannot get ProviderConfig"
-	errGetCreds      = "cannot get credentials"
-	errNewClient     = "cannot create new Service"
+	errNotProject   = "managed resource is not a Project custom resource"
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	errGetPC        = "cannot get ProviderConfig"
+	errGetCreds     = "cannot get credentials"
+	errNewClient    = "cannot create new Service"
 )
 
 // Options contains options for controller setup
@@ -75,11 +75,11 @@ func SetupNative(mgr ctrl.Manager, opts Options) error {
 // setupProjectController sets up a controller for Harbor projects
 func setupProjectController(mgr ctrl.Manager, opts Options) error {
 	opts.Logger.Info("Setting up Harbor Project controller")
-	
+
 	name := managed.ControllerName(v1alpha1.Project_GroupVersionKind.String())
-	
+
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
-	
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		For(&v1alpha1.Project{}).
@@ -146,10 +146,10 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	if err := json.Unmarshal(data, &harborCreds); err != nil {
 		return nil, errors.Wrap(err, "cannot unmarshal credentials")
 	}
-	
+
 	config := &clients.HarborConfig{
 		URL:      harborCreds["url"],
-		Username: harborCreds["username"], 
+		Username: harborCreds["username"],
 		Password: harborCreds["password"],
 		Insecure: harborCreds["insecure"] == "true",
 	}
@@ -183,7 +183,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	projectName := *cr.Spec.ForProvider.Name
-	
+
 	// Check if project exists in Harbor
 	status, err := c.service.GetProject(ctx, projectName)
 	if err != nil {
@@ -237,7 +237,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		Name:   *cr.Spec.ForProvider.Name,
 		Public: false, // Default to private
 	}
-	
+
 	if cr.Spec.ForProvider.Public != nil {
 		spec.Public = *cr.Spec.ForProvider.Public
 	}
@@ -268,7 +268,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		Name:   *cr.Spec.ForProvider.Name,
 		Public: false, // Default to private
 	}
-	
+
 	if cr.Spec.ForProvider.Public != nil {
 		spec.Public = *cr.Spec.ForProvider.Public
 	}
@@ -301,7 +301,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	c.logger.Info("Successfully deleted Harbor project", "name", *cr.Spec.ForProvider.Name)
-	
+
 	return managed.ExternalDelete{}, nil
 }
 

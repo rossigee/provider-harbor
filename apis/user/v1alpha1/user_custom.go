@@ -25,7 +25,7 @@ type UserWithGeneratedPasswordInitParameters struct {
 type UserWithGeneratedPasswordParameters struct {
 	UserParameters `json:",inline"`
 
-	// Generate a secure random password and store it in the specified secret  
+	// Generate a secure random password and store it in the specified secret
 	// This is mutually exclusive with passwordSecretRef
 	// +kubebuilder:validation:Optional
 	GeneratePasswordInSecret *GeneratePasswordConfig `json:"generatePasswordInSecret,omitempty"`
@@ -35,15 +35,15 @@ type UserWithGeneratedPasswordParameters struct {
 type GeneratePasswordConfig struct {
 	// Name of the secret to create with the generated password
 	Name string `json:"name"`
-	
+
 	// Namespace where the secret should be created (defaults to same as user resource)
 	// +kubebuilder:validation:Optional
 	Namespace string `json:"namespace,omitempty"`
-	
+
 	// Key within the secret to store the password (defaults to "password")
 	// +kubebuilder:validation:Optional
 	Key string `json:"key,omitempty"`
-	
+
 	// Length of the generated password (defaults to 16, minimum 8)
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=8

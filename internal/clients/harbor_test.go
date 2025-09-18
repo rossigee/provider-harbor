@@ -180,7 +180,7 @@ func TestHarborClientOperations(t *testing.T) {
 
 		t.Logf("Found %d projects", len(projects))
 		for _, project := range projects {
-			t.Logf("Project: Name=%s, Public=%t, Created=%s", 
+			t.Logf("Project: Name=%s, Public=%t, Created=%s",
 				project.Name, project.Public, project.CreatedAt.Format(time.RFC3339))
 		}
 	})
@@ -205,8 +205,8 @@ func TestHarborClientOperations(t *testing.T) {
 		if status.Public != spec.Public {
 			t.Errorf("expected public %t, got %t", spec.Public, status.Public)
 		}
-		
-		t.Logf("Created project: Name=%s, Public=%t, Created=%s", 
+
+		t.Logf("Created project: Name=%s, Public=%t, Created=%s",
 			status.Name, status.Public, status.CreatedAt.Format(time.RFC3339))
 	})
 
@@ -220,8 +220,8 @@ func TestHarborClientOperations(t *testing.T) {
 		if status.Name != testProjectName {
 			t.Errorf("expected project name %s, got %s", testProjectName, status.Name)
 		}
-		
-		t.Logf("Retrieved project: Name=%s, Public=%t, Created=%s", 
+
+		t.Logf("Retrieved project: Name=%s, Public=%t, Created=%s",
 			status.Name, status.Public, status.CreatedAt.Format(time.RFC3339))
 	})
 
@@ -240,8 +240,8 @@ func TestHarborClientOperations(t *testing.T) {
 		if status.Public != true {
 			t.Errorf("expected project to be public after update")
 		}
-		
-		t.Logf("Updated project: Name=%s, Public=%t, Created=%s", 
+
+		t.Logf("Updated project: Name=%s, Public=%t, Created=%s",
 			status.Name, status.Public, status.CreatedAt.Format(time.RFC3339))
 	})
 

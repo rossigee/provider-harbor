@@ -21,11 +21,11 @@ func Configure(p *config.Provider) {
 		// Configure connection details to support both legacy and Docker config JSON formats
 		r.Sensitive.AdditionalConnectionDetailsFn = func(attr map[string]any) (map[string][]byte, error) {
 			conn := map[string][]byte{}
-			
+
 			// Always provide individual fields (backward compatibility)
 			username := ""
 			password := ""
-			
+
 			if v, ok := attr["full_name"].(string); ok && v != "" {
 				conn["username"] = []byte(v)
 				username = v
@@ -47,7 +47,7 @@ func Configure(p *config.Provider) {
 				conn["docker-username"] = []byte(username)
 				conn["docker-password"] = []byte(password)
 				conn["docker-auth"] = []byte(base64.StdEncoding.EncodeToString([]byte(username + ":" + password)))
-				
+
 				// Generate a basic docker config template - consumers can customize the registry URL
 				dockerConfig := map[string]interface{}{
 					"auths": map[string]interface{}{

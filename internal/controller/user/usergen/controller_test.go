@@ -182,9 +182,9 @@ func TestCreate(t *testing.T) {
 				Spec: v1alpha1.UserWithGeneratedPasswordSpec{
 					ForProvider: v1alpha1.UserWithGeneratedPasswordParameters{
 						UserParameters: v1alpha1.UserParameters{
-							Username: stringPtr("testuser"),
-							Email:    stringPtr("test@example.com"),
-							FullName: stringPtr("Test User"),
+							Username:          stringPtr("testuser"),
+							Email:             stringPtr("test@example.com"),
+							FullName:          stringPtr("Test User"),
 							PasswordSecretRef: xpv1.SecretKeySelector{},
 						},
 						GeneratePasswordInSecret: &v1alpha1.GeneratePasswordConfig{
@@ -228,9 +228,9 @@ func TestCreate(t *testing.T) {
 				Spec: v1alpha1.UserWithGeneratedPasswordSpec{
 					ForProvider: v1alpha1.UserWithGeneratedPasswordParameters{
 						UserParameters: v1alpha1.UserParameters{
-							Username: stringPtr("testuser"),
-							Email:    stringPtr("test@example.com"),
-							FullName: stringPtr("Test User"),
+							Username:          stringPtr("testuser"),
+							Email:             stringPtr("test@example.com"),
+							FullName:          stringPtr("Test User"),
 							PasswordSecretRef: xpv1.SecretKeySelector{},
 						},
 						GeneratePasswordInSecret: &v1alpha1.GeneratePasswordConfig{
@@ -408,7 +408,7 @@ func TestGenerateSecurePassword(t *testing.T) {
 					t.Errorf("\n%s\ngenerateSecurePassword(%d): second generation failed: %v", tc.reason, tc.length, err2)
 				}
 				if got == got2 {
-					t.Errorf("\n%s\ngenerateSecurePassword(%d): generated identical passwords (should be random): %s", 
+					t.Errorf("\n%s\ngenerateSecurePassword(%d): generated identical passwords (should be random): %s",
 						tc.reason, tc.length, got)
 				}
 			}
@@ -468,7 +468,7 @@ func TestCreatePasswordSecret(t *testing.T) {
 		},
 		"CreateFails": {
 			secretName:      "test-secret",
-			secretNamespace: "test-namespace", 
+			secretNamespace: "test-namespace",
 			secretKey:       "password",
 			password:        "test-password",
 			user: &v1alpha1.UserWithGeneratedPassword{

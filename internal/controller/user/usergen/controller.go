@@ -8,12 +8,12 @@ import (
 	"context"
 	"crypto/rand"
 
+	"github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/apis/common/v1"
 	tjcontroller "github.com/crossplane/upjet/pkg/controller"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -28,19 +28,19 @@ import (
 
 const (
 	errNotUserWithGeneratedPassword = "managed resource is not a UserWithGeneratedPassword custom resource"
-	errGeneratePassword            = "cannot generate secure password"
-	errCreateSecret               = "cannot create password secret"
-	errCreateUser                 = "cannot create underlying user resource"
-	errTrackUsage                 = "cannot track provider config usage"
+	errGeneratePassword             = "cannot generate secure password"
+	errCreateSecret                 = "cannot create password secret"
+	errCreateUser                   = "cannot create underlying user resource"
+	errTrackUsage                   = "cannot track provider config usage"
 
 	defaultPasswordLength = 16
-	defaultSecretKey     = "password"
+	defaultSecretKey      = "password"
 )
 
 // Setup adds a controller that reconciles UserWithGeneratedPassword managed resources.
 func Setup(mgr ctrl.Manager, o tjcontroller.Options) error {
 	name := managed.ControllerName("userwithgeneratedpassword")
-	
+
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.UserWithGeneratedPassword_GroupVersionKind),
 		managed.WithExternalConnecter(&connector{
@@ -96,9 +96,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Multi-phase approach:
 	// Phase 1: Create password secret if needed
 	// Phase 2: Create Harbor user if secret exists
-	
+
 	needsPasswordGeneration := user.Spec.ForProvider.GeneratePasswordInSecret != nil
-	
+
 	if needsPasswordGeneration {
 		// Check if the secret already exists
 		secretName := user.Spec.ForProvider.GeneratePasswordInSecret.Name
@@ -150,8 +150,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Both secret (if needed) and user exist - we're done
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: true,
+		ResourceExists:    true,
+		ResourceUpToDate:  true,
 		ConnectionDetails: managed.ConnectionDetails{},
 	}, nil
 }
@@ -166,7 +166,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	// Determine which phase we're in based on what exists
 	needsPasswordGeneration := user.Spec.ForProvider.GeneratePasswordInSecret != nil
-	
+
 	if needsPasswordGeneration {
 		// Check if secret exists yet
 		genConfig := user.Spec.ForProvider.GeneratePasswordInSecret
@@ -201,13 +201,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) createPasswordSecretPhase(ctx context.Context, user *v1alpha1.UserWithGeneratedPassword, genConfig *v1alpha1.GeneratePasswordConfig, secretNamespace string) (managed.ExternalCreation, error) {
 	c.logger.Info("Phase 1: Creating password secret", "secret", genConfig.Name, "namespace", secretNamespace)
-	
+
 	// Generate secure password
 	length := defaultPasswordLength
 	if genConfig.Length != nil {
 		length = *genConfig.Length
 	}
-	
+
 	password, err := c.generateSecurePassword(length)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errGeneratePassword)
@@ -223,7 +223,7 @@ func (c *external) createPasswordSecretPhase(ctx context.Context, user *v1alpha1
 	}
 
 	c.logger.Info("Created password secret, Harbor user will be created on next reconcile", "secret", genConfig.Name)
-	
+
 	// Return success but indicate more work is needed (Harbor user creation)
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{},
@@ -233,9 +233,9 @@ func (c *external) createPasswordSecretPhase(ctx context.Context, user *v1alpha1
 func (c *external) createHarborUserPhase(ctx context.Context, user *v1alpha1.UserWithGeneratedPassword) (managed.ExternalCreation, error) {
 	c.logger.Info("Phase 2: Creating Harbor User resource", "name", user.GetName())
 
-	// Prepare password secret reference  
+	// Prepare password secret reference
 	var passwordSecretRef *v1.SecretKeySelector
-	
+
 	if user.Spec.ForProvider.GeneratePasswordInSecret != nil {
 		genConfig := user.Spec.ForProvider.GeneratePasswordInSecret
 		secretNamespace := genConfig.Namespace
@@ -245,7 +245,7 @@ func (c *external) createHarborUserPhase(ctx context.Context, user *v1alpha1.Use
 				secretNamespace = "default"
 			}
 		}
-		
+
 		secretKey := genConfig.Key
 		if secretKey == "" {
 			secretKey = defaultSecretKey
@@ -329,18 +329,18 @@ func (c *external) generateSecurePassword(length int) (string, error) {
 	if length < 8 {
 		length = defaultPasswordLength
 	}
-	
+
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
 	bytes := make([]byte, length)
-	
+
 	if _, err := rand.Read(bytes); err != nil {
 		return "", errors.Wrap(err, "failed to generate random bytes")
 	}
-	
+
 	for i, b := range bytes {
 		bytes[i] = charset[b%byte(len(charset))]
 	}
-	
+
 	return string(bytes), nil
 }
 
@@ -371,6 +371,6 @@ func (c *external) createPasswordSecret(ctx context.Context, secretName, secretN
 			secretKey: []byte(password),
 		},
 	}
-	
+
 	return c.kube.Create(ctx, secret)
 }
