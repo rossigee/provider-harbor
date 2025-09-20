@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-credentials
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  url: "https://harbor.example.com"
+  username: "admin"
+  password: "changeme"
+  insecure: "false"
+---
+apiVersion: harbor.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: harbor-credentials
+      key: credentials

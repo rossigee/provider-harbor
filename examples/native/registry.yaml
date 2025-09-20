@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-credentials
+  namespace: default
+type: Opaque
+stringData:
+  access_secret: "registry-access-token"
+---
+apiVersion: registry.harbor.crossplane.io/v1alpha1
+kind: Registry
+metadata:
+  name: example-registry
+spec:
+  forProvider:
+    name: "docker-hub-proxy"
+    description: "Docker Hub proxy registry"
+    type: "docker-hub"
+    url: "https://registry-1.docker.io"
+    insecure: false
+    credential:
+      type: "basic"
+      accessKey: "myusername"
+      accessSecretRef:
+        name: registry-credentials
+        namespace: default
+        key: access_secret
+  providerConfigRef:
+    name: default
+  deletionPolicy: Delete

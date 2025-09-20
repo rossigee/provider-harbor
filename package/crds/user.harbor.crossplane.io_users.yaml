@@ -19,22 +19,30 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.conditions[?(@.type=='Synced')].status
-      name: SYNCED
-      type: string
     - jsonPath: .status.conditions[?(@.type=='Ready')].status
       name: READY
       type: string
-    - jsonPath: .metadata.annotations.crossplane\.io/external-name
-      name: EXTERNAL-NAME
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
       type: string
+    - jsonPath: .status.atProvider.id
+      name: USER-ID
+      type: string
+    - jsonPath: .spec.forProvider.username
+      name: USERNAME
+      type: string
+    - jsonPath: .spec.forProvider.email
+      name: EMAIL
+      type: string
+    - jsonPath: .spec.forProvider.sysAdminFlag
+      name: ADMIN
+      type: boolean
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: User is the Schema for the Users API.
         properties:
           apiVersion:
             description: |-
@@ -54,7 +62,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: UserSpec defines the desired state of User
+            description: A UserSpec defines the desired state of a User.
             properties:
               deletionPolicy:
                 default: Delete
@@ -71,24 +79,16 @@ spec:
                 - Delete
                 type: string
               forProvider:
+                description: UserParameters defines the desired state of a User
                 properties:
-                  admin:
-                    description: '(Boolean) If the user will have admin rights within
-                      Harbor (Default: false)'
-                    type: boolean
                   comment:
-                    description: (String) Any comments for that are need for the internal
-                      user.
+                    description: Comment is an optional comment about the user
                     type: string
                   email:
-                    description: (String) The email address of the internal user.
-                    type: string
-                  fullName:
-                    description: (String) The Full Name of the internal user.
+                    description: Email is the email address of the user
                     type: string
                   passwordSecretRef:
-                    description: (String, Sensitive) The password for the internal
-                      user.
+                    description: Password is the password for the user
                     properties:
                       key:
                         description: The key to select.
@@ -104,60 +104,19 @@ spec:
                     - name
                     - namespace
                     type: object
-                  username:
-                    description: (String) The username of the internal user.
+                  realname:
+                    description: Realname is the real name of the user
                     type: string
-                type: object
-              initProvider:
-                description: |-
-                  THIS IS A BETA FIELD. It will be honored
-                  unless the Management Policies feature flag is disabled.
-                  InitProvider holds the same fields as ForProvider, with the exception
-                  of Identifier and other resource reference fields. The fields that are
-                  in InitProvider are merged into ForProvider when the resource is created.
-                  The same fields are also added to the terraform ignore_changes hook, to
-                  avoid updating them after creation. This is useful for fields that are
-                  required on creation, but we do not desire to update them after creation,
-                  for example because of an external controller is managing them, like an
-                  autoscaler.
-                properties:
-                  admin:
-                    description: '(Boolean) If the user will have admin rights within
-                      Harbor (Default: false)'
+                  sysAdminFlag:
+                    default: false
+                    description: SysAdminFlag indicates if the user is a system administrator
                     type: boolean
-                  comment:
-                    description: (String) Any comments for that are need for the internal
-                      user.
-                    type: string
-                  email:
-                    description: (String) The email address of the internal user.
-                    type: string
-                  fullName:
-                    description: (String) The Full Name of the internal user.
-                    type: string
-                  passwordSecretRef:
-                    description: (String, Sensitive) The password for the internal
-                      user.
-                    properties:
-                      key:
-                        description: The key to select.
-                        type: string
-                      name:
-                        description: Name of the secret.
-                        type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
                   username:
-                    description: (String) The username of the internal user.
+                    description: Username is the username for the Harbor user
                     type: string
                 required:
-                - passwordSecretRef
+                - email
+                - username
                 type: object
               managementPolicies:
                 default:
@@ -326,46 +285,33 @@ spec:
             required:
             - forProvider
             type: object
-            x-kubernetes-validations:
-            - message: spec.forProvider.email is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.email)
-                || (has(self.initProvider) && has(self.initProvider.email))'
-            - message: spec.forProvider.fullName is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.fullName)
-                || (has(self.initProvider) && has(self.initProvider.fullName))'
-            - message: spec.forProvider.passwordSecretRef is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.passwordSecretRef)'
-            - message: spec.forProvider.username is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.username)
-                || (has(self.initProvider) && has(self.initProvider.username))'
           status:
-            description: UserStatus defines the observed state of User.
+            description: A UserStatus represents the observed state of a User.
             properties:
               atProvider:
+                description: UserObservation defines the observed state of a User
                 properties:
-                  admin:
-                    description: '(Boolean) If the user will have admin rights within
-                      Harbor (Default: false)'
+                  adminRoleInAuth:
+                    description: AdminRoleInAuth indicates if the user has admin role
+                      in auth mode
                     type: boolean
-                  comment:
-                    description: (String) Any comments for that are need for the internal
-                      user.
-                    type: string
-                  email:
-                    description: (String) The email address of the internal user.
-                    type: string
-                  fullName:
-                    description: (String) The Full Name of the internal user.
+                  creationTime:
+                    description: CreationTime is when the user was created
+                    format: date-time
                     type: string
                   id:
-                    description: (String) The ID of this resource.
-                    type: string
-                  username:
-                    description: (String) The username of the internal user.
+                    description: ID is the unique identifier of the user in Harbor
+                    format: int64
+                    type: integer
+                  oidcUserMeta:
+                    additionalProperties:
+                      type: string
+                    description: OidcUserMeta contains OIDC user metadata if applicable
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  updateTime:
+                    description: UpdateTime is when the user was last updated
+                    format: date-time
                     type: string
                 type: object
               conditions:

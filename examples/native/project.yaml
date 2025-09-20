@@ -1,0 +1,20 @@
+apiVersion: project.harbor.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: example-project
+spec:
+  forProvider:
+    name: "my-app-project"
+    public: false
+    enableContentTrust: true
+    autoScanImages: true
+    severity: "high"
+    cveAllowlist:
+      - "CVE-2021-12345"
+      - "CVE-2021-67890"
+    metadata:
+      description: "Example project for my application"
+      environment: "development"
+  providerConfigRef:
+    name: default
+  deletionPolicy: Delete
