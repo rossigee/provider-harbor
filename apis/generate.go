@@ -2,7 +2,7 @@
 // +build generate
 
 /*
-Copyright 2021 Upbound Inc.
+Copyright 2024 Crossplane Harbor Provider.
 */
 
 // NOTE: See the below link for details on what is happening here.
@@ -14,17 +14,8 @@ Copyright 2021 Upbound Inc.
 // Remove generated files
 //go:generate bash -c "find . -iname 'zz_*' ! -iname 'zz_generated.managed*.go' -delete"
 //go:generate bash -c "find . -type d -empty -delete"
-//go:generate bash -c "find ../internal/controller -iname 'zz_*' -delete"
-//go:generate bash -c "find ../internal/controller -type d -empty -delete"
-//go:generate rm -rf ../examples-generated
 
-// Generate documentation from Terraform docs.
-//go:generate go run github.com/crossplane/upjet/cmd/scraper -n ${TERRAFORM_PROVIDER_SOURCE} -r ../.work/${TERRAFORM_PROVIDER_SOURCE}/${TERRAFORM_DOCS_PATH} -o ../config/provider-metadata.yaml
-
-// Run Upjet generator
-//go:generate go run ../cmd/generator/main.go ..
-
-// Generate deepcopy methodsets and CRD manifests
+// Generate deepcopy methodsets and CRD manifests for native provider
 //go:generate go run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen object:headerFile=../hack/boilerplate.go.txt paths=./... crd:allowDangerousTypes=true,crdVersions=v1 output:artifacts:config=../package/crds
 
 // Generate crossplane-runtime methodsets (resource.Claim, etc)

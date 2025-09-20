@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
-	"github.com/rossigee/provider-harbor/apis/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
 )
 
@@ -60,7 +59,6 @@ func Setup(mgr ctrl.Manager, opts Options) error {
 			resource.ManagedKind(v1alpha1.ScannerRegistration_GroupVersionKind),
 			managed.WithExternalConnecter(&connector{
 				kube:   mgr.GetClient(),
-				usage:  resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1beta1.ProviderConfigUsage{}),
 				logger: opts.Logger,
 			}),
 			managed.WithLogger(opts.Logger.WithValues("controller", name)),
@@ -72,7 +70,6 @@ func Setup(mgr ctrl.Manager, opts Options) error {
 // connector is responsible for producing ExternalClients.
 type connector struct {
 	kube   client.Client
-	usage  resource.Tracker
 	logger logging.Logger
 }
 

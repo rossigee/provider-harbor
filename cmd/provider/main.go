@@ -1,17 +1,5 @@
 /*
-Copyright 2025 The Crossplane Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright 2024 Crossplane Harbor Provider.
 */
 
 package main
@@ -22,15 +10,16 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/upjet/pkg/controller"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
-	harbourcontroller "github.com/rossigee/provider-harbor/internal/controller"
+	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
+	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 )
 
 func main() {
@@ -40,6 +29,7 @@ func main() {
 		syncPeriod     = app.Flag("sync", "Controller manager sync period such as 300ms, 1.5h, or 2h45m").Short('s').Default("1h").Duration()
 		pollInterval   = app.Flag("poll", "Poll interval controls how often an individual resource should be checked for drift.").Default("10m").Duration()
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
+		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
 	)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -53,8 +43,8 @@ func main() {
 		ctrl.SetLogger(zl)
 	}
 
-	log.Info("Harbor provider starting - using native Harbor Go client")
-	log.Debug("Starting", "sync-period", syncPeriod.String(), "poll-interval", pollInterval.String())
+	log.Info("Native Harbor provider starting")
+	log.Debug("Starting", "sync-period", syncPeriod.String(), "poll-interval", pollInterval.String(), "max-reconcile-rate", *maxReconcileRate)
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
@@ -70,18 +60,24 @@ func main() {
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
+
+	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
 
-	// Setup upjet controllers (generated from Terraform provider)
-	upjetOpts := controller.Options{}
-	kingpin.FatalIfError(harbourcontroller.Setup(mgr, upjetOpts), "Cannot setup upjet Harbor controllers")
-
-	// Setup native controllers (native Harbor API)
-	nativeOpts := harbourcontroller.Options{
-		Logger:       log,
-		PollInterval: pollInterval.String(),
+	// Setup native controllers with rate limiting
+	o := controller.Options{
+		MaxConcurrentReconciles: *maxReconcileRate,
 	}
-	kingpin.FatalIfError(harbourcontroller.SetupNative(mgr, nativeOpts), "Cannot setup native Harbor controllers")
 
+	// Setup Project controller
+	kingpin.FatalIfError(projectcontroller.Setup(mgr, o), "Cannot setup Project controller")
+
+	// Setup Scanner controller
+	kingpin.FatalIfError(scannercontroller.Setup(mgr, scannercontroller.Options{
+		Logger:       log.WithValues("controller", "scanner"),
+		PollInterval: pollInterval.String(),
+	}), "Cannot setup Scanner controller")
+
+	log.Info("Starting manager")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

@@ -19,14 +19,23 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.conditions[?(@.type=='Synced')].status
-      name: SYNCED
-      type: string
     - jsonPath: .status.conditions[?(@.type=='Ready')].status
       name: READY
       type: string
-    - jsonPath: .metadata.annotations.crossplane\.io/external-name
-      name: EXTERNAL-NAME
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
+      type: string
+    - jsonPath: .status.atProvider.id
+      name: REGISTRY-ID
+      type: string
+    - jsonPath: .spec.forProvider.type
+      name: TYPE
+      type: string
+    - jsonPath: .spec.forProvider.url
+      name: URL
+      type: string
+    - jsonPath: .status.atProvider.status
+      name: STATUS
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -34,7 +43,6 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Registry is the Schema for the Registrys API.
         properties:
           apiVersion:
             description: |-
@@ -54,7 +62,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: RegistrySpec defines the desired state of Registry
+            description: A RegistrySpec defines the desired state of a Registry.
             properties:
               deletionPolicy:
                 default: Delete
@@ -71,105 +79,72 @@ spec:
                 - Delete
                 type: string
               forProvider:
+                description: RegistryParameters defines the desired state of a Registry
                 properties:
-                  accessId:
-                    description: (String) The username / access id for the external
-                      container register.
-                    type: string
-                  accessSecretSecretRef:
-                    description: (String, Sensitive) The password / access keys /
-                      token for the external container register.
+                  credential:
+                    description: Credential contains the authentication credentials
+                      for the registry
                     properties:
-                      key:
-                        description: The key to select.
+                      accessKey:
+                        description: AccessKey is the access key for the registry
                         type: string
-                      name:
-                        description: Name of the secret.
+                      accessSecretRef:
+                        description: AccessSecret contains the secret reference for
+                          registry access
+                        properties:
+                          key:
+                            description: The key to select.
+                            type: string
+                          name:
+                            description: Name of the secret.
+                            type: string
+                          namespace:
+                            description: Namespace of the secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        - namespace
+                        type: object
+                      type:
+                        description: Type is the type of credential (basic, oauth,
+                          etc.)
+                        enum:
+                        - basic
+                        - oauth
                         type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
                     type: object
                   description:
-                    description: (String) The description of the external container
-                      register.
-                    type: string
-                  endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
+                    description: Description is an optional description of the registry
                     type: string
                   insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
+                    default: false
+                    description: Insecure indicates whether to skip TLS verification
                     type: boolean
                   name:
-                    description: (String) The name of the register.
+                    description: Name is the name of the registry
                     type: string
-                  providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
+                  type:
+                    description: Type is the type of registry (harbor, docker-hub,
+                      docker-registry, etc.)
+                    enum:
+                    - harbor
+                    - docker-hub
+                    - docker-registry
+                    - helm-hub
+                    - aws-ecr
+                    - azure-acr
+                    - google-gcr
+                    - gitlab
+                    - quay
                     type: string
-                type: object
-              initProvider:
-                description: |-
-                  THIS IS A BETA FIELD. It will be honored
-                  unless the Management Policies feature flag is disabled.
-                  InitProvider holds the same fields as ForProvider, with the exception
-                  of Identifier and other resource reference fields. The fields that are
-                  in InitProvider are merged into ForProvider when the resource is created.
-                  The same fields are also added to the terraform ignore_changes hook, to
-                  avoid updating them after creation. This is useful for fields that are
-                  required on creation, but we do not desire to update them after creation,
-                  for example because of an external controller is managing them, like an
-                  autoscaler.
-                properties:
-                  accessId:
-                    description: (String) The username / access id for the external
-                      container register.
+                  url:
+                    description: URL is the URL of the registry
                     type: string
-                  accessSecretSecretRef:
-                    description: (String, Sensitive) The password / access keys /
-                      token for the external container register.
-                    properties:
-                      key:
-                        description: The key to select.
-                        type: string
-                      name:
-                        description: Name of the secret.
-                        type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
-                  description:
-                    description: (String) The description of the external container
-                      register.
-                    type: string
-                  endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
-                    type: string
-                  insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
-                    type: boolean
-                  name:
-                    description: (String) The name of the register.
-                    type: string
-                  providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
-                    type: string
+                required:
+                - name
+                - type
+                - url
                 type: object
               managementPolicies:
                 default:
@@ -338,56 +313,26 @@ spec:
             required:
             - forProvider
             type: object
-            x-kubernetes-validations:
-            - message: spec.forProvider.endpointUrl is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.endpointUrl)
-                || (has(self.initProvider) && has(self.initProvider.endpointUrl))'
-            - message: spec.forProvider.name is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.name)
-                || (has(self.initProvider) && has(self.initProvider.name))'
-            - message: spec.forProvider.providerName is a required parameter
-              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
-                || ''Update'' in self.managementPolicies) || has(self.forProvider.providerName)
-                || (has(self.initProvider) && has(self.initProvider.providerName))'
           status:
-            description: RegistryStatus defines the observed state of Registry.
+            description: A RegistryStatus represents the observed state of a Registry.
             properties:
               atProvider:
+                description: RegistryObservation defines the observed state of a Registry
                 properties:
-                  accessId:
-                    description: (String) The username / access id for the external
-                      container register.
-                    type: string
-                  description:
-                    description: (String) The description of the external container
-                      register.
-                    type: string
-                  endpointUrl:
-                    description: (String) The url endpoint for the external container
-                      register ie "https://hub.docker.com"
+                  creationTime:
+                    description: CreationTime is when the registry was created
+                    format: date-time
                     type: string
                   id:
-                    description: (String) The ID of this resource.
-                    type: string
-                  insecure:
-                    description: '(Boolean) Verifies the certificate of the external
-                      container register. (Default: false)'
-                    type: boolean
-                  name:
-                    description: (String) The name of the register.
-                    type: string
-                  providerName:
-                    description: |-
-                      (String) The name of the provider.
-                      Can be one of: alibaba, artifact-hub, aws, azure, docker-hub, docker-registry, gitlab, github, google, harbor, huawei, jfrog, quay
-                    type: string
-                  registryId:
-                    description: (Number)
-                    type: number
+                    description: ID is the unique identifier of the registry in Harbor
+                    format: int64
+                    type: integer
                   status:
-                    description: (String)
+                    description: Status is the status of the registry
+                    type: string
+                  updateTime:
+                    description: UpdateTime is when the registry was last updated
+                    format: date-time
                     type: string
                 type: object
               conditions:

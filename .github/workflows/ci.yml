@@ -1,4 +1,4 @@
-name: CI
+name: Native Harbor Provider CI
 
 on:
   push:
@@ -21,11 +21,11 @@ env:
   GOLANGCI_VERSION: 'latest'
   GOLANGCILINT_VERSION: '2.3.1'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
-  # Registry configuration
+  # Native Harbor Provider Registry configuration
   PRIMARY_REGISTRY: ghcr.io/rossigee
   ENABLE_HARBOR_PUBLISH: false
   ENABLE_UPBOUND_PUBLISH: false
-  # Legacy support
+  # Native provider - no Terraform dependencies
   UPBOUND_MARKETPLACE_PUSH_ROBOT_USR: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
 
 jobs:
@@ -64,8 +64,7 @@ jobs:
           MODIFIED_CRD_LIST: ${{ steps.modified-crds.outputs.all_changed_files }}
         run: |
           make crddiff
-      - name: Report native schema version changes
-        if: ${{ inputs.upjet-based-provider }}
+      - name: Report native provider API changes
         run: |
           make schema-version-diff
 
