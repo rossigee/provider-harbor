@@ -2,7 +2,7 @@
 Copyright 2022 Upbound Inc.
 */
 
-// Package v1beta1 contains the core resources of the harbor upjet provider.
+// Package v1beta1 contains the core resources of the harbor native provider.
 // +kubebuilder:object:generate=true
 // +groupName=harbor.crossplane.io
 // +versionName=v1beta1
