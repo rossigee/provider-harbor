@@ -7,13 +7,14 @@ metadata:
     meta.crossplane.io/source: github.com/rossigee/provider-harbor
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
-      The Harbor Crossplane provider adds support for 
-      managing Harbor resources in kubernetes.
+      Native Harbor Crossplane provider for managing Harbor container
+      registry resources using the official Harbor Go client.
 
     meta.crossplane.io/readme: |
-      `provider-harbor` is a crossplane infrastructure provider for 
-      [Harbor](https://goharbor.io/). 
+      `provider-harbor` is a native Crossplane provider for
+      [Harbor](https://goharbor.io/) container registry management.
 
-      It is based on the Terraform Harbor provider. Read the 
+      Uses the official Harbor Go client for direct API integration
+      without Terraform dependencies. Read the
       [readme](https://github.com/rossigee/provider-harbor/blob/main/README.md)
       for instructions.
