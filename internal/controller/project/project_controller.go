@@ -41,8 +41,6 @@ const (
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1alpha1.ProjectGroupKind)
 
-	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
-
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.ProjectGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
@@ -51,8 +49,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(logging.NewNopLogger().WithValues("controller", name)),
 		managed.WithPollInterval(1*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(cps...))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).

@@ -128,8 +128,6 @@ func (mg *Registry) GetProviderConfigReference() *xpv1.Reference {
 	return mg.Spec.ProviderConfigReference
 }
 
-}
-
 // GetWriteConnectionSecretToReference of this Registry.
 func (mg *Registry) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
@@ -153,8 +151,6 @@ func (mg *Registry) SetManagementPolicies(r xpv1.ManagementPolicies) {
 // SetProviderConfigReference of this Registry.
 func (mg *Registry) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
-}
-
 }
 
 // SetWriteConnectionSecretToReference of this Registry.

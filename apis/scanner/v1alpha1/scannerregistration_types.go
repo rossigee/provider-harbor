@@ -144,8 +144,6 @@ func (mg *ScannerRegistration) GetProviderConfigReference() *xpv1.Reference {
 	return mg.Spec.ProviderConfigReference
 }
 
-}
-
 // GetWriteConnectionSecretToReference of this ScannerRegistration.
 func (mg *ScannerRegistration) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
@@ -169,8 +167,6 @@ func (mg *ScannerRegistration) SetManagementPolicies(r xpv1.ManagementPolicies) 
 // SetProviderConfigReference of this ScannerRegistration.
 func (mg *ScannerRegistration) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
-}
-
 }
 
 // SetWriteConnectionSecretToReference of this ScannerRegistration.

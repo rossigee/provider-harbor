@@ -115,8 +115,6 @@ func (mg *User) GetProviderConfigReference() *xpv1.Reference {
 	return mg.Spec.ProviderConfigReference
 }
 
-}
-
 // GetWriteConnectionSecretToReference of this User.
 func (mg *User) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
@@ -140,8 +138,6 @@ func (mg *User) SetManagementPolicies(r xpv1.ManagementPolicies) {
 // SetProviderConfigReference of this User.
 func (mg *User) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
-}
-
 }
 
 // SetWriteConnectionSecretToReference of this User.
