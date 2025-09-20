@@ -11,10 +11,10 @@ import (
 	// Native API groups
 	projectv1alpha1 "github.com/rossigee/provider-harbor/apis/project/v1alpha1"
 	registryv1alpha1 "github.com/rossigee/provider-harbor/apis/registry/v1alpha1"
+	scannerv1alpha1 "github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
 	userv1alpha1 "github.com/rossigee/provider-harbor/apis/user/v1alpha1"
 
 	// Provider config APIs
-	v1alpha1apis "github.com/rossigee/provider-harbor/apis/v1alpha1"
 	v1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
 )
 
@@ -24,10 +24,10 @@ func init() {
 		// Native APIs
 		projectv1alpha1.SchemeBuilder.AddToScheme,
 		registryv1alpha1.SchemeBuilder.AddToScheme,
+		scannerv1alpha1.SchemeBuilder.AddToScheme,
 		userv1alpha1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
-		v1alpha1apis.SchemeBuilder.AddToScheme,
 		v1beta1.SchemeBuilder.AddToScheme,
 	)
 }
