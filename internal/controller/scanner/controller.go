@@ -50,8 +50,6 @@ type Options struct {
 func Setup(mgr ctrl.Manager, opts Options) error {
 	name := managed.ControllerName(v1alpha1.ScannerRegistration_GroupVersionKind.String())
 
-	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		For(&v1alpha1.ScannerRegistration{}).
@@ -63,8 +61,7 @@ func Setup(mgr ctrl.Manager, opts Options) error {
 			}),
 			managed.WithLogger(opts.Logger.WithValues("controller", name)),
 			managed.WithPollInterval(10*time.Minute),
-			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-			managed.WithConnectionPublishers(cps...)))
+			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))))
 }
 
 // connector is responsible for producing ExternalClients.

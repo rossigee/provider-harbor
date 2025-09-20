@@ -171,8 +171,6 @@ func (mg *Project) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
-}
-
 // SetWriteConnectionSecretToReference of this Project.
 func (mg *Project) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
