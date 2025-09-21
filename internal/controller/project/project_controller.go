@@ -109,7 +109,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
+	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID for now
 	if project.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: project.CreatedAt}
 	}
@@ -149,7 +149,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// Update status with created resource info
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID
+	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
@@ -225,4 +225,8 @@ func getBoolValue(b *bool) bool {
 
 func getInt64Ptr(i int64) *int64 {
 	return &i
+}
+
+func getStringPtr(s string) *string {
+	return &s
 }

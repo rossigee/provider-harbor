@@ -66,7 +66,7 @@ type ProjectParameters struct {
 // ProjectObservation defines the observed state of a Project
 type ProjectObservation struct {
 	// ID is the unique identifier of the project in Harbor
-	ID *int64 `json:"id,omitempty"`
+	ID *string `json:"id,omitempty"`
 
 	// CreationTime is when the project was created
 	CreationTime *metav1.Time `json:"creationTime,omitempty"`
