@@ -74,12 +74,43 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
+      - name: Verify Build Artifacts
+        run: |
+          # Verify provider binaries exist for all platforms
+          ls -la _output/bin/ || echo "No _output/bin directory"
+          ls -la bin/ || echo "No bin directory"
+          find . -name "provider" -type f | head -10
+
+          # Check amd64 binary
+          if [ ! -f _output/bin/linux_amd64/provider ]; then
+            echo "ERROR: linux_amd64 provider binary not found in _output/bin!"
+            if [ -f bin/linux_amd64/provider ]; then
+              echo "Found linux_amd64 provider in bin/ directory"
+              ls -la bin/linux_amd64/provider
+            fi
+          else
+            ls -la _output/bin/linux_amd64/provider
+            echo "✅ linux_amd64 provider binary verified"
+          fi
+
+          # Check arm64 binary
+          if [ ! -f _output/bin/linux_arm64/provider ]; then
+            echo "ERROR: linux_arm64 provider binary not found in _output/bin!"
+            if [ -f bin/linux_arm64/provider ]; then
+              echo "Found linux_arm64 provider in bin/ directory"
+              ls -la bin/linux_arm64/provider
+            fi
+          else
+            ls -la _output/bin/linux_arm64/provider
+            echo "✅ linux_arm64 provider binary verified"
+          fi
+
       - name: Build and Push Docker Images
         uses: docker/build-push-action@v5
         with:
           context: .
           file: cluster/images/provider-harbor/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ghcr.io/rossigee/provider-harbor:${{ steps.version.outputs.version }}
 
