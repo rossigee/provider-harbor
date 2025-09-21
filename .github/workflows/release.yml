@@ -70,7 +70,7 @@ jobs:
 
       - name: Build
         run: |
-          make build
+          make build.all
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
