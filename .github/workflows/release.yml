@@ -70,7 +70,7 @@ jobs:
 
       - name: Build Multi-Platform Binaries
         run: |
-          make build
+          make build.all
         env:
           VERSION: ${{ steps.version.outputs.version }}
 

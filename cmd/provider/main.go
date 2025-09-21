@@ -7,6 +7,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
@@ -20,6 +21,7 @@ import (
 	"github.com/rossigee/provider-harbor/apis"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
+	"github.com/rossigee/provider-harbor/internal/version"
 )
 
 func main() {
@@ -43,8 +45,22 @@ func main() {
 		ctrl.SetLogger(zl)
 	}
 
-	log.Info("Native Harbor provider starting")
-	log.Debug("Starting", "sync-period", syncPeriod.String(), "poll-interval", pollInterval.String(), "max-reconcile-rate", *maxReconcileRate)
+	// Log startup information with build and configuration details
+	log.Info("Provider starting up",
+		"provider", "provider-harbor",
+		"version", version.Version,
+		"go-version", runtime.Version(),
+		"platform", runtime.GOOS+"/"+runtime.GOARCH,
+		"sync-period", syncPeriod.String(),
+		"poll-interval", pollInterval.String(),
+		"max-reconcile-rate", *maxReconcileRate,
+		"leader-election", *leaderElection,
+		"debug-mode", *debug)
+
+	log.Debug("Detailed startup configuration",
+		"sync-period", syncPeriod.String(),
+		"poll-interval", pollInterval.String(),
+		"max-reconcile-rate", *maxReconcileRate)
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
