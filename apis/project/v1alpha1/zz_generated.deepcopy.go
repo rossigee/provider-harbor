@@ -76,7 +76,7 @@ func (in *ProjectObservation) DeepCopyInto(out *ProjectObservation) {
 	*out = *in
 	if in.ID != nil {
 		in, out := &in.ID, &out.ID
-		*out = new(int64)
+		*out = new(string)
 		**out = **in
 	}
 	if in.CreationTime != nil {

@@ -242,8 +242,7 @@ spec:
                     type: integer
                   id:
                     description: ID is the unique identifier of the project in Harbor
-                    format: int64
-                    type: integer
+                    type: string
                   ownerId:
                     description: OwnerID is the ID of the project owner
                     format: int64
