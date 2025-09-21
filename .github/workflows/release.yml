@@ -68,9 +68,9 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Build
+      - name: Build Multi-Platform Binaries
         run: |
-          make build.all
+          make build
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
