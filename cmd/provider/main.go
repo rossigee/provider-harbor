@@ -20,7 +20,9 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
+	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
+	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -93,6 +95,12 @@ func main() {
 		Logger:       log.WithValues("controller", "scanner"),
 		PollInterval: pollInterval.String(),
 	}), "Cannot setup Scanner controller")
+
+	// Setup User controller
+	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
+
+	// Setup Registry controller
+	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
 
 	log.Info("Starting manager")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")

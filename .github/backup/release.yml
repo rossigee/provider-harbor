@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.24.5'
+  DOCKER_BUILDX_VERSION: 'v0.11.2'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Find the Go Cache
+        id: go
+        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+
+      - name: Cache the Go Build Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go.outputs.cache }}
+          key: ${{ runner.os }}-build-release-${{ hashFiles('**/go.sum') }}
+
+      - name: Cache Go Dependencies
+        uses: actions/cache@v4
+        with:
+          path: .work/pkg
+          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
+
+      - name: Vendor Dependencies
+        run: make vendor vendor.check
+
+      - name: Install Crossplane CLI
+        run: |
+          CROSSPLANE_CLI_PATH=$(make build.vars | grep CROSSPLANE_CLI= | cut -d= -f2)
+          make "$CROSSPLANE_CLI_PATH"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: ${{ env.DOCKER_BUILDX_VERSION }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build Multi-Platform Binaries
+        run: |
+          make build.all
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Verify Build Artifacts
+        run: |
+          # Verify provider binaries exist for all platforms
+          ls -la _output/bin/ || echo "No _output/bin directory"
+          ls -la bin/ || echo "No bin directory"
+          find . -name "provider" -type f | head -10
+
+          # Check amd64 binary
+          if [ ! -f _output/bin/linux_amd64/provider ]; then
+            echo "ERROR: linux_amd64 provider binary not found in _output/bin!"
+            if [ -f bin/linux_amd64/provider ]; then
+              echo "Found linux_amd64 provider in bin/ directory"
+              ls -la bin/linux_amd64/provider
+            fi
+          else
+            ls -la _output/bin/linux_amd64/provider
+            echo "✅ linux_amd64 provider binary verified"
+          fi
+
+          # Check arm64 binary
+          if [ ! -f _output/bin/linux_arm64/provider ]; then
+            echo "ERROR: linux_arm64 provider binary not found in _output/bin!"
+            if [ -f bin/linux_arm64/provider ]; then
+              echo "Found linux_arm64 provider in bin/ directory"
+              ls -la bin/linux_arm64/provider
+            fi
+          else
+            ls -la _output/bin/linux_arm64/provider
+            echo "✅ linux_arm64 provider binary verified"
+          fi
+
+      - name: Build and Push Docker Images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: cluster/images/provider-harbor/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/rossigee/provider-harbor:${{ steps.version.outputs.version }}
+
+      - name: Publish
+        run: |
+          make publish
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REGISTRY_ORGS: ghcr.io/${{ github.repository_owner }}
+          XPKG_REG_ORGS: ghcr.io/${{ github.repository_owner }}
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Simple changelog generation
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "## Changes since $PREVIOUS_TAG" > changelog.txt
+            git log --oneline $PREVIOUS_TAG..HEAD >> changelog.txt
+          else
+            echo "## Initial Release" > changelog.txt
+            echo "First release of provider-harbor for Crossplane" >> changelog.txt
+            echo "" >> changelog.txt
+            echo "### Features" >> changelog.txt
+            echo "- Harbor container registry management" >> changelog.txt
+            echo "- Projects, users, and robot accounts" >> changelog.txt
+            echo "- Registry configurations and replication" >> changelog.txt
+            echo "- GitOps-ready container registry management" >> changelog.txt
+          fi
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: changelog.txt
+          files: _output/xpkg/*.xpkg
+          draft: false
+          prerelease: false
+
+
+      - name: Release Summary
+        run: |
+          echo "🎉 Provider Harbor ${{ steps.version.outputs.version }} has been released!"
+          echo "📦 Docker: ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"
+          echo "📦 Package: ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"
+          echo "📦 Install: kubectl crossplane install provider ghcr.io/${{ github.repository_owner }}/provider-harbor:${{ steps.version.outputs.version }}"

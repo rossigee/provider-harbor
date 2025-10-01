@@ -1,10 +1,33 @@
-name: Nightly Security Scanning
+# Standardized Security Template for Crossplane Providers
+# Version: 2025-09-26
+#
+# This template provides MANUAL/ON-DEMAND security scanning ONLY
+# - NO scheduled scans to eliminate daily email spam
+# - Manual workflow_dispatch trigger for security audits
+# - Comprehensive security analysis when needed
+# - Can be triggered manually or by other workflows
+
+name: Security Scanning
 
 on:
-  schedule:
-    # Run comprehensive security scans daily at 2 AM UTC
-    - cron: '0 2 * * *'
+  # IMPORTANT: No schedule trigger to avoid daily email spam
   workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan to run'
+        required: false
+        default: 'comprehensive'
+        type: choice
+        options:
+          - comprehensive
+          - vulnerabilities
+          - secrets
+          - dependencies
+      notify_on_failure:
+        description: 'Send notifications on scan failures'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -14,17 +37,18 @@ permissions:
   attestations: write
 
 env:
-  GO_VERSION: '1.24.5'
+  GO_VERSION: '1.25.1'
 
 jobs:
-  comprehensive-security:
-    name: Comprehensive Security Analysis
+  security-analysis:
+    name: Security Analysis
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 0  # Full history for better analysis
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -35,20 +59,52 @@ jobs:
         run: go mod vendor
 
       - name: Initialize CodeQL
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
         uses: github/codeql-action/init@v3
         with:
           languages: go
           queries: security-extended,security-and-quality
 
-      - name: Autobuild
+      - name: Autobuild for CodeQL
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
         uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:go"
 
+      - name: Run Go Vulnerability Check
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == ''
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Run Gosec Security Scanner
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == ''
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
+        continue-on-error: true
+
+      - name: Fix Gosec SARIF format
+        if: (github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == '') && always() && hashFiles('gosec-results.sarif') != ''
+        run: |
+          if [ -f gosec-results.sarif ]; then
+            jq '.runs[].results[].locations[].physicalLocation.artifactLocation.uri |= if . == null or . == "" then "." else . end' gosec-results.sarif > gosec-results-fixed.sarif
+            mv gosec-results-fixed.sarif gosec-results.sarif
+          fi
+
+      - name: Upload Gosec Results
+        if: (github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == '') && always() && hashFiles('gosec-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results.sarif
+          category: gosec
+
       - name: Check for secrets with TruffleHog
+        if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'secrets' || github.event.inputs.scan_type == ''
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
@@ -57,10 +113,10 @@ jobs:
           extra_args: --debug --only-verified
         continue-on-error: true
 
-
   supply-chain-scan:
     name: Supply Chain Security
     runs-on: ubuntu-24.04
+    if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,7 +134,76 @@ jobs:
           ./osv-scanner --lockfile=go.sum --format=sarif --output=osv-results.sarif || true
 
       - name: Upload OSV scan results
-        uses: github/codeql-action/upload-sarif@v3
         if: always() && hashFiles('osv-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: osv-results.sarif
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
+
+  notification:
+    name: Security Scan Notification
+    runs-on: ubuntu-24.04
+    needs: [security-analysis, supply-chain-scan]
+    if: always() && github.event.inputs.notify_on_failure == 'true'
+    steps:
+      - name: Check Results and Notify
+        run: |
+          echo "Security Analysis Result: ${{ needs.security-analysis.result }}"
+          echo "Supply Chain Scan Result: ${{ needs.supply-chain-scan.result }}"
+
+          if [[ "${{ needs.security-analysis.result }}" == "failure" ]] || [[ "${{ needs.supply-chain-scan.result }}" == "failure" ]]; then
+            echo "🚨 Security scan detected issues"
+            echo "Check the Security tab in GitHub for detailed results"
+            echo "Repository: ${{ github.repository }}"
+            echo "Run ID: ${{ github.run_id }}"
+          else
+            echo "✅ Security scan completed successfully"
+            echo "No critical security issues detected"
+          fi
+
+# Key Principles for this Template:
+#
+# 1. NO SCHEDULED SCANS
+#    - Eliminates daily email spam from cron triggers
+#    - Only runs when manually triggered via workflow_dispatch
+#    - Can be triggered by other workflows if needed
+#
+# 2. ON-DEMAND FLEXIBILITY
+#    - Configurable scan types (comprehensive, vulnerabilities, secrets, dependencies)
+#    - Optional notification control
+#    - Manual trigger with custom parameters
+#
+# 3. COMPREHENSIVE SECURITY COVERAGE
+#    - CodeQL static analysis for Go code
+#    - Go vulnerability scanning (govulncheck)
+#    - Security scanning (gosec)
+#    - Secret detection (trufflesecurity/trufflehog)
+#    - Supply chain security (OSV scanner)
+#    - Dependency review with license checking
+#
+# 4. PROPER RESULTS HANDLING
+#    - SARIF format uploads for GitHub Security tab
+#    - Proper error handling and continue-on-error for scans
+#    - Clear notifications when enabled
+#
+# 5. INTELLIGENT EXECUTION
+#    - Conditional job execution based on scan type
+#    - Parallel execution of security analysis and supply chain scans
+#    - Proper permissions for security events
+#
+# To apply this template:
+# 1. Copy to .github/workflows/security.yml
+# 2. REMOVE any existing security.yml files with scheduled triggers
+# 3. Run security scans manually when needed via GitHub Actions UI
+# 4. Trigger from other workflows if automated scanning is desired
+# 5. Monitor Security tab in GitHub for results instead of emails
+#
+# To run security scans:
+# - Go to Actions tab → Security Scanning → Run workflow
+# - Choose scan type and notification preferences
+# - View results in Security tab (no email spam!)

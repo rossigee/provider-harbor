@@ -25,10 +25,11 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
+	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
 )
 
@@ -48,13 +49,13 @@ type Options struct {
 
 // Setup adds a controller that reconciles ScannerRegistration managed resources
 func Setup(mgr ctrl.Manager, opts Options) error {
-	name := managed.ControllerName(v1alpha1.ScannerRegistration_GroupVersionKind.String())
+	name := managed.ControllerName(v1beta1.ScannerRegistrationGroupVersionKind.Kind)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		For(&v1alpha1.ScannerRegistration{}).
+		For(&v1beta1.ScannerRegistration{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(v1alpha1.ScannerRegistration_GroupVersionKind),
+			resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
 			managed.WithExternalConnecter(&connector{
 				kube:   mgr.GetClient(),
 				logger: opts.Logger,
@@ -72,7 +73,7 @@ type connector struct {
 
 // Connect produces an ExternalClient by creating a Harbor client
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.ScannerRegistration)
+	_, ok := mg.(*v1beta1.ScannerRegistration)
 	if !ok {
 		return nil, errors.New(errNotScannerRegistration)
 	}
@@ -93,18 +94,18 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.ScannerRegistration)
+	cr, ok := mg.(*v1beta1.ScannerRegistration)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotScannerRegistration)
 	}
 
 	c.logger.Debug("Observing Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
 
-	if cr.Spec.ForProvider.Name == nil {
+	if cr.Spec.ForProvider.Name == "" {
 		return managed.ExternalObservation{}, errors.New("scanner name is required")
 	}
 
-	scannerName := *cr.Spec.ForProvider.Name
+	scannerName := cr.Spec.ForProvider.Name
 
 	// Check if scanner exists in Harbor
 	status, err := c.service.GetScannerRegistration(ctx, scannerName)
@@ -117,17 +118,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Update status with observed values
 	cr.Status.AtProvider.UUID = &status.UUID
-	cr.Status.AtProvider.Name = &status.Name
-	cr.Status.AtProvider.Description = status.Description
-	cr.Status.AtProvider.URL = &status.URL
-	cr.Status.AtProvider.Auth = status.Auth
-	cr.Status.AtProvider.AccessCredential = status.AccessCredential
-
-	// Format time strings
-	createTimeStr := status.CreateTime.Format(time.RFC3339)
-	updateTimeStr := status.UpdateTime.Format(time.RFC3339)
-	cr.Status.AtProvider.CreateTime = &createTimeStr
-	cr.Status.AtProvider.UpdateTime = &updateTimeStr
+	if status.CreateTime != (time.Time{}) {
+		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreateTime}
+	}
+	if status.UpdateTime != (time.Time{}) {
+		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: status.UpdateTime}
+	}
 
 	return managed.ExternalObservation{
 		ResourceExists:    true,
@@ -136,8 +132,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-func (c *external) isUpToDate(cr *v1alpha1.ScannerRegistration, status *clients.ScannerStatus) bool {
-	if cr.Spec.ForProvider.URL != nil && *cr.Spec.ForProvider.URL != status.URL {
+func (c *external) isUpToDate(cr *v1beta1.ScannerRegistration, status *clients.ScannerStatus) bool {
+	if cr.Spec.ForProvider.URL != status.URL {
 		return false
 	}
 	if cr.Spec.ForProvider.Description != nil && status.Description != nil && *cr.Spec.ForProvider.Description != *status.Description {
@@ -146,12 +142,17 @@ func (c *external) isUpToDate(cr *v1alpha1.ScannerRegistration, status *clients.
 	if cr.Spec.ForProvider.Auth != nil && status.Auth != nil && *cr.Spec.ForProvider.Auth != *status.Auth {
 		return false
 	}
-	// TODO: Add more fields to compare
+	if cr.Spec.ForProvider.Name != status.Name {
+		return false
+	}
+	if cr.Spec.ForProvider.AccessCredential != nil && status.AccessCredential != nil && *cr.Spec.ForProvider.AccessCredential != *status.AccessCredential {
+		return false
+	}
 	return true
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.ScannerRegistration)
+	cr, ok := mg.(*v1beta1.ScannerRegistration)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotScannerRegistration)
 	}
@@ -159,8 +160,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	c.logger.Debug("Creating Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
 
 	spec := &clients.ScannerSpec{
-		Name: *cr.Spec.ForProvider.Name,
-		URL:  *cr.Spec.ForProvider.URL,
+		Name: cr.Spec.ForProvider.Name,
+		URL:  cr.Spec.ForProvider.URL,
 	}
 
 	if cr.Spec.ForProvider.Description != nil {
@@ -186,7 +187,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.ScannerRegistration)
+	cr, ok := mg.(*v1beta1.ScannerRegistration)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotScannerRegistration)
 	}
@@ -194,8 +195,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	c.logger.Debug("Updating Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
 
 	spec := &clients.ScannerSpec{
-		Name: *cr.Spec.ForProvider.Name,
-		URL:  *cr.Spec.ForProvider.URL,
+		Name: cr.Spec.ForProvider.Name,
+		URL:  cr.Spec.ForProvider.URL,
 	}
 
 	if cr.Spec.ForProvider.Description != nil {
@@ -209,7 +210,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// Use the UUID from the status for updates
-	scannerID := *cr.Spec.ForProvider.Name // Fallback to name if UUID not available
+	scannerID := cr.Spec.ForProvider.Name // Fallback to name if UUID not available
 	if cr.Status.AtProvider.UUID != nil {
 		scannerID = *cr.Status.AtProvider.UUID
 	}
@@ -227,7 +228,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.ScannerRegistration)
+	cr, ok := mg.(*v1beta1.ScannerRegistration)
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotScannerRegistration)
 	}
@@ -235,7 +236,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	c.logger.Debug("Deleting Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
 
 	// Use the UUID from the status for deletion
-	scannerID := *cr.Spec.ForProvider.Name // Fallback to name if UUID not available
+	scannerID := cr.Spec.ForProvider.Name // Fallback to name if UUID not available
 	if cr.Status.AtProvider.UUID != nil {
 		scannerID = *cr.Status.AtProvider.UUID
 	}
@@ -245,7 +246,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, errors.Wrap(err, "cannot delete Harbor scanner registration")
 	}
 
-	c.logger.Info("Successfully deleted Harbor scanner registration", "name", *cr.Spec.ForProvider.Name)
+	c.logger.Info("Successfully deleted Harbor scanner registration", "name", cr.Spec.ForProvider.Name)
 
 	return managed.ExternalDelete{}, nil
 }

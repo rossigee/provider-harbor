@@ -1,0 +1,16 @@
+apiVersion: user.harbor.m.crossplane.io/v1beta1
+kind: User
+metadata:
+  name: example-user
+  namespace: default
+spec:
+  forProvider:
+    username: testuser
+    email: testuser@example.com
+    adminFlag: false
+    passwordSecretRef:
+      name: user-password
+      key: password
+  providerConfigRef:
+    name: default
+  deletionPolicy: Delete
