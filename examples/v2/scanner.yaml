@@ -1,0 +1,19 @@
+apiVersion: scanner.harbor.m.crossplane.io/v1beta1
+kind: ScannerRegistration
+metadata:
+  name: trivy-scanner-v2
+  namespace: harbor-projects
+spec:
+  forProvider:
+    name: "trivy-scanner-v2"
+    description: "Trivy vulnerability scanner (v2 namespaced)"
+    url: "http://trivy.harbor.svc.cluster.local:4954"
+    auth: "Bearer"
+    accessCredential: "my-scanner-token"
+    skipCertVerify: false
+    useInternalAddr: true
+    disabled: false
+    isDefault: true
+  providerConfigRef:
+    name: default
+  deletionPolicy: Delete

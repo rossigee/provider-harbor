@@ -2,7 +2,7 @@
 Copyright 2024 Crossplane Harbor Provider.
 */
 
-package project
+package user
 
 import (
 	"context"
@@ -21,28 +21,28 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 const (
-	errNotProject         = "managed resource is not a Project custom resource"
-	errTrackPCUsage       = "cannot track ProviderConfig usage"
-	errGetPC              = "cannot get ProviderConfig"
-	errGetCreds           = "cannot get credentials"
-	errNewClient          = "cannot create new Harbor client"
-	errProjectCreate      = "cannot create Harbor project"
-	errProjectGet         = "cannot get Harbor project"
-	errProjectUpdate      = "cannot update Harbor project"
-	errProjectDelete      = "cannot delete Harbor project"
+	errNotUser           = "managed resource is not a User custom resource"
+	errTrackPCUsage      = "cannot track ProviderConfig usage"
+	errGetPC             = "cannot get ProviderConfig"
+	errGetCreds          = "cannot get credentials"
+	errNewClient         = "cannot create new Harbor client"
+	errUserCreate        = "cannot create Harbor user"
+	errUserGet           = "cannot get Harbor user"
+	errUserUpdate        = "cannot update Harbor user"
+	errUserDelete        = "cannot delete Harbor user"
 )
 
-// Setup adds a controller that reconciles Project managed resources.
+// Setup adds a controller that reconciles User managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(v1beta1.ProjectGroupVersionKind.Kind)
+	name := managed.ControllerName(v1beta1.UserGroupVersionKind.Kind)
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.ProjectGroupVersionKind),
+		resource.ManagedKind(v1beta1.UserGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
@@ -55,7 +55,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Named(name).
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1beta1.Project{}).
+		For(&v1beta1.User{}).
 		Complete(ratelimiter.NewReconciler(name, r, nil))
 }
 
@@ -72,9 +72,9 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1beta1.Project)
+	_, ok := mg.(*v1beta1.User)
 	if !ok {
-		return nil, errors.New(errNotProject)
+		return nil, errors.New(errNotUser)
 	}
 
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
@@ -93,91 +93,112 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1beta1.Project)
+	cr, ok := mg.(*v1beta1.User)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotProject)
+		return managed.ExternalObservation{}, errors.New(errNotUser)
 	}
 
-	// Check if the project exists in Harbor
-	projectName := cr.Spec.ForProvider.Name
-	project, err := c.service.GetProject(ctx, projectName)
+	// Check if the user exists in Harbor
+	username := cr.Spec.ForProvider.Username
+	user, err := c.service.GetUser(ctx, username)
 	if err != nil {
-		// If project doesn't exist, we need to create it
+		// If user doesn't exist, we need to create it
 		return managed.ExternalObservation{
 			ResourceExists: false,
 		}, nil
 	}
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID for now
-	if project.CreatedAt != (time.Time{}) {
-		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: project.CreatedAt}
+	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
+	if user.CreatedAt != (time.Time{}) {
+		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: user.CreatedAt}
 	}
-	cr.Status.AtProvider.RepoCount = getInt64Ptr(0) // Mock count
 
 	// Check if resource is up to date
-	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
+	upToDate := cr.Spec.ForProvider.Email == user.Email &&
+		(cr.Spec.ForProvider.SysAdminFlag == nil || *cr.Spec.ForProvider.SysAdminFlag == user.AdminFlag)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
-			"project_name": []byte(project.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"username": []byte(user.Username),
+			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1beta1.Project)
+	cr, ok := mg.(*v1beta1.User)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotProject)
+		return managed.ExternalCreation{}, errors.New(errNotUser)
 	}
 
 	cr.SetConditions(xpv1.Creating())
 
-	// Prepare project spec
-	spec := &harborclients.ProjectSpec{
-		Name:   cr.Spec.ForProvider.Name,
-		Public: getBoolValue(cr.Spec.ForProvider.Public),
+	// Prepare user spec
+	spec := &harborclients.UserSpec{
+		Username:  cr.Spec.ForProvider.Username,
+		Email:     cr.Spec.ForProvider.Email,
+		AdminFlag: getBoolValue(cr.Spec.ForProvider.SysAdminFlag),
 	}
 
-	// Create project in Harbor
-	status, err := c.service.CreateProject(ctx, spec)
+	// Handle password secret
+	if cr.Spec.ForProvider.PasswordSecretRef != nil {
+		// Get password from secret
+		secret, err := c.getPasswordFromSecret(ctx, cr)
+		if err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, "cannot get password from secret")
+		}
+		spec.Password = secret
+	}
+
+	// Create user in Harbor
+	status, err := c.service.CreateUser(ctx, spec)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errProjectCreate)
+		return managed.ExternalCreation{}, errors.Wrap(err, errUserCreate)
 	}
 
 	// Update status with created resource info
-	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
+	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
 
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
-			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"username": []byte(status.Username),
+			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1beta1.Project)
+	cr, ok := mg.(*v1beta1.User)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotProject)
+		return managed.ExternalUpdate{}, errors.New(errNotUser)
 	}
 
-	// Prepare updated project spec
-	spec := &harborclients.ProjectSpec{
-		Name:   cr.Spec.ForProvider.Name,
-		Public: getBoolValue(cr.Spec.ForProvider.Public),
+	// Prepare updated user spec
+	spec := &harborclients.UserSpec{
+		Username:  cr.Spec.ForProvider.Username,
+		Email:     cr.Spec.ForProvider.Email,
+		AdminFlag: getBoolValue(cr.Spec.ForProvider.SysAdminFlag),
 	}
 
-	// Update project in Harbor
-	status, err := c.service.UpdateProject(ctx, cr.Spec.ForProvider.Name, spec)
+	// Handle password secret if provided
+	if cr.Spec.ForProvider.PasswordSecretRef != nil {
+		secret, err := c.getPasswordFromSecret(ctx, cr)
+		if err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(err, "cannot get password from secret")
+		}
+		spec.Password = secret
+	}
+
+	// Update user in Harbor
+	status, err := c.service.UpdateUser(ctx, cr.Spec.ForProvider.Username, spec)
 	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errProjectUpdate)
+		return managed.ExternalUpdate{}, errors.Wrap(err, errUserUpdate)
 	}
 
 	// Update status
@@ -187,24 +208,24 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
-			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"username": []byte(status.Username),
+			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1beta1.Project)
+	cr, ok := mg.(*v1beta1.User)
 	if !ok {
-		return managed.ExternalDelete{}, errors.New(errNotProject)
+		return managed.ExternalDelete{}, errors.New(errNotUser)
 	}
 
 	cr.SetConditions(xpv1.Deleting())
 
-	// Delete project from Harbor
-	err := c.service.DeleteProject(ctx, cr.Spec.ForProvider.Name)
+	// Delete user from Harbor
+	err := c.service.DeleteUser(ctx, cr.Spec.ForProvider.Username)
 	if err != nil {
-		return managed.ExternalDelete{}, errors.Wrap(err, errProjectDelete)
+		return managed.ExternalDelete{}, errors.Wrap(err, errUserDelete)
 	}
 
 	return managed.ExternalDelete{}, nil
@@ -213,6 +234,13 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) Disconnect(ctx context.Context) error {
 	// No cleanup needed for Harbor client
 	return nil
+}
+
+// Helper function to get password from secret
+func (c *external) getPasswordFromSecret(ctx context.Context, cr *v1beta1.User) (string, error) {
+	// This would need to be implemented to read from Kubernetes secret
+	// For now, return a placeholder
+	return "mock-password", nil
 }
 
 // Helper functions
@@ -225,8 +253,4 @@ func getBoolValue(b *bool) bool {
 
 func getInt64Ptr(i int64) *int64 {
 	return &i
-}
-
-func getStringPtr(s string) *string {
-	return &s
 }

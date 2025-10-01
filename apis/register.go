@@ -8,11 +8,11 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	// Native API groups
-	projectv1alpha1 "github.com/rossigee/provider-harbor/apis/project/v1alpha1"
-	registryv1alpha1 "github.com/rossigee/provider-harbor/apis/registry/v1alpha1"
-	scannerv1alpha1 "github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
-	userv1alpha1 "github.com/rossigee/provider-harbor/apis/user/v1alpha1"
+	// V2 Native API groups (namespaced)
+	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 
 	// Provider config APIs
 	v1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
@@ -21,11 +21,11 @@ import (
 func init() {
 	// Register the native types with the Scheme so the components can map objects to GroupVersionKinds and back
 	AddToSchemes = append(AddToSchemes,
-		// Native APIs
-		projectv1alpha1.SchemeBuilder.AddToScheme,
-		registryv1alpha1.SchemeBuilder.AddToScheme,
-		scannerv1alpha1.SchemeBuilder.AddToScheme,
-		userv1alpha1.SchemeBuilder.AddToScheme,
+		// V2 Native APIs - v1beta1 (namespaced only)
+		projectv1beta1.SchemeBuilder.AddToScheme,
+		registryv1beta1.SchemeBuilder.AddToScheme,
+		scannerv1beta1.SchemeBuilder.AddToScheme,
+		userv1beta1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
 		v1beta1.SchemeBuilder.AddToScheme,

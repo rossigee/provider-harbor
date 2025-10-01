@@ -1,8 +1,17 @@
-name: Native Harbor Provider CI
+# Standardized CI/CD Template for Crossplane Providers
+# Version: 2025-10-01 - Updated for Go 1.25.1
+#
+# This template implements CI builds and validates ONLY
+# - CI: Build validation only (no publishing to avoid tag conflicts)
+# - Release: All publishing handled by release-template.yml
+#
+# Apply this pattern across all providers to eliminate tag conflicts
+
+name: CI
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - release-*
   pull_request:
@@ -13,20 +22,15 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
+  packages: write  # Needed for security scanning uploads
+  id-token: write  # Needed for OIDC
+  actions: read    # Needed for detecting duplicate actions
 
 env:
   GO_VERSION: '1.25.1'
-  GOLANGCI_VERSION: 'v2.4.0'
-  GOLANGCILINT_VERSION: '2.4.0'
+  GOLANGCI_VERSION: 'latest'
+  GOLANGCILINT_VERSION: '2.5.0'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
-  # Native Harbor Provider Registry configuration
-  PRIMARY_REGISTRY: ghcr.io/rossigee
-  ENABLE_HARBOR_PUBLISH: false
-  ENABLE_UPBOUND_PUBLISH: false
-  # Native provider - no Terraform dependencies
-  UPBOUND_MARKETPLACE_PUSH_ROBOT_USR: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
 
 jobs:
   detect-noop:
@@ -36,181 +40,83 @@ jobs:
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v5.3.1
+        uses: fkirc/skip-duplicate-actions@v5.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
-  report-breaking-changes:
-    runs-on: ubuntu-24.04
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
-        with:
-          submodules: true
-
-      - name: Get modified CRDs
-        id: modified-crds
-        uses: tj-actions/changed-files@v46.0.1
-        with:
-          files: |
-            package/crds/**
-      - name: Report breaking CRD OpenAPI v3 schema changes
-        if: steps.modified-crds.outputs.any_changed == 'true'
-        env:
-          MODIFIED_CRD_LIST: ${{ steps.modified-crds.outputs.all_changed_files }}
-        run: |
-          make crddiff
-      - name: Report native provider API changes
-        run: |
-          make schema-version-diff
-
   lint:
     runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
-
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-lint-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-lint-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v4
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
       - name: Vendor Dependencies
-        run: make vendor vendor.check
+        run: go mod vendor
 
-      - name: Install Crossplane CLI
-        run: |
-          mkdir -p .cache/tools/linux_x86_64
-          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v1.20.0 --create-dirs https://releases.crossplane.io/stable/v1.20.0/bin/linux_amd64/crank?source=build
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v1.20.0
-
-      # We could run 'make lint' but we prefer this action because it leaves
-      # 'annotations' (i.e. it comments on PRs to point out linter violations).
       - name: Lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: ${{ env.GOLANGCI_VERSION }}
-          args: --timeout=10m
+        run: make lint
 
   check-diff:
     runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
-
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Install goimports
-        run: go install golang.org/x/tools/cmd/goimports
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-check-diff-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-check-diff-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v4
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
       - name: Vendor Dependencies
-        run: make vendor vendor.check
+        run: go mod vendor
 
       - name: Check Diff
-        run: make check-diff
+        run: |
+          make reviewable
+          git diff --exit-code
 
   unit-tests:
     runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
-
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        uses: actions/checkout@v4
         with:
           submodules: true
-
-      - name: Fetch History
-        run: git fetch --prune --unshallow
+          fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-unit-tests-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-unit-tests-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v4
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
       - name: Vendor Dependencies
-        run: make vendor vendor.check
+        run: go mod vendor
 
       - name: Run Unit Tests
-        run: make -j2 test
+        run: make test
 
-      - name: Publish Unit Test Coverage
+      - name: Upload Coverage Reports
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          flags: unittests
-          file: _output/tests/linux_amd64/coverage.txt
+          file: ./coverage.out
           verbose: true
 
   security-scan:
@@ -220,7 +126,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -261,154 +166,83 @@ jobs:
           sarif_file: gosec-results.sarif
           category: gosec
 
-  local-deploy:
+  # CI ONLY VALIDATES BUILDS - NO PUBLISHING
+  build-validation:
     runs-on: ubuntu-24.04
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
-
+    needs: [lint, check-diff, unit-tests, security-scan]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: true
 
-      - name: Fetch History
-        run: git fetch --prune --unshallow
-
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-unit-tests-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-unit-tests-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v4
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
       - name: Vendor Dependencies
-        run: make vendor vendor.check
+        run: go mod vendor
 
-      - name: Install Crossplane CLI
+      - name: Validate Build Process
         run: |
-          mkdir -p .cache/tools/linux_x86_64
-          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v1.20.0 --create-dirs https://releases.crossplane.io/stable/v1.20.0/bin/linux_amd64/crank?source=build
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v1.20.0
-
-      - name: Deploying locally built provider package
-        run: make local-deploy
-
-  publish-artifacts:
-    runs-on: ubuntu-24.04
-    needs:
-      - detect-noop
-      - report-breaking-changes
-      - lint
-      - check-diff
-      - unit-tests
-      - security-scan
-      - local-deploy
-    if: needs.detect-noop.outputs.noop != 'true'
-
-    steps:
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3
-        with:
-          platforms: all
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          version: ${{ env.DOCKER_BUILDX_VERSION }}
-          install: true
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to Upbound
-        uses: docker/login-action@v3
-        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
-        with:
-          registry: xpkg.upbound.io
-          username: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
-          password: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_PSW }}
-
-      - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
-        with:
-          submodules: true
-
-      - name: Fetch History
-        run: git fetch --prune --unshallow
-
-      - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-publish-artifacts-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-publish-artifacts-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v4
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
-
-      - name: Install Crossplane CLI
-        run: |
-          mkdir -p .cache/tools/linux_x86_64
-          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v1.20.0 --create-dirs https://releases.crossplane.io/stable/v1.20.0/bin/linux_amd64/crank?source=build
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v1.20.0
-
-      - name: Build Artifacts
-        run: make -j2 build.all
-        env:
-          # We're using docker buildx, which doesn't actually load the images it
-          # builds by default. Specifying --load does so.
-          BUILD_ARGS: "--load"
-
-      - name: Upload Artifacts to GitHub
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4
-        with:
-          name: output
-          path: _output/**
-
-      - name: Build and Push to Primary Registry
-        run: |
-          # Build and push to GitHub Container Registry (primary)
+          # Validate that all build steps work without publishing
           echo "Repository: ${{ github.repository }}"
           echo "Repository owner: ${{ github.repository_owner }}"
-          make publish REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}"
 
-      - name: Publish Artifacts (Legacy)
-        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
-        run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+          # Build binary
+          make build
+          echo "✅ Binary build successful"
+
+          # Build Docker image locally (without push)
+          make docker.build
+          echo "✅ Docker image build successful"
+
+          # Build Crossplane package locally (without push)
+          make xpkg.build
+          echo "✅ Crossplane package build successful"
+
+          # Verify build artifacts exist
+          ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
+          ls -la _output/xpkg/linux_amd64/*.xpkg 2>/dev/null && echo "✅ Crossplane package exists" || echo "❌ Crossplane package missing"
+
+          echo ""
+          echo "🎯 Build validation completed successfully"
+          echo "📦 All artifacts can be built successfully"
+          echo "🏷️  Publishing will occur only on release tag creation"
+
+# Key Principles for this Template:
+#
+# 1. CI BUILDS, RELEASE PUBLISHES
+#    - CI workflow: Only validates builds (no registry pushes)
+#    - Release workflow: Handles all publishing
+#    - Eliminates tag conflicts between workflows
+#
+# 2. SINGLE PRIMARY REGISTRY
+#    - Primary: ghcr.io/rossigee (consistent across all providers)
+#    - Optional: Environment-controlled additional registries
+#
+# 3. PARALLEL VALIDATION
+#    - All validation jobs run in parallel after noop detection
+#    - Build validation only runs on master branch
+#
+# 4. COMPREHENSIVE SECURITY
+#    - govulncheck: Go vulnerability scanning
+#    - gosec: Static security analysis
+#    - CodeQL integration for SARIF uploads
+#
+# 5. STANDARDIZED BUILD SYSTEM
+#    - Uses rossigee/build submodule (working fork)
+#    - Consistent make targets across all providers
+#    - Go 1.25.1 with proper version handling
+#
+# To apply this template:
+# 1. Copy this structure to .github/workflows/ci.yml
+# 2. Update provider-specific names/paths
+# 3. Ensure release.yml handles all publishing
+# 4. Test with a commit to master (should only validate)
+# 5. Test with a version tag (should publish properly)

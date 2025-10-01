@@ -13,7 +13,7 @@ import (
 
 // Package type metadata.
 const (
-	Group   = "harbor.crossplane.io"
+	Group   = "harbor.m.crossplane.io"
 	Version = "v1beta1"
 )
 

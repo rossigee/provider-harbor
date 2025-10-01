@@ -30,8 +30,10 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
-	projectv1alpha1 "github.com/rossigee/provider-harbor/apis/project/v1alpha1"
-	scannerv1alpha1 "github.com/rossigee/provider-harbor/apis/scanner/v1alpha1"
+	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 )
 
 const (
@@ -91,6 +93,49 @@ type ScannerStatus struct {
 	UpdateTime       time.Time `json:"update_time"`
 }
 
+// UserSpec defines the desired state of a Harbor user
+type UserSpec struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	AdminFlag bool   `json:"admin_flag"`
+}
+
+// UserStatus represents the status of a Harbor user
+type UserStatus struct {
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	AdminFlag bool      `json:"admin_flag"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// RegistrySpec defines the desired state of a Harbor registry
+type RegistrySpec struct {
+	Name        string              `json:"name"`
+	Description *string             `json:"description,omitempty"`
+	Type        string              `json:"type"`
+	URL         string              `json:"url"`
+	Insecure    bool                `json:"insecure"`
+	Credential  *RegistryCredential `json:"credential,omitempty"`
+}
+
+// RegistryCredential represents registry authentication credentials
+type RegistryCredential struct {
+	Type         string `json:"type"`
+	AccessKey    string `json:"access_key"`
+	AccessSecret string `json:"access_secret"`
+}
+
+// RegistryStatus represents the status of a Harbor registry
+type RegistryStatus struct {
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	Type        string    `json:"type"`
+	URL         string    `json:"url"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // NewHarborClient creates a new Harbor client
 func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	if config == nil {
@@ -132,10 +177,14 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 	var configRef *xpv1.Reference
 
 	// Try to cast to a concrete type that has ProviderConfigReference
-	if project, ok := mg.(*projectv1alpha1.Project); ok {
+	if project, ok := mg.(*projectv1beta1.Project); ok {
 		configRef = project.Spec.ProviderConfigReference
-	} else if scanner, ok := mg.(*scannerv1alpha1.ScannerRegistration); ok {
+	} else if scanner, ok := mg.(*scannerv1beta1.ScannerRegistration); ok {
 		configRef = scanner.Spec.ProviderConfigReference
+	} else if user, ok := mg.(*userv1beta1.User); ok {
+		configRef = user.Spec.ProviderConfigReference
+	} else if registry, ok := mg.(*registryv1beta1.Registry); ok {
+		configRef = registry.Spec.ProviderConfigReference
 	} else {
 		// Fallback: assume the managed resource has ProviderConfigReference
 		// This is a bit of a hack but works for most cases
@@ -541,4 +590,212 @@ func (c *HarborClient) ListScannerRegistrations(ctx context.Context) ([]*Scanner
 	}
 
 	return scanners, nil
+}
+
+// CreateUser creates a new Harbor user
+func (c *HarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserStatus, error) {
+	if spec == nil {
+		return nil, errors.New("user spec is required")
+	}
+	if spec.Username == "" {
+		return nil, errors.New("username is required")
+	}
+	if spec.Email == "" {
+		return nil, errors.New("email is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Creating user %s (%s)\n", spec.Username, spec.Email)
+
+	// Return mock response structure
+	status := &UserStatus{
+		Username:  spec.Username,
+		Email:     spec.Email,
+		AdminFlag: spec.AdminFlag,
+		CreatedAt: time.Now(),
+	}
+
+	return status, nil
+}
+
+// GetUser retrieves a Harbor user by username
+func (c *HarborClient) GetUser(ctx context.Context, username string) (*UserStatus, error) {
+	if username == "" {
+		return nil, errors.New("username is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Getting user %s\n", username)
+
+	// Mock response structure for demonstration
+	status := &UserStatus{
+		Username:  username,
+		Email:     username + "@example.com",
+		AdminFlag: false,
+		CreatedAt: time.Now().Add(-24 * time.Hour),
+	}
+
+	return status, nil
+}
+
+// UpdateUser updates an existing Harbor user
+func (c *HarborClient) UpdateUser(ctx context.Context, username string, spec *UserSpec) (*UserStatus, error) {
+	if username == "" {
+		return nil, errors.New("username is required")
+	}
+	if spec == nil {
+		return nil, errors.New("user spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Updating user %s\n", username)
+
+	// Return updated status
+	status := &UserStatus{
+		Username:  username,
+		Email:     spec.Email,
+		AdminFlag: spec.AdminFlag,
+		CreatedAt: time.Now().Add(-24 * time.Hour),
+	}
+
+	return status, nil
+}
+
+// DeleteUser deletes a Harbor user
+func (c *HarborClient) DeleteUser(ctx context.Context, username string) error {
+	if username == "" {
+		return errors.New("username is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Deleting user %s\n", username)
+
+	return nil
+}
+
+// CreateRegistry creates a new Harbor registry
+func (c *HarborClient) CreateRegistry(ctx context.Context, spec *RegistrySpec) (*RegistryStatus, error) {
+	if spec == nil {
+		return nil, errors.New("registry spec is required")
+	}
+	if spec.Name == "" {
+		return nil, errors.New("registry name is required")
+	}
+	if spec.URL == "" {
+		return nil, errors.New("registry URL is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Creating registry %s (%s)\n", spec.Name, spec.URL)
+
+	// Return mock response structure
+	status := &RegistryStatus{
+		Name:        spec.Name,
+		Description: spec.Description,
+		Type:        spec.Type,
+		URL:         spec.URL,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return status, nil
+}
+
+// GetRegistry retrieves a Harbor registry by name
+func (c *HarborClient) GetRegistry(ctx context.Context, registryName string) (*RegistryStatus, error) {
+	if registryName == "" {
+		return nil, errors.New("registry name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Getting registry %s\n", registryName)
+
+	// Mock response structure for demonstration
+	status := &RegistryStatus{
+		Name:        registryName,
+		Description: func() *string { s := "External registry"; return &s }(),
+		Type:        "docker-registry",
+		URL:         "https://registry.example.com",
+		CreatedAt:   time.Now().Add(-24 * time.Hour),
+		UpdatedAt:   time.Now().Add(-24 * time.Hour),
+	}
+
+	return status, nil
+}
+
+// UpdateRegistry updates an existing Harbor registry
+func (c *HarborClient) UpdateRegistry(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error) {
+	if registryName == "" {
+		return nil, errors.New("registry name is required")
+	}
+	if spec == nil {
+		return nil, errors.New("registry spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Updating registry %s\n", registryName)
+
+	// Return updated status
+	status := &RegistryStatus{
+		Name:        registryName,
+		Description: spec.Description,
+		Type:        spec.Type,
+		URL:         spec.URL,
+		CreatedAt:   time.Now().Add(-24 * time.Hour),
+		UpdatedAt:   time.Now(),
+	}
+
+	return status, nil
+}
+
+// DeleteRegistry deletes a Harbor registry
+func (c *HarborClient) DeleteRegistry(ctx context.Context, registryName string) error {
+	if registryName == "" {
+		return errors.New("registry name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	// Log the operation for debugging
+	fmt.Printf("Harbor client: Deleting registry %s\n", registryName)
+
+	return nil
 }

@@ -1,0 +1,128 @@
+# Complete v2 Harbor Provider Example
+# This example demonstrates all v2 Harbor resources in a single namespace
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: harbor-example
+---
+# Harbor Provider Configuration
+apiVersion: harbor.m.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: harbor-config
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: harbor-example
+      name: harbor-credentials
+      key: credentials
+---
+# Harbor Project (v2 namespaced)
+apiVersion: project.harbor.m.crossplane.io/v1beta1
+kind: Project
+metadata:
+  name: my-project
+  namespace: harbor-example
+spec:
+  forProvider:
+    name: my-app-project
+    public: false
+  providerConfigRef:
+    name: harbor-config
+  deletionPolicy: Delete
+---
+# Harbor User (v2 namespaced)
+apiVersion: user.harbor.m.crossplane.io/v1beta1
+kind: User
+metadata:
+  name: app-user
+  namespace: harbor-example
+spec:
+  forProvider:
+    username: appuser
+    email: appuser@mycompany.com
+    adminFlag: false
+    passwordSecretRef:
+      name: user-password
+      key: password
+  providerConfigRef:
+    name: harbor-config
+  deletionPolicy: Delete
+---
+# Harbor Registry (v2 namespaced)
+apiVersion: registry.harbor.m.crossplane.io/v1beta1
+kind: Registry
+metadata:
+  name: external-registry
+  namespace: harbor-example
+spec:
+  forProvider:
+    name: my-external-registry
+    description: External Docker registry for mirroring
+    type: docker-registry
+    url: https://registry.mycompany.com
+    insecure: false
+    credential:
+      type: basic
+      accessKey: registry-user
+      accessSecretRef:
+        name: registry-credentials
+        key: password
+  providerConfigRef:
+    name: harbor-config
+  deletionPolicy: Delete
+---
+# Harbor Scanner Registration (v2 namespaced)
+apiVersion: scanner.harbor.m.crossplane.io/v1beta1
+kind: ScannerRegistration
+metadata:
+  name: trivy-scanner
+  namespace: harbor-example
+spec:
+  forProvider:
+    name: trivy-vulnerability-scanner
+    description: Trivy vulnerability scanner for container images
+    url: http://trivy-scanner.security.svc.cluster.local:4954
+    auth: Bearer
+    accessCredential: scanner-token
+  providerConfigRef:
+    name: harbor-config
+  deletionPolicy: Delete
+---
+# Secret for Harbor credentials (example - replace with actual values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-credentials
+  namespace: harbor-example
+type: Opaque
+stringData:
+  credentials: |
+    {
+      "url": "https://harbor.mycompany.com",
+      "username": "admin",
+      "password": "Harbor12345",
+      "insecure": false
+    }
+---
+# Secret for user password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-password
+  namespace: harbor-example
+type: Opaque
+stringData:
+  password: "SecurePassword123"
+---
+# Secret for registry credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-credentials
+  namespace: harbor-example
+type: Opaque
+stringData:
+  password: "RegistryPassword123"

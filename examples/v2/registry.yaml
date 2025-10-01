@@ -1,0 +1,21 @@
+apiVersion: registry.harbor.m.crossplane.io/v1beta1
+kind: Registry
+metadata:
+  name: example-registry
+  namespace: default
+spec:
+  forProvider:
+    name: docker-hub
+    description: Docker Hub registry
+    type: docker-hub
+    url: https://registry-1.docker.io
+    insecure: false
+    credential:
+      type: basic
+      accessKey: myusername
+      accessSecretRef:
+        name: registry-credentials
+        key: password
+  providerConfigRef:
+    name: default
+  deletionPolicy: Delete
