@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2025-10-01 - Updated for Go 1.25.1
+# Version: 2025-09-26 - Updated for Go 1.25.1
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)
@@ -193,53 +193,53 @@ jobs:
           # Validate that all build steps work without publishing
           echo "Repository: ${{ github.repository }}"
           echo "Repository owner: ${{ github.repository_owner }}"
-
+          
           # Build binary
           make build
           echo "✅ Binary build successful"
-
+          
           # Build Docker image locally (without push)
           make docker.build
           echo "✅ Docker image build successful"
-
+          
           # Build Crossplane package locally (without push)
           make xpkg.build
           echo "✅ Crossplane package build successful"
-
+          
           # Verify build artifacts exist
           ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
           ls -la _output/xpkg/linux_amd64/*.xpkg 2>/dev/null && echo "✅ Crossplane package exists" || echo "❌ Crossplane package missing"
-
+          
           echo ""
           echo "🎯 Build validation completed successfully"
           echo "📦 All artifacts can be built successfully"
           echo "🏷️  Publishing will occur only on release tag creation"
 
 # Key Principles for this Template:
-#
+# 
 # 1. CI BUILDS, RELEASE PUBLISHES
 #    - CI workflow: Only validates builds (no registry pushes)
 #    - Release workflow: Handles all publishing
 #    - Eliminates tag conflicts between workflows
-#
+# 
 # 2. SINGLE PRIMARY REGISTRY
 #    - Primary: ghcr.io/rossigee (consistent across all providers)
 #    - Optional: Environment-controlled additional registries
-#
+# 
 # 3. PARALLEL VALIDATION
 #    - All validation jobs run in parallel after noop detection
 #    - Build validation only runs on master branch
-#
+# 
 # 4. COMPREHENSIVE SECURITY
 #    - govulncheck: Go vulnerability scanning
 #    - gosec: Static security analysis
 #    - CodeQL integration for SARIF uploads
-#
+# 
 # 5. STANDARDIZED BUILD SYSTEM
 #    - Uses rossigee/build submodule (working fork)
 #    - Consistent make targets across all providers
-#    - Go 1.25.1 with proper version handling
-#
+#    - Go 1.24.5 with proper version handling
+# 
 # To apply this template:
 # 1. Copy this structure to .github/workflows/ci.yml
 # 2. Update provider-specific names/paths

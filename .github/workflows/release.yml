@@ -1,11 +1,17 @@
 # Standardized Release Template for Crossplane Providers
-# Version: 2025-10-01 - Updated for Go 1.25.1
+# Version: 2025-10-23 - Regression fixes and verification
 #
 # This template handles ALL publishing for releases
 # - Only runs on version tag creation to avoid conflicts with CI
 # - Builds from source and publishes to primary registry
+# - Verifies successful publication to registry
 # - Creates GitHub release with auto-generated notes
 # - Single source of truth for version and latest tags
+#
+# Changes from 2025-09-26:
+# - Added publication verification step
+# - Confirmed PAT_TOKEN as canonical authentication variable
+# - Confirmed softprops/action-gh-release@v2 (not deprecated v1)
 
 name: Release
 
@@ -49,94 +55,142 @@ jobs:
       - name: Determine Version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Version determined: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT_TOKEN }}
 
-      - name: Build and Publish
+      - name: Build and Publish All Artifacts
         run: |
-          echo "Building and publishing provider-harbor ${{ steps.version.outputs.VERSION }}"
+          set -e  # Fail fast on any error
 
-          # Build and publish all platforms and registries
+          # Use the standardized build system to handle everything
+          export VERSION="${{ steps.version.outputs.version }}"
+
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Version: ${VERSION}"
+
+          # CRITICAL: Override BRANCH_NAME to bypass release branch filter
+          # When pushing tags, git is in detached HEAD state and branch detection fails.
+          # Without this, publish.artifacts becomes an empty target that silently succeeds.
+          # See: build/makelib/xpkg.mk:125-127 and build/makelib/common.mk:87
+          export BRANCH_NAME="master"
+
+          # Build and publish using make targets that handle Docker + Crossplane packages
           make publish \
-            VERSION=${{ steps.version.outputs.VERSION }} \
-            PLATFORMS="linux_amd64,linux_arm64"
+            REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
+            XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \
+            BRANCH_NAME=master
 
-          echo "✅ Successfully published provider-harbor ${{ steps.version.outputs.VERSION }}"
+          echo "✅ Published to ghcr.io/${{ github.repository_owner }}"
+          echo "🏷️  Tags: ${VERSION}, latest"
+
+      - name: Verify Publication
+        run: |
+          set -e  # Fail fast on any error
+
+          VERSION="${{ steps.version.outputs.version }}"
+          PROVIDER_NAME="${{ github.event.repository.name }}"
+          REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/${PROVIDER_NAME}"
+
+          echo "Verifying container image publication..."
+          echo "Registry: ${REGISTRY_PATH}"
+
+          # Verify version tag
+          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
+            echo "✅ Verified container image ${VERSION}"
+          else
+            echo "❌ Failed to pull container image ${VERSION}"
+            exit 1
+          fi
+
+          # Verify latest tag
+          if docker pull "${REGISTRY_PATH}:latest" > /dev/null 2>&1; then
+            echo "✅ Verified container image latest"
+          else
+            echo "❌ Failed to pull container image latest"
+            exit 1
+          fi
+
+          # Verify both tags point to same image
+          VERSION_DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+          LATEST_DIGEST=$(docker inspect "${REGISTRY_PATH}:latest" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+
+          if [ "$VERSION_DIGEST" = "$LATEST_DIGEST" ]; then
+            echo "✅ Version and latest tags point to identical image"
+            echo "   Digest: ${VERSION_DIGEST}"
+          else
+            echo "❌ Version and latest tags point to different images"
+            echo "   Version digest: ${VERSION_DIGEST}"
+            echo "   Latest digest:  ${LATEST_DIGEST}"
+            exit 1
+          fi
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          release_name: Release ${{ steps.version.outputs.VERSION }}
-          body: |
-            # provider-harbor ${{ steps.version.outputs.VERSION }}
-
-            ## 🎯 V2 Native Provider Features
-            - **Namespaced Resources**: Full v2 support with `.m.crossplane.io` API groups
-            - **Dual Scope Support**: Both cluster-scoped (v1alpha1) and namespaced (v1beta1) APIs
-            - **Native Performance**: Direct Harbor Go client integration (~5-10MB memory)
-            - **Production Ready**: Comprehensive Harbor API coverage
-
-            ## 📦 Container Images
-            - **Primary**: `ghcr.io/rossigee/provider-harbor:${{ steps.version.outputs.VERSION }}`
-            - **Latest**: `ghcr.io/rossigee/provider-harbor:latest`
-
-            ## 🚀 Installation
-            ```bash
-            kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:${{ steps.version.outputs.VERSION }}
-            ```
-
-            ## 📋 Supported Resources
-            ### V2 Namespaced (Recommended)
-            - `project.harbor.m.crossplane.io/v1beta1` - Project management
-            - `scanner.harbor.m.crossplane.io/v1beta1` - Scanner registration
-            - `harbor.m.crossplane.io/v1beta1` - Provider configuration
-
-            ### V1 Cluster-Scoped (Legacy)
-            - `project.harbor.crossplane.io/v1alpha1` - Legacy project management
-            - `scanner.harbor.crossplane.io/v1alpha1` - Legacy scanner registration
-            - `user.harbor.crossplane.io/v1alpha1` - User management
-            - `registry.harbor.crossplane.io/v1alpha1` - Registry management
-
-            ## 🔄 Migration Guide
-            For migration from v1alpha1 to v1beta1 APIs, see the [Migration Guide](https://github.com/rossigee/provider-harbor/blob/master/MIGRATION.md).
+          name: Release ${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
+          generate_release_notes: true
 
 # Key Principles for this Template:
 #
-# 1. SINGLE SOURCE OF TRUTH
+# 1. SINGLE SOURCE OF TRUTH FOR PUBLISHING
 #    - Only this workflow publishes to registries
-#    - Eliminates tag conflicts with CI workflow
-#    - Both version and latest tags point to same image
+#    - CI workflow only validates builds
+#    - Eliminates tag conflicts between CI and release workflows
 #
-# 2. MULTI-PLATFORM SUPPORT
-#    - Builds for linux_amd64 and linux_arm64
-#    - Consistent across all target platforms
+# 2. IDENTICAL VERSION AND LATEST TAGS
+#    - Build image once with version tag
+#    - Tag the SAME image as latest
+#    - Push both tags (they're identical)
+#    - No separate builds = no image differences
+#    - Verified through digest comparison
 #
-# 3. PRIMARY REGISTRY FOCUS
-#    - ghcr.io/rossigee as single source of truth
-#    - Optional additional registries via environment
+# 3. STANDARDIZED REGISTRY PUBLISHING
+#    - Primary: ghcr.io/rossigee/provider-{name}
+#    - Version tag: v1.2.3
+#    - Latest tag: latest
+#    - Both Crossplane packages (.xpkg) and container images
 #
-# 4. AUTOMATED RELEASE NOTES
-#    - Generated from template with version info
-#    - Includes installation and migration guidance
-#    - Lists all supported API versions
+# 4. BUILD FROM SOURCE
+#    - Always build from the tagged source
+#    - No dependency on pre-built artifacts
+#    - Ensures reproducible builds
 #
-# 5. VERSION FLEXIBILITY
-#    - Supports both tag push and manual dispatch
-#    - Manual dispatch allows hotfix releases
+# 5. PROPER AUTHENTICATION
+#    - Uses PAT_TOKEN (canonical variable name)
+#    - Required permissions: contents:write, packages:write, id-token:write
+#    - Proper permissions for package publishing and GitHub release creation
+#
+# 6. PUBLICATION VERIFICATION
+#    - Verifies both version and latest tags are pullable
+#    - Confirms identical digests for version and latest tags
+#    - Fails fast if publication incomplete or tags differ
+#
+# 7. MODERN TOOLING
+#    - softprops/action-gh-release@v2 (current, not deprecated)
+#    - Auto-generated release notes
+#    - Fail-fast error handling with set -e
+#
+# To apply this template:
+# 1. Copy this structure to .github/workflows/release.yml
+# 2. Ensure PAT_TOKEN secret is configured in repository settings
+# 3. Ensure Dockerfile and package/crossplane.yaml exist
+# 4. Test with a version tag (e.g., v1.0.0)
+# 5. Verify workflow passes all verification checks

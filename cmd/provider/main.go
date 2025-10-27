@@ -16,6 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
@@ -101,6 +102,9 @@ func main() {
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
+
+	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
+	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")
 
 	log.Info("Starting manager")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")

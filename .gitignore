@@ -1,7 +1,7 @@
 /.cache
 /.work
 /_output
-cover.out
+coverage.out
 /vendor
 /.vendor-new
 .DS_Store
@@ -14,3 +14,4 @@ cover.out
 /provider
 *.xpkg
 /bin/
+*.sha256
