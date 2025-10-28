@@ -1,17 +1,17 @@
 # Standardized Release Template for Crossplane Providers
-# Version: 2025-10-23 - Regression fixes and verification
+# Version: 2025-10-26 - Complete verification and BRANCH_NAME fix
 #
 # This template handles ALL publishing for releases
 # - Only runs on version tag creation to avoid conflicts with CI
 # - Builds from source and publishes to primary registry
-# - Verifies successful publication to registry
+# - Verifies successful publication to registry with digest comparison
 # - Creates GitHub release with auto-generated notes
 # - Single source of truth for version and latest tags
 #
-# Changes from 2025-09-26:
-# - Added publication verification step
-# - Confirmed PAT_TOKEN as canonical authentication variable
-# - Confirmed softprops/action-gh-release@v2 (not deprecated v1)
+# Changes from 2025-10-23:
+# - Added BRANCH_NAME=master override for tag-based builds
+# - Enhanced verification with digest comparison to ensure identical tags
+# - Fail-fast error handling with set -e
 
 name: Release
 
@@ -92,11 +92,11 @@ jobs:
 
           # Build and publish using make targets that handle Docker + Crossplane packages
           make publish \
-            REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
-            XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \
+            REGISTRY_ORGS="ghcr.io/rossigee" \
+            XPKG_REG_ORGS="ghcr.io/rossigee" \
             BRANCH_NAME=master
 
-          echo "✅ Published to ghcr.io/${{ github.repository_owner }}"
+          echo "✅ Published to ghcr.io/rossigee"
           echo "🏷️  Tags: ${VERSION}, latest"
 
       - name: Verify Publication
@@ -105,7 +105,7 @@ jobs:
 
           VERSION="${{ steps.version.outputs.version }}"
           PROVIDER_NAME="${{ github.event.repository.name }}"
-          REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/${PROVIDER_NAME}"
+          REGISTRY_PATH="ghcr.io/rossigee/${PROVIDER_NAME}"
 
           echo "Verifying container image publication..."
           echo "Registry: ${REGISTRY_PATH}"
