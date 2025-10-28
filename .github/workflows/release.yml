@@ -90,7 +90,10 @@ jobs:
           # See: build/makelib/xpkg.mk:125-127 and build/makelib/common.mk:87
           export BRANCH_NAME="master"
 
-          # Build and publish using make targets that handle Docker + Crossplane packages
+          # Build artifacts first
+          make build
+
+          # Then publish using make targets that handle Docker + Crossplane packages
           make publish \
             REGISTRY_ORGS="ghcr.io/rossigee" \
             XPKG_REG_ORGS="ghcr.io/rossigee" \
