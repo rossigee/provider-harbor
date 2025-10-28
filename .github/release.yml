@@ -1,0 +1,199 @@
+# Standardized Release Template for Crossplane Providers
+# Version: 2025-10-26 - Complete verification and BRANCH_NAME fix
+#
+# This template handles ALL publishing for releases
+# - Only runs on version tag creation to avoid conflicts with CI
+# - Builds from source and publishes to primary registry
+# - Verifies successful publication to registry with digest comparison
+# - Creates GitHub release with auto-generated notes
+# - Single source of truth for version and latest tags
+#
+# Changes from 2025-10-23:
+# - Added BRANCH_NAME=master override for tag-based builds
+# - Enhanced verification with digest comparison to ensure identical tags
+# - Fail-fast error handling with set -e
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  GO_VERSION: '1.25.3'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT_TOKEN }}
+
+      - name: Build and Publish All Artifacts
+        run: |
+          set -e  # Fail fast on any error
+
+          # Use the standardized build system to handle everything
+          export VERSION="${{ steps.version.outputs.version }}"
+
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Version: ${VERSION}"
+
+          # CRITICAL: Override BRANCH_NAME to bypass release branch filter
+          # When pushing tags, git is in detached HEAD state and branch detection fails.
+          # Without this, publish.artifacts becomes an empty target that silently succeeds.
+          # See: build/makelib/xpkg.mk:125-127 and build/makelib/common.mk:87
+          export BRANCH_NAME="master"
+
+          # Build artifacts first
+          make build
+
+          # Then publish using make targets that handle Docker + Crossplane packages
+          make publish \
+            REGISTRY_ORGS="ghcr.io/rossigee" \
+            XPKG_REG_ORGS="ghcr.io/rossigee" \
+            BRANCH_NAME=master
+
+          echo "✅ Published to ghcr.io/rossigee"
+          echo "🏷️  Tags: ${VERSION}, latest"
+
+      - name: Verify Publication
+        run: |
+          set -e  # Fail fast on any error
+
+          VERSION="${{ steps.version.outputs.version }}"
+          PROVIDER_NAME="${{ github.event.repository.name }}"
+          REGISTRY_PATH="ghcr.io/rossigee/${PROVIDER_NAME}"
+
+          echo "Verifying container image publication..."
+          echo "Registry: ${REGISTRY_PATH}"
+
+          # Verify version tag
+          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
+            echo "✅ Verified container image ${VERSION}"
+          else
+            echo "❌ Failed to pull container image ${VERSION}"
+            exit 1
+          fi
+
+          # Verify latest tag
+          if docker pull "${REGISTRY_PATH}:latest" > /dev/null 2>&1; then
+            echo "✅ Verified container image latest"
+          else
+            echo "❌ Failed to pull container image latest"
+            exit 1
+          fi
+
+          # Verify both tags point to same image
+          VERSION_DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+          LATEST_DIGEST=$(docker inspect "${REGISTRY_PATH}:latest" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+
+          if [ "$VERSION_DIGEST" = "$LATEST_DIGEST" ]; then
+            echo "✅ Version and latest tags point to identical image"
+            echo "   Digest: ${VERSION_DIGEST}"
+          else
+            echo "❌ Version and latest tags point to different images"
+            echo "   Version digest: ${VERSION_DIGEST}"
+            echo "   Latest digest:  ${LATEST_DIGEST}"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+# Key Principles for this Template:
+#
+# 1. SINGLE SOURCE OF TRUTH FOR PUBLISHING
+#    - Only this workflow publishes to registries
+#    - CI workflow only validates builds
+#    - Eliminates tag conflicts between CI and release workflows
+#
+# 2. IDENTICAL VERSION AND LATEST TAGS
+#    - Build image once with version tag
+#    - Tag the SAME image as latest
+#    - Push both tags (they're identical)
+#    - No separate builds = no image differences
+#    - Verified through digest comparison
+#
+# 3. STANDARDIZED REGISTRY PUBLISHING
+#    - Primary: ghcr.io/rossigee/provider-{name}
+#    - Version tag: v1.2.3
+#    - Latest tag: latest
+#    - Both Crossplane packages (.xpkg) and container images
+#
+# 4. BUILD FROM SOURCE
+#    - Always build from the tagged source
+#    - No dependency on pre-built artifacts
+#    - Ensures reproducible builds
+#
+# 5. PROPER AUTHENTICATION
+#    - Uses PAT_TOKEN (canonical variable name)
+#    - Required permissions: contents:write, packages:write, id-token:write
+#    - Proper permissions for package publishing and GitHub release creation
+#
+# 6. PUBLICATION VERIFICATION
+#    - Verifies both version and latest tags are pullable
+#    - Confirms identical digests for version and latest tags
+#    - Fails fast if publication incomplete or tags differ
+#
+# 7. MODERN TOOLING
+#    - softprops/action-gh-release@v2 (current, not deprecated)
+#    - Auto-generated release notes
+#    - Fail-fast error handling with set -e
+#
+# To apply this template:
+# 1. Copy this structure to .github/workflows/release.yml
+# 2. Ensure PAT_TOKEN secret is configured in repository settings
+# 3. Ensure Dockerfile and package/crossplane.yaml exist
+# 4. Test with a version tag (e.g., v1.0.0)
+# 5. Verify workflow passes all verification checks

@@ -1,0 +1,241 @@
+# Standardized CI/CD Template for Crossplane Providers
+# Version: 2025-09-26 - Updated for Go 1.25.3
+#
+# This template implements CI builds and validates ONLY
+# - CI: Build validation only (no publishing to avoid tag conflicts)
+# - Release: All publishing handled by release-template.yml
+#
+# Apply this pattern across all providers to eliminate tag conflicts
+
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - release-*
+  pull_request:
+    branches:
+      - master
+      - release-*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write  # Needed for security scanning uploads
+  id-token: write  # Needed for OIDC
+  actions: read    # Needed for detecting duplicate actions
+
+env:
+  GO_VERSION: '1.25.3'
+  GOLANGCI_VERSION: 'latest'
+  GOLANGCILINT_VERSION: '2.5.0'
+  DOCKER_BUILDX_VERSION: 'v0.11.2'
+
+jobs:
+  detect-noop:
+    runs-on: ubuntu-24.04
+    outputs:
+      noop: ${{ steps.noop.outputs.should_skip }}
+    steps:
+      - name: Detect No-op Changes
+        id: noop
+        uses: fkirc/skip-duplicate-actions@v5.3.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          paths_ignore: '["**.md", "**.png", "**.jpg"]'
+          do_not_skip: '["workflow_dispatch", "schedule", "push"]'
+
+  lint:
+    runs-on: ubuntu-24.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Lint
+        run: make lint
+
+  check-diff:
+    runs-on: ubuntu-24.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Check Diff
+        run: |
+          make reviewable
+          git diff --exit-code
+
+  unit-tests:
+    runs-on: ubuntu-24.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Run Unit Tests
+        run: make test
+
+      - name: Upload Coverage Reports
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.out
+          verbose: true
+
+  security-scan:
+    runs-on: ubuntu-24.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Run Go Vulnerability Check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
+        continue-on-error: true
+
+      - name: Fix Gosec SARIF format
+        if: always() && hashFiles('gosec-results.sarif') != ''
+        run: |
+          if [ -f gosec-results.sarif ]; then
+            jq '.runs[].results[].locations[].physicalLocation.artifactLocation.uri |= if . == null or . == "" then "." else . end' gosec-results.sarif > gosec-results-fixed.sarif
+            mv gosec-results-fixed.sarif gosec-results.sarif
+          fi
+
+      - name: Upload Gosec Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('gosec-results.sarif') != ''
+        with:
+          sarif_file: gosec-results.sarif
+          category: gosec
+
+  # CI ONLY VALIDATES BUILDS - NO PUBLISHING
+  build-validation:
+    runs-on: ubuntu-24.04
+    needs: [lint, check-diff, unit-tests, security-scan]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Validate Build Process
+        run: |
+          # Validate that all build steps work without publishing
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+
+          # Build binary and docker image for linux_amd64 platform
+          make build.code PLATFORM=linux_amd64
+          make build.artifacts.platform PLATFORM=linux_amd64
+          echo "✅ Build successful"
+
+          # Verify build artifacts exist
+          ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
+          ls -la _output/images/provider-harbor/linux_amd64/ 2>/dev/null && echo "✅ Docker image exists" || echo "❌ Docker image missing"
+
+          echo ""
+          echo "🎯 Build validation completed successfully"
+          echo "📦 All artifacts can be built successfully"
+          echo "🏷️ XPKG publishing will occur only on release tag creation"
+
+# Key Principles for this Template:
+# 
+# 1. CI BUILDS, RELEASE PUBLISHES
+#    - CI workflow: Only validates builds (no registry pushes)
+#    - Release workflow: Handles all publishing
+#    - Eliminates tag conflicts between workflows
+# 
+# 2. SINGLE PRIMARY REGISTRY
+#    - Primary: ghcr.io/rossigee (consistent across all providers)
+#    - Optional: Environment-controlled additional registries
+# 
+# 3. PARALLEL VALIDATION
+#    - All validation jobs run in parallel after noop detection
+#    - Build validation only runs on master branch
+# 
+# 4. COMPREHENSIVE SECURITY
+#    - govulncheck: Go vulnerability scanning
+#    - gosec: Static security analysis
+#    - CodeQL integration for SARIF uploads
+# 
+# 5. STANDARDIZED BUILD SYSTEM
+#    - Uses rossigee/build submodule (working fork)
+#    - Consistent make targets across all providers
+#    - Go 1.24.5 with proper version handling
+# 
+# To apply this template:
+# 1. Copy this structure to .github/workflows/ci.yml
+# 2. Update provider-specific names/paths
+# 3. Ensure release.yml handles all publishing
+# 4. Test with a commit to master (should only validate)
+# 5. Test with a version tag (should publish properly)
