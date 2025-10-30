@@ -16,18 +16,37 @@ on:
         type: string
 
 jobs:
-  # Use official provider-workflows with custom registry configuration
   release:
-    uses: crossplane-contrib/provider-workflows/.github/workflows/publish-provider.yml@main
-    with:
-      repository: ${{ github.event.repository.name }}
-      version: ${{ github.event.inputs.version || github.ref_name }}
-      go-version: '1.25.3'
-      registry_org: 'rossigee'  # Publish to ghcr.io/rossigee
-      mirror: false             # Disable mirroring to xpkg.upbound.io
-      cleanup-disk: true
-    secrets:
-      GHCR_PAT: ${{ secrets.PAT_TOKEN }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+
+      - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Publish Artifacts
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          make BRANCH_NAME=main VERSION=$VERSION publish.artifacts
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
