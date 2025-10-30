@@ -49,6 +49,12 @@ jobs:
     needs: release
     runs-on: ubuntu-24.04
     steps:
+      - name: Login to GHCR using PAT
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.PAT_TOKEN }}
       - name: Verify Publication
         run: |
           set -e  # Fail fast on any error
