@@ -7,7 +7,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // ScannerRegistrationParameters defines the desired state of a ScannerRegistration
@@ -80,13 +80,13 @@ type ScannerRegistrationObservation struct {
 
 // A ScannerRegistrationSpec defines the desired state of a ScannerRegistration.
 type ScannerRegistrationSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv1.ManagedResourceSpec `json:",inline"`
 	ForProvider       ScannerRegistrationParameters `json:"forProvider"`
 }
 
 // A ScannerRegistrationStatus represents the observed state of a ScannerRegistration.
 type ScannerRegistrationStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv1.ConditionedStatus `json:",inline"`
 	AtProvider          ScannerRegistrationObservation `json:"atProvider,omitempty"`
 }
 
@@ -119,23 +119,18 @@ func (mg *ScannerRegistration) GetCondition(ct xpv1.ConditionType) xpv1.Conditio
 	return mg.Status.GetCondition(ct)
 }
 
-// GetDeletionPolicy of this ScannerRegistration.
-func (mg *ScannerRegistration) GetDeletionPolicy() xpv1.DeletionPolicy {
-	return mg.Spec.DeletionPolicy
-}
-
 // GetManagementPolicies of this ScannerRegistration.
 func (mg *ScannerRegistration) GetManagementPolicies() xpv1.ManagementPolicies {
 	return mg.Spec.ManagementPolicies
 }
 
 // GetProviderConfigReference of this ScannerRegistration.
-func (mg *ScannerRegistration) GetProviderConfigReference() *xpv1.Reference {
+func (mg *ScannerRegistration) GetProviderConfigReference() *xpv1.ProviderConfigReference {
 	return mg.Spec.ProviderConfigReference
 }
 
 // GetWriteConnectionSecretToReference of this ScannerRegistration.
-func (mg *ScannerRegistration) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+func (mg *ScannerRegistration) GetWriteConnectionSecretToReference() *xpv1.LocalSecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
@@ -144,22 +139,17 @@ func (mg *ScannerRegistration) SetConditions(c ...xpv1.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetDeletionPolicy of this ScannerRegistration.
-func (mg *ScannerRegistration) SetDeletionPolicy(r xpv1.DeletionPolicy) {
-	mg.Spec.DeletionPolicy = r
-}
-
 // SetManagementPolicies of this ScannerRegistration.
 func (mg *ScannerRegistration) SetManagementPolicies(r xpv1.ManagementPolicies) {
 	mg.Spec.ManagementPolicies = r
 }
 
 // SetProviderConfigReference of this ScannerRegistration.
-func (mg *ScannerRegistration) SetProviderConfigReference(r *xpv1.Reference) {
+func (mg *ScannerRegistration) SetProviderConfigReference(r *xpv1.ProviderConfigReference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
 // SetWriteConnectionSecretToReference of this ScannerRegistration.
-func (mg *ScannerRegistration) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+func (mg *ScannerRegistration) SetWriteConnectionSecretToReference(r *xpv1.LocalSecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }

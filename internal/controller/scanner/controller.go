@@ -56,13 +56,13 @@ func Setup(mgr ctrl.Manager, opts Options) error {
 		For(&v1beta1.ScannerRegistration{}).
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
-			managed.WithExternalConnecter(&connector{
+			managed.WithExternalConnector(&connector{
 				kube:   mgr.GetClient(),
 				logger: opts.Logger,
 			}),
 			managed.WithLogger(opts.Logger.WithValues("controller", name)),
 			managed.WithPollInterval(10*time.Minute),
-			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))))
+			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck
 }
 
 // connector is responsible for producing ExternalClients.

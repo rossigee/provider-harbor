@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
@@ -174,7 +174,7 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Client, mg resource.Managed) (*HarborClient, error) {
 	// Get provider config reference from the managed resource
 	// In v2, we need to access it through the spec directly
-	var configRef *xpv1.Reference
+	var configRef *xpv1.ProviderConfigReference
 
 	// Try to cast to a concrete type that has ProviderConfigReference
 	if project, ok := mg.(*projectv1beta1.Project); ok {
