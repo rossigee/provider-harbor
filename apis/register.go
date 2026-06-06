@@ -9,8 +9,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	// V2 Native API groups (namespaced)
+	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
+	memberv1beta1 "github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	repositoryv1beta1 "github.com/rossigee/provider-harbor/apis/repository/v1beta1"
+	scanv1beta1 "github.com/rossigee/provider-harbor/apis/scan/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 
@@ -22,10 +26,17 @@ func init() {
 	// Register the native types with the Scheme so the components can map objects to GroupVersionKinds and back
 	AddToSchemes = append(AddToSchemes,
 		// V2 Native APIs - v1beta1 (namespaced only)
+		// Phase 1: Existing resources
 		projectv1beta1.SchemeBuilder.AddToScheme,
 		registryv1beta1.SchemeBuilder.AddToScheme,
 		scannerv1beta1.SchemeBuilder.AddToScheme,
 		userv1beta1.SchemeBuilder.AddToScheme,
+
+		// Phase 2: New resources for repository, artifact, member, scan management
+		artifactv1beta1.SchemeBuilder.AddToScheme,
+		memberv1beta1.SchemeBuilder.AddToScheme,
+		repositoryv1beta1.SchemeBuilder.AddToScheme,
+		scanv1beta1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
 		v1beta1.SchemeBuilder.AddToScheme,
