@@ -189,7 +189,7 @@ spec:
 ## Development
 
 ### Prerequisites
-- Go 1.25+
+- Go 1.26.3+
 - Docker
 - Kubernetes cluster
 - Harbor instance for testing
@@ -256,7 +256,7 @@ The provider uses a native architecture:
 - **Crossplane**: v1.20.0+
 - **Kubernetes**: v1.28+
 - **Harbor**: v2.0+
-- **Go**: 1.25+
+- **Go**: 1.26.3+
 
 ## Migration from Upjet
 

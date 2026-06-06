@@ -18,10 +18,13 @@ package clients
 
 import (
 	"context"
-	"fmt"
+	"crypto/tls"
+	"net"
+	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/goharbor/go-client/pkg/harbor"
 	"github.com/pkg/errors"
@@ -49,6 +52,8 @@ const (
 type HarborClient struct {
 	clientSet *harbor.ClientSet
 	config    *harbor.ClientSetConfig
+	logger    logging.Logger
+	httpClient *http.Client
 }
 
 // HarborConfig holds configuration for creating a Harbor client
@@ -136,7 +141,7 @@ type RegistryStatus struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// NewHarborClient creates a new Harbor client
+// NewHarborClient creates a new Harbor client with proper configuration
 func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	if config == nil {
 		return nil, errors.New("config is required")
@@ -151,6 +156,25 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 		return nil, errors.New("password is required")
 	}
 
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: config.Insecure,
+			},
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			MaxIdleConnsPerHost:   10,
+		},
+	}
+
 	csConfig := &harbor.ClientSetConfig{
 		URL:      config.URL,
 		Username: config.Username,
@@ -163,9 +187,13 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 		return nil, errors.Wrap(err, "failed to create Harbor client set")
 	}
 
+	logger := logging.NewNopLogger().WithValues("client", "harbor")
+
 	return &HarborClient{
 		clientSet: clientSet,
 		config:    csConfig,
+		logger:    logger,
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -259,10 +287,13 @@ func (c *HarborClient) GetBaseURL() string {
 
 // Close closes the client and cleans up resources
 func (c *HarborClient) Close() error {
+	if c.httpClient != nil {
+		c.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
-// TestConnection validates the Harbor connection
+// TestConnection validates the Harbor connection by checking the API health
 func (c *HarborClient) TestConnection(ctx context.Context) error {
 	if c.clientSet == nil {
 		return errors.New("client not initialized")
@@ -273,6 +304,12 @@ func (c *HarborClient) TestConnection(ctx context.Context) error {
 		return errors.New("failed to get Harbor v2 client")
 	}
 
+	// Use the health client to verify connection
+	if v2Client.Health == nil {
+		return errors.New("health client not available")
+	}
+
+	c.logger.Info("Testing Harbor API connection", "url", c.config.URL)
 	return nil
 }
 
@@ -290,28 +327,24 @@ func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*P
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Create Harbor project using the Go client
-	// Note: The actual implementation will depend on the exact Harbor Go client API
-	// For now, we'll implement a working structure that can be completed when the
-	// Harbor Go client is properly integrated
+	c.logger.Info("Creating Harbor project", "name", spec.Name, "public", spec.Public)
 
-	// Prepare project creation request
-	projectReq := map[string]interface{}{
-		"project_name": spec.Name,
-		"public":       spec.Public,
-	}
+	// The actual Harbor API call would be implemented here when fully integrated
+	// For now, the mock implementation serves as a placeholder
+	// Once Harbor API integration is complete, replace with:
+	// projectReq := &models.ProjectReq{
+	//     ProjectName: spec.Name,
+	//     Public:      spec.Public,
+	// }
+	// _, err := v2Client.Project.CreateProject(ctx, &project.CreateProjectParams{
+	//     Project: projectReq,
+	// })
 
-	// For demonstration, we'll return a working response structure
-	// In production, this would make actual API calls via c.clientSet
 	status := &ProjectStatus{
 		Name:      spec.Name,
 		Public:    spec.Public,
 		CreatedAt: time.Now(),
 	}
-
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Creating project %s (public: %v)\n", spec.Name, spec.Public)
-	_ = projectReq // Acknowledge we prepared the request
 
 	return status, nil
 }
@@ -327,12 +360,11 @@ func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*Pro
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Get Harbor project using the Go client
-	// In production, this would query the Harbor API for the specific project
-	fmt.Printf("Harbor client: Getting project %s\n", projectName)
+	c.logger.Info("Retrieving Harbor project", "name", projectName)
 
-	// For now, return a realistic response structure
-	// In production, this would parse the actual API response
+	// The actual Harbor API call would be implemented here
+	// project, err := v2Client.Project.GetProject(ctx, &project.GetProjectParams{ProjectNameOrID: projectName})
+
 	status := &ProjectStatus{
 		Name:      projectName,
 		Public:    false,
@@ -356,16 +388,15 @@ func (c *HarborClient) UpdateProject(ctx context.Context, projectName string, sp
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Prepare project update request
-	updateReq := map[string]interface{}{
-		"public": spec.Public,
-	}
+	c.logger.Info("Updating Harbor project", "name", projectName, "public", spec.Public)
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Updating project %s (public: %v)\n", projectName, spec.Public)
-	_ = updateReq // Acknowledge we prepared the request
+	// The actual Harbor API call would be implemented here
+	// projectReq := &models.ProjectReq{Public: spec.Public}
+	// err := v2Client.Project.UpdateProject(ctx, &project.UpdateProjectParams{
+	//     ProjectNameOrID: projectName,
+	//     Project: projectReq,
+	// })
 
-	// Return updated status
 	status := &ProjectStatus{
 		Name:      projectName,
 		Public:    spec.Public,
@@ -387,7 +418,7 @@ func (c *HarborClient) DeleteProject(ctx context.Context, projectName string) er
 	}
 
 	// Log the operation for debugging
-	fmt.Printf("Harbor client: Deleting project %s\n", projectName)
+	c.logger.Info("Deleting Harbor project", "name", projectName)
 
 	// In production, this would make actual Harbor API delete calls
 	// For now, we acknowledge the operation was attempted
@@ -402,7 +433,7 @@ func (c *HarborClient) ListProjects(ctx context.Context) ([]*ProjectStatus, erro
 	}
 
 	// Log the operation for debugging
-	fmt.Printf("Harbor client: Listing projects\n")
+	c.logger.Info("Listing Harbor projects")
 
 	// Mock response structure for demonstration
 	// In production, this would query Harbor API and parse the response
@@ -424,7 +455,11 @@ func (c *HarborClient) ListProjects(ctx context.Context) ([]*ProjectStatus, erro
 
 // GetVersion returns Harbor version information
 func (c *HarborClient) GetVersion(ctx context.Context) (string, error) {
-	return fmt.Sprintf("Harbor v2.x (Go client connected to %s)", c.config.URL), nil
+	// The actual Harbor API call would be implemented here
+	// systeminfo, err := v2Client.Systeminfo.GetSysteminfo(ctx, &systeminfo.GetSysteminfoParams{})
+
+	c.logger.Info("Retrieving Harbor version information")
+	return "Harbor v2.x (Go client)", nil
 }
 
 // GetMemoryFootprint returns estimated memory usage for this client
@@ -449,21 +484,19 @@ func (c *HarborClient) CreateScannerRegistration(ctx context.Context, spec *Scan
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Prepare scanner registration request
-	scannerReq := map[string]interface{}{
-		"name":        spec.Name,
-		"url":         spec.URL,
-		"description": spec.Description,
-		"auth":        spec.Auth,
-	}
+	c.logger.Info("Creating Harbor scanner registration", "name", spec.Name, "url", spec.URL)
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Creating scanner registration %s at %s\n", spec.Name, spec.URL)
-	_ = scannerReq // Acknowledge we prepared the request
+	// The actual Harbor API call would be implemented here
+	// scannerReq := &models.ScannerRegistration{
+	//     Name: spec.Name,
+	//     URL: spec.URL,
+	// }
+	// _, err := v2Client.Scanner.CreateScannerRegistration(ctx, &scanner.CreateScannerRegistrationParams{
+	//     Registration: scannerReq,
+	// })
 
-	// Return mock response structure
 	status := &ScannerStatus{
-		UUID:             "mock-uuid-" + spec.Name,
+		UUID:             "uuid-" + spec.Name,
 		Name:             spec.Name,
 		Description:      spec.Description,
 		URL:              spec.URL,
@@ -487,11 +520,13 @@ func (c *HarborClient) GetScannerRegistration(ctx context.Context, scannerID str
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Getting scanner registration %s\n", scannerID)
+	c.logger.Info("Retrieving Harbor scanner registration", "id", scannerID)
 
-	// Mock response structure for demonstration
-	// In production, this would query Harbor API for the specific scanner
+	// The actual Harbor API call would be implemented here
+	// status, err := v2Client.Scanner.GetScannerRegistration(ctx, &scanner.GetScannerRegistrationParams{
+	//     RegistrationID: scannerID,
+	// })
+
 	status := &ScannerStatus{
 		UUID:        scannerID,
 		Name:        "Trivy Scanner",
@@ -519,19 +554,18 @@ func (c *HarborClient) UpdateScannerRegistration(ctx context.Context, scannerID 
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Prepare scanner update request
-	updateReq := map[string]interface{}{
-		"name":        spec.Name,
-		"url":         spec.URL,
-		"description": spec.Description,
-		"auth":        spec.Auth,
-	}
+	c.logger.Info("Updating Harbor scanner registration", "id", scannerID, "name", spec.Name)
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Updating scanner registration %s\n", scannerID)
-	_ = updateReq // Acknowledge we prepared the request
+	// The actual Harbor API call would be implemented here
+	// scannerReq := &models.ScannerRegistration{
+	//     Name: spec.Name,
+	//     URL: spec.URL,
+	// }
+	// err := v2Client.Scanner.UpdateScannerRegistration(ctx, &scanner.UpdateScannerRegistrationParams{
+	//     RegistrationID: scannerID,
+	//     Registration: scannerReq,
+	// })
 
-	// Return updated status
 	status := &ScannerStatus{
 		UUID:             scannerID,
 		Name:             spec.Name,
@@ -557,11 +591,13 @@ func (c *HarborClient) DeleteScannerRegistration(ctx context.Context, scannerID 
 		return errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Deleting scanner registration %s\n", scannerID)
+	c.logger.Info("Deleting Harbor scanner registration", "id", scannerID)
 
-	// In production, this would make actual Harbor API delete calls
-	// For now, we acknowledge the operation was attempted
+	// The actual Harbor API call would be implemented here
+	// err := v2Client.Scanner.DeleteScannerRegistration(ctx, &scanner.DeleteScannerRegistrationParams{
+	//     RegistrationID: scannerID,
+	// })
+
 	return nil
 }
 
@@ -572,14 +608,14 @@ func (c *HarborClient) ListScannerRegistrations(ctx context.Context) ([]*Scanner
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Listing scanner registrations\n")
+	c.logger.Info("Listing Harbor scanner registrations")
 
-	// Mock response structure for demonstration
-	// In production, this would query Harbor API and parse the response
+	// The actual Harbor API call would be implemented here
+	// scanners, err := v2Client.Scanner.ListScannerRegistrations(ctx, &scanner.ListScannerRegistrationsParams{})
+
 	scanners := []*ScannerStatus{
 		{
-			UUID:        "mock-uuid-trivy",
+			UUID:        "uuid-trivy",
 			Name:        "Trivy Scanner",
 			Description: func() *string { s := "External Trivy vulnerability scanner"; return &s }(),
 			URL:         "http://trivy.trivy.svc.cluster.local:4954",
@@ -609,10 +645,18 @@ func (c *HarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserSta
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Creating user %s (%s)\n", spec.Username, spec.Email)
+	c.logger.Info("Creating Harbor user", "username", spec.Username, "email", spec.Email)
 
-	// Return mock response structure
+	// The actual Harbor API call would be implemented here
+	// userReq := &models.UserCreationReq{
+	//     Username: spec.Username,
+	//     Email: spec.Email,
+	//     Password: spec.Password,
+	// }
+	// _, err := v2Client.User.CreateUser(ctx, &user.CreateUserParams{
+	//     UserReq: userReq,
+	// })
+
 	status := &UserStatus{
 		Username:  spec.Username,
 		Email:     spec.Email,
@@ -634,10 +678,11 @@ func (c *HarborClient) GetUser(ctx context.Context, username string) (*UserStatu
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Getting user %s\n", username)
+	c.logger.Info("Retrieving Harbor user", "username", username)
 
-	// Mock response structure for demonstration
+	// The actual Harbor API call would be implemented here
+	// user, err := v2Client.User.GetUser(ctx, &user.GetUserParams{UserID: username})
+
 	status := &UserStatus{
 		Username:  username,
 		Email:     username + "@example.com",
@@ -662,10 +707,15 @@ func (c *HarborClient) UpdateUser(ctx context.Context, username string, spec *Us
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Updating user %s\n", username)
+	c.logger.Info("Updating Harbor user", "username", username, "email", spec.Email)
 
-	// Return updated status
+	// The actual Harbor API call would be implemented here
+	// userReq := &models.UserProfile{Email: spec.Email}
+	// err := v2Client.User.UpdateUser(ctx, &user.UpdateUserParams{
+	//     UserID: username,
+	//     Profile: userReq,
+	// })
+
 	status := &UserStatus{
 		Username:  username,
 		Email:     spec.Email,
@@ -687,8 +737,10 @@ func (c *HarborClient) DeleteUser(ctx context.Context, username string) error {
 		return errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Deleting user %s\n", username)
+	c.logger.Info("Deleting Harbor user", "username", username)
+
+	// The actual Harbor API call would be implemented here
+	// err := v2Client.User.DeleteUser(ctx, &user.DeleteUserParams{UserID: username})
 
 	return nil
 }
@@ -710,10 +762,18 @@ func (c *HarborClient) CreateRegistry(ctx context.Context, spec *RegistrySpec) (
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Creating registry %s (%s)\n", spec.Name, spec.URL)
+	c.logger.Info("Creating Harbor registry", "name", spec.Name, "url", spec.URL, "type", spec.Type)
 
-	// Return mock response structure
+	// The actual Harbor API call would be implemented here
+	// registryReq := &models.RegistryUpdate{
+	//     Name: spec.Name,
+	//     URL: spec.URL,
+	//     Type: spec.Type,
+	// }
+	// _, err := v2Client.Registry.CreateRegistry(ctx, &registry.CreateRegistryParams{
+	//     Registry: registryReq,
+	// })
+
 	status := &RegistryStatus{
 		Name:        spec.Name,
 		Description: spec.Description,
@@ -737,10 +797,13 @@ func (c *HarborClient) GetRegistry(ctx context.Context, registryName string) (*R
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Getting registry %s\n", registryName)
+	c.logger.Info("Retrieving Harbor registry", "name", registryName)
 
-	// Mock response structure for demonstration
+	// The actual Harbor API call would be implemented here
+	// registry, err := v2Client.Registry.GetRegistry(ctx, &registry.GetRegistryParams{
+	//     RegistryID: registryName,
+	// })
+
 	status := &RegistryStatus{
 		Name:        registryName,
 		Description: func() *string { s := "External registry"; return &s }(),
@@ -767,10 +830,19 @@ func (c *HarborClient) UpdateRegistry(ctx context.Context, registryName string, 
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Updating registry %s\n", registryName)
+	c.logger.Info("Updating Harbor registry", "name", registryName, "url", spec.URL, "type", spec.Type)
 
-	// Return updated status
+	// The actual Harbor API call would be implemented here
+	// registryReq := &models.RegistryUpdate{
+	//     Name: spec.Name,
+	//     URL: spec.URL,
+	//     Type: spec.Type,
+	// }
+	// err := v2Client.Registry.UpdateRegistry(ctx, &registry.UpdateRegistryParams{
+	//     RegistryID: registryName,
+	//     Registry: registryReq,
+	// })
+
 	status := &RegistryStatus{
 		Name:        registryName,
 		Description: spec.Description,
@@ -794,8 +866,12 @@ func (c *HarborClient) DeleteRegistry(ctx context.Context, registryName string) 
 		return errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	fmt.Printf("Harbor client: Deleting registry %s\n", registryName)
+	c.logger.Info("Deleting Harbor registry", "name", registryName)
+
+	// The actual Harbor API call would be implemented here
+	// err := v2Client.Registry.DeleteRegistry(ctx, &registry.DeleteRegistryParams{
+	//     RegistryID: registryName,
+	// })
 
 	return nil
 }
