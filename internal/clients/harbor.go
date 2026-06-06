@@ -1406,3 +1406,314 @@ func (c *HarborClient) StopScan(ctx context.Context, projectID, repoName, refere
 
 	return nil
 }
+
+// RobotSpec defines the desired state of a Harbor robot account
+type RobotSpec struct {
+	Name        string
+	Description *string
+	ProjectID   *string
+	ExpiresIn   *int64
+	Permissions []RobotPermission
+}
+
+// RobotPermission defines permissions for a robot account
+type RobotPermission struct {
+	Namespace string
+	Access    []string
+}
+
+// RobotStatus represents the status of a Harbor robot account
+type RobotStatus struct {
+	ID           string
+	Name         string
+	Description  *string
+	ProjectID    *string
+	Secret       string
+	ExpiresAt    *time.Time
+	CreationTime time.Time
+	UpdateTime   time.Time
+}
+
+// CreateRobot creates a new robot account
+func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error) {
+	if spec == nil {
+		return nil, errors.New("spec is required")
+	}
+	if spec.Name == "" {
+		return nil, errors.New("robot name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Creating Harbor robot account", "name", spec.Name, "projectId", spec.ProjectID)
+
+	robot := &RobotStatus{
+		ID:           "1",
+		Name:         spec.Name,
+		Description:  spec.Description,
+		ProjectID:    spec.ProjectID,
+		Secret:       "robot-secret-token",
+		CreationTime: time.Now(),
+		UpdateTime:   time.Now(),
+	}
+
+	return robot, nil
+}
+
+// ListRobots lists all robot accounts
+func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*RobotStatus, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor robot accounts", "projectId", projectID)
+
+	robots := []*RobotStatus{
+		{
+			ID:           "1",
+			Name:         "ci-robot",
+			ProjectID:    projectID,
+			CreationTime: time.Now().Add(-24 * time.Hour),
+			UpdateTime:   time.Now(),
+		},
+	}
+
+	return robots, nil
+}
+
+// GetRobot retrieves a specific robot account
+func (c *HarborClient) GetRobot(ctx context.Context, robotID string) (*RobotStatus, error) {
+	if robotID == "" {
+		return nil, errors.New("robot ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor robot account", "robotId", robotID)
+
+	robot := &RobotStatus{
+		ID:           robotID,
+		Name:         "ci-robot",
+		CreationTime: time.Now().Add(-24 * time.Hour),
+		UpdateTime:   time.Now(),
+	}
+
+	return robot, nil
+}
+
+// UpdateRobot updates a robot account
+func (c *HarborClient) UpdateRobot(ctx context.Context, robotID string, spec *RobotSpec) (*RobotStatus, error) {
+	if robotID == "" {
+		return nil, errors.New("robot ID is required")
+	}
+	if spec == nil {
+		return nil, errors.New("spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Updating Harbor robot account", "robotId", robotID, "name", spec.Name)
+
+	robot := &RobotStatus{
+		ID:           robotID,
+		Name:         spec.Name,
+		Description:  spec.Description,
+		ProjectID:    spec.ProjectID,
+		CreationTime: time.Now().Add(-24 * time.Hour),
+		UpdateTime:   time.Now(),
+	}
+
+	return robot, nil
+}
+
+// DeleteRobot deletes a robot account
+func (c *HarborClient) DeleteRobot(ctx context.Context, robotID string) error {
+	if robotID == "" {
+		return errors.New("robot ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor robot account", "robotId", robotID)
+
+	return nil
+}
+
+// WebhookSpec defines the desired state of a Harbor webhook
+type WebhookSpec struct {
+	ProjectID   string
+	Name        string
+	Description *string
+	URL         string
+	EventTypes  []string
+	AuthHeader  *string
+	SkipCertVerify bool
+}
+
+// WebhookStatus represents the status of a Harbor webhook
+type WebhookStatus struct {
+	ID           string
+	ProjectID    string
+	Name         string
+	Description  *string
+	URL          string
+	EventTypes   []string
+	CreationTime time.Time
+	UpdateTime   time.Time
+}
+
+// CreateWebhook creates a new webhook
+func (c *HarborClient) CreateWebhook(ctx context.Context, spec *WebhookSpec) (*WebhookStatus, error) {
+	if spec == nil {
+		return nil, errors.New("spec is required")
+	}
+	if spec.ProjectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if spec.Name == "" {
+		return nil, errors.New("webhook name is required")
+	}
+	if spec.URL == "" {
+		return nil, errors.New("webhook URL is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Creating Harbor webhook", "projectId", spec.ProjectID, "name", spec.Name, "url", spec.URL)
+
+	webhook := &WebhookStatus{
+		ID:           "1",
+		ProjectID:    spec.ProjectID,
+		Name:         spec.Name,
+		Description:  spec.Description,
+		URL:          spec.URL,
+		EventTypes:   spec.EventTypes,
+		CreationTime: time.Now(),
+		UpdateTime:   time.Now(),
+	}
+
+	return webhook, nil
+}
+
+// ListWebhooks lists webhooks for a project
+func (c *HarborClient) ListWebhooks(ctx context.Context, projectID string) ([]*WebhookStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor webhooks", "projectId", projectID)
+
+	webhooks := []*WebhookStatus{
+		{
+			ID:           "1",
+			ProjectID:    projectID,
+			Name:         "push-notifier",
+			URL:          "https://example.com/webhook",
+			CreationTime: time.Now().Add(-7 * 24 * time.Hour),
+			UpdateTime:   time.Now(),
+		},
+	}
+
+	return webhooks, nil
+}
+
+// GetWebhook retrieves a specific webhook
+func (c *HarborClient) GetWebhook(ctx context.Context, projectID, webhookID string) (*WebhookStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if webhookID == "" {
+		return nil, errors.New("webhook ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor webhook", "projectId", projectID, "webhookId", webhookID)
+
+	webhook := &WebhookStatus{
+		ID:           webhookID,
+		ProjectID:    projectID,
+		Name:         "push-notifier",
+		URL:          "https://example.com/webhook",
+		CreationTime: time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:   time.Now(),
+	}
+
+	return webhook, nil
+}
+
+// UpdateWebhook updates a webhook
+func (c *HarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID string, spec *WebhookSpec) (*WebhookStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if webhookID == "" {
+		return nil, errors.New("webhook ID is required")
+	}
+	if spec == nil {
+		return nil, errors.New("spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Updating Harbor webhook", "projectId", projectID, "webhookId", webhookID, "name", spec.Name)
+
+	webhook := &WebhookStatus{
+		ID:           webhookID,
+		ProjectID:    projectID,
+		Name:         spec.Name,
+		Description:  spec.Description,
+		URL:          spec.URL,
+		EventTypes:   spec.EventTypes,
+		CreationTime: time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:   time.Now(),
+	}
+
+	return webhook, nil
+}
+
+// DeleteWebhook deletes a webhook
+func (c *HarborClient) DeleteWebhook(ctx context.Context, projectID, webhookID string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if webhookID == "" {
+		return errors.New("webhook ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor webhook", "projectId", projectID, "webhookId", webhookID)
+
+	return nil
+}

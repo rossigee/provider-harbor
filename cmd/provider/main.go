@@ -25,9 +25,11 @@ import (
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
 	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
+	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
 	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
+	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -118,6 +120,12 @@ func main() {
 
 	// Setup Scan controller (Phase 2)
 	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
+
+	// Setup Robot controller (Phase 3)
+	kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
+
+	// Setup Webhook controller (Phase 3)
+	kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
 
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")

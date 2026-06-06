@@ -14,9 +14,11 @@ import (
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	repositoryv1beta1 "github.com/rossigee/provider-harbor/apis/repository/v1beta1"
+	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	scanv1beta1 "github.com/rossigee/provider-harbor/apis/scan/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 
 	// Provider config APIs
 	v1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
@@ -37,6 +39,10 @@ func init() {
 		memberv1beta1.SchemeBuilder.AddToScheme,
 		repositoryv1beta1.SchemeBuilder.AddToScheme,
 		scanv1beta1.SchemeBuilder.AddToScheme,
+
+		// Phase 3: Robot and Webhook for CI/CD automation
+		robotv1beta1.SchemeBuilder.AddToScheme,
+		webhookv1beta1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
 		v1beta1.SchemeBuilder.AddToScheme,
