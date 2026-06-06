@@ -62,7 +62,7 @@ func Setup(mgr ctrl.Manager, opts Options) error {
 			}),
 			managed.WithLogger(opts.Logger.WithValues("controller", name)),
 			managed.WithPollInterval(10*time.Minute),
-			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck
+			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name)))))
 }
 
 // connector is responsible for producing ExternalClients.

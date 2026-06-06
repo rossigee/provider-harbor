@@ -49,7 +49,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(logging.NewNopLogger().WithValues("controller", name)),
 		managed.WithPollInterval(1*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))) //nolint:staticcheck
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).

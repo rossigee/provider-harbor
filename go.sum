@@ -21,8 +21,6 @@ github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F9
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
-github.com/crossplane/crossplane-runtime/v2 v2.3.1 h1:g2jT8aWl8bVuM62oeUiCv4FcrwoNcmJBXWj2ZpV+2Kw=
-github.com/crossplane/crossplane-runtime/v2 v2.3.1/go.mod h1:kl5xmOCH7pOVs0vMeDyQ5utqCxjmHd3Qa79i9Cc4mw0=
 github.com/crossplane/crossplane-tools v0.0.0-20251017183449-dd4517244339 h1:MPbMxSlY+82UsjrLUAGyXlh/iX1tL5WNj8W9SOaq/nk=
 github.com/crossplane/crossplane-tools v0.0.0-20251017183449-dd4517244339/go.mod h1:8etxwmP4cZwJDwen4+PQlnc1tggltAhEfyyigmdHulQ=
 github.com/crossplane/crossplane/apis/v2 v2.0.0-20260424160951-8f231230ebb6 h1:9ki6AJQgBJIcLNjK+scUZp2ZDenuAo18d0JSNOlkY2Y=
@@ -179,6 +177,8 @@ github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEy
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
+github.com/rossigee/crossplane-runtime/v2 v2.4.0-rc.0.0.20260522024312-ccb404ad65f6 h1:3wjB09LRBR03fUbwzjncIRSKa4COYPqPd2/pOf7udoo=
+github.com/rossigee/crossplane-runtime/v2 v2.4.0-rc.0.0.20260522024312-ccb404ad65f6/go.mod h1:PAo3zIfmMzrS18HGyHJLXCeXIp0nFW2Md2Fn9gocMaU=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
