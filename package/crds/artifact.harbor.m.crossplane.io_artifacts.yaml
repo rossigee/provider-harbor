@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: repositories.repository.harbor.m.crossplane.io
+  name: artifacts.artifact.harbor.m.crossplane.io
 spec:
-  group: repository.harbor.m.crossplane.io
+  group: artifact.harbor.m.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - harbor
-    kind: Repository
-    listKind: RepositoryList
-    plural: repositories
-    singular: repository
+    kind: Artifact
+    listKind: ArtifactList
+    plural: artifacts
+    singular: artifact
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -25,16 +25,19 @@ spec:
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
       type: string
-    - jsonPath: .spec.forProvider.name
-      name: REPOSITORY
+    - jsonPath: .status.atProvider.digest
+      name: DIGEST
       type: string
+    - jsonPath: .status.atProvider.size
+      name: SIZE
+      type: integer
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: A Repository is a managed resource that represents a Harbor repository.
+        description: An Artifact is a managed resource that represents a Harbor artifact.
         properties:
           apiVersion:
             description: |-
@@ -54,25 +57,27 @@ spec:
           metadata:
             type: object
           spec:
-            description: A RepositorySpec defines the desired state of a Repository.
+            description: A ArtifactSpec defines the desired state of an Artifact.
             properties:
               forProvider:
-                description: RepositoryParameters defines the desired state of a Repository
+                description: ArtifactParameters defines the desired state of an Artifact
                 properties:
-                  description:
-                    description: Description of the repository
-                    type: string
-                  name:
-                    description: Name is the name of the repository (without the project
-                      prefix)
-                    type: string
                   projectId:
-                    description: ProjectID is the ID or name of the project this repository
-                      belongs to
+                    description: ProjectID is the ID or name of the project
+                    type: string
+                  reference:
+                    description: Reference is the image reference (tag or digest)
+                    type: string
+                  repositoryName:
+                    description: RepositoryName is the name of the repository
+                    type: string
+                  type:
+                    description: Type is the artifact type (image, chart, etc.)
                     type: string
                 required:
-                - name
                 - projectId
+                - reference
+                - repositoryName
                 type: object
               managementPolicies:
                 default:
@@ -133,38 +138,40 @@ spec:
             - forProvider
             type: object
           status:
-            description: A RepositoryStatus represents the observed state of a Repository.
+            description: A ArtifactStatus represents the observed state of an Artifact.
             properties:
               atProvider:
-                description: RepositoryObservation defines the observed state of a
-                  Repository
+                description: ArtifactObservation defines the observed state of an
+                  Artifact
                 properties:
-                  artifactCount:
-                    description: ArtifactCount is the number of artifacts in this
-                      repository
-                    format: int64
-                    type: integer
                   creationTime:
-                    description: CreationTime is when the repository was created
+                    description: CreationTime is when the artifact was created
                     format: date-time
                     type: string
-                  description:
-                    description: Description of the repository
-                    type: string
-                  fullName:
-                    description: FullName is the fully qualified repository name (project/name)
+                  digest:
+                    description: Digest is the content digest of the artifact
                     type: string
                   id:
-                    description: ID is the unique identifier of the repository in
-                      Harbor
+                    description: ID is the unique identifier of the artifact in Harbor
                     type: string
-                  projectId:
-                    description: ProjectID is the ID of the parent project
-                    type: string
+                  pullCount:
+                    description: PullCount is the number of times this artifact has
+                      been pulled
+                    format: int64
+                    type: integer
+                  size:
+                    description: Size is the size of the artifact in bytes
+                    format: int64
+                    type: integer
                   updateTime:
-                    description: UpdateTime is when the repository was last updated
+                    description: UpdateTime is when the artifact was last updated
                     format: date-time
                     type: string
+                  vulnerabilityCount:
+                    description: VulnerabilityCount is the number of vulnerabilities
+                      found
+                    format: int64
+                    type: integer
                 type: object
               conditions:
                 description: Conditions of the resource.

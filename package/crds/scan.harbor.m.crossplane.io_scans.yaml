@@ -4,37 +4,39 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: repositories.repository.harbor.m.crossplane.io
+  name: scans.scan.harbor.m.crossplane.io
 spec:
-  group: repository.harbor.m.crossplane.io
+  group: scan.harbor.m.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - harbor
-    kind: Repository
-    listKind: RepositoryList
-    plural: repositories
-    singular: repository
+    kind: Scan
+    listKind: ScanList
+    plural: scans
+    singular: scan
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status
       name: READY
       type: string
-    - jsonPath: .status.conditions[?(@.type=='Synced')].status
-      name: SYNCED
+    - jsonPath: .status.atProvider.status
+      name: STATUS
       type: string
-    - jsonPath: .spec.forProvider.name
-      name: REPOSITORY
-      type: string
+    - jsonPath: .status.atProvider.criticalCount
+      name: CRITICAL
+      type: integer
+    - jsonPath: .status.atProvider.highCount
+      name: HIGH
+      type: integer
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: A Repository is a managed resource that represents a Harbor repository.
         properties:
           apiVersion:
             description: |-
@@ -54,25 +56,19 @@ spec:
           metadata:
             type: object
           spec:
-            description: A RepositorySpec defines the desired state of a Repository.
             properties:
               forProvider:
-                description: RepositoryParameters defines the desired state of a Repository
                 properties:
-                  description:
-                    description: Description of the repository
-                    type: string
-                  name:
-                    description: Name is the name of the repository (without the project
-                      prefix)
-                    type: string
                   projectId:
-                    description: ProjectID is the ID or name of the project this repository
-                      belongs to
+                    type: string
+                  reference:
+                    type: string
+                  repositoryName:
                     type: string
                 required:
-                - name
                 - projectId
+                - reference
+                - repositoryName
                 type: object
               managementPolicies:
                 default:
@@ -133,37 +129,30 @@ spec:
             - forProvider
             type: object
           status:
-            description: A RepositoryStatus represents the observed state of a Repository.
             properties:
               atProvider:
-                description: RepositoryObservation defines the observed state of a
-                  Repository
                 properties:
-                  artifactCount:
-                    description: ArtifactCount is the number of artifacts in this
-                      repository
+                  criticalCount:
                     format: int64
                     type: integer
-                  creationTime:
-                    description: CreationTime is when the repository was created
+                  endTime:
                     format: date-time
                     type: string
-                  description:
-                    description: Description of the repository
-                    type: string
-                  fullName:
-                    description: FullName is the fully qualified repository name (project/name)
-                    type: string
+                  highCount:
+                    format: int64
+                    type: integer
                   id:
-                    description: ID is the unique identifier of the repository in
-                      Harbor
                     type: string
-                  projectId:
-                    description: ProjectID is the ID of the parent project
-                    type: string
-                  updateTime:
-                    description: UpdateTime is when the repository was last updated
+                  lowCount:
+                    format: int64
+                    type: integer
+                  mediumCount:
+                    format: int64
+                    type: integer
+                  startTime:
                     format: date-time
+                    type: string
+                  status:
                     type: string
                 type: object
               conditions:

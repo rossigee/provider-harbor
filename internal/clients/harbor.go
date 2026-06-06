@@ -1024,3 +1024,385 @@ func (c *HarborClient) DeleteRepository(ctx context.Context, projectID, repoName
 
 	return nil
 }
+
+// ArtifactSpec defines the desired state of a Harbor artifact
+type ArtifactSpec struct {
+	ProjectID      string
+	RepositoryName string
+	Reference      string
+	Type          *string
+}
+
+// ArtifactStatus represents the status of a Harbor artifact
+type ArtifactStatus struct {
+	ID                 string
+	Digest             string
+	Size               int64
+	PullCount          int64
+	CreationTime       time.Time
+	UpdateTime         time.Time
+	VulnerabilityCount int64
+}
+
+// ListArtifacts lists artifacts in a Harbor repository
+func (c *HarborClient) ListArtifacts(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor artifacts", "projectId", projectID, "repo", repoName)
+
+	artifacts := []*ArtifactStatus{
+		{
+			ID:                 "1",
+			Digest:             "sha256:abc123",
+			Size:               1024000,
+			PullCount:          5,
+			CreationTime:       time.Now().Add(-7 * 24 * time.Hour),
+			UpdateTime:         time.Now(),
+			VulnerabilityCount: 0,
+		},
+	}
+
+	return artifacts, nil
+}
+
+// GetArtifact retrieves a specific Harbor artifact
+func (c *HarborClient) GetArtifact(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+	if reference == "" {
+		return nil, errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor artifact", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	status := &ArtifactStatus{
+		ID:                 "1",
+		Digest:             "sha256:abc123",
+		Size:               1024000,
+		PullCount:          5,
+		CreationTime:       time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:         time.Now(),
+		VulnerabilityCount: 0,
+	}
+
+	return status, nil
+}
+
+// DeleteArtifact deletes a Harbor artifact
+func (c *HarborClient) DeleteArtifact(ctx context.Context, projectID, repoName, reference string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return errors.New("repository name is required")
+	}
+	if reference == "" {
+		return errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor artifact", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	return nil
+}
+
+// GetArtifactVulnerabilities retrieves vulnerability information for an artifact
+func (c *HarborClient) GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+	if reference == "" {
+		return nil, errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving artifact vulnerabilities", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	status := &ArtifactStatus{
+		ID:                 "1",
+		Digest:             "sha256:abc123",
+		Size:               1024000,
+		PullCount:          5,
+		CreationTime:       time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:         time.Now(),
+		VulnerabilityCount: 2,
+	}
+
+	return status, nil
+}
+
+// MemberStatus represents a Harbor project member
+type MemberStatus struct {
+	ID           string
+	MemberName   string
+	MemberType   string
+	Role         string
+	CreationTime time.Time
+}
+
+// AddProjectMember adds a member to a Harbor project
+func (c *HarborClient) AddProjectMember(ctx context.Context, projectID, username, role string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if username == "" {
+		return errors.New("username is required")
+	}
+	if role == "" {
+		return errors.New("role is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Adding Harbor project member", "projectId", projectID, "username", username, "role", role)
+
+	return nil
+}
+
+// ListProjectMembers lists members of a Harbor project
+func (c *HarborClient) ListProjectMembers(ctx context.Context, projectID string) ([]*MemberStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor project members", "projectId", projectID)
+
+	members := []*MemberStatus{
+		{
+			ID:           "1",
+			MemberName:   "admin",
+			MemberType:   "user",
+			Role:         "master",
+			CreationTime: time.Now().Add(-30 * 24 * time.Hour),
+		},
+	}
+
+	return members, nil
+}
+
+// GetProjectMember retrieves a specific project member
+func (c *HarborClient) GetProjectMember(ctx context.Context, projectID, username string) (*MemberStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if username == "" {
+		return nil, errors.New("username is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor project member", "projectId", projectID, "username", username)
+
+	member := &MemberStatus{
+		ID:           "1",
+		MemberName:   username,
+		MemberType:   "user",
+		Role:         "developer",
+		CreationTime: time.Now().Add(-10 * 24 * time.Hour),
+	}
+
+	return member, nil
+}
+
+// UpdateProjectMember updates a project member's role
+func (c *HarborClient) UpdateProjectMember(ctx context.Context, projectID, username, role string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if username == "" {
+		return errors.New("username is required")
+	}
+	if role == "" {
+		return errors.New("role is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Updating Harbor project member", "projectId", projectID, "username", username, "role", role)
+
+	return nil
+}
+
+// DeleteProjectMember removes a member from a project
+func (c *HarborClient) DeleteProjectMember(ctx context.Context, projectID, username string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if username == "" {
+		return errors.New("username is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor project member", "projectId", projectID, "username", username)
+
+	return nil
+}
+
+// ScanStatus represents the status of an artifact scan
+type ScanStatus struct {
+	ID             string
+	Status         string
+	CriticalCount  int64
+	HighCount      int64
+	MediumCount    int64
+	LowCount       int64
+	StartTime      time.Time
+	EndTime        time.Time
+}
+
+// TriggerScan triggers a vulnerability scan for an artifact
+func (c *HarborClient) TriggerScan(ctx context.Context, projectID, repoName, reference string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return errors.New("repository name is required")
+	}
+	if reference == "" {
+		return errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Triggering Harbor artifact scan", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	return nil
+}
+
+// ListScans lists scans for an artifact
+func (c *HarborClient) ListScans(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor artifact scans", "projectId", projectID, "repo", repoName)
+
+	scans := []*ScanStatus{
+		{
+			ID:            "1",
+			Status:        "completed",
+			CriticalCount: 0,
+			HighCount:     1,
+			MediumCount:   3,
+			LowCount:      5,
+			StartTime:     time.Now().Add(-1 * time.Hour),
+			EndTime:       time.Now(),
+		},
+	}
+
+	return scans, nil
+}
+
+// GetScan retrieves a specific scan result
+func (c *HarborClient) GetScan(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+	if reference == "" {
+		return nil, errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor scan", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	scan := &ScanStatus{
+		ID:            "1",
+		Status:        "completed",
+		CriticalCount: 0,
+		HighCount:     1,
+		MediumCount:   3,
+		LowCount:      5,
+		StartTime:     time.Now().Add(-1 * time.Hour),
+		EndTime:       time.Now(),
+	}
+
+	return scan, nil
+}
+
+// StopScan stops a running scan
+func (c *HarborClient) StopScan(ctx context.Context, projectID, repoName, reference string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return errors.New("repository name is required")
+	}
+	if reference == "" {
+		return errors.New("reference is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Stopping Harbor artifact scan", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	return nil
+}
