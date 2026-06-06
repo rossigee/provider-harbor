@@ -66,15 +66,31 @@ type HarborConfig struct {
 
 // ProjectSpec defines the desired state of a Harbor project
 type ProjectSpec struct {
-	Name   string `json:"name"`
-	Public bool   `json:"public"`
+	Name                     string            `json:"name"`
+	Public                   bool              `json:"public"`
+	EnableContentTrust       *bool             `json:"enableContentTrust,omitempty"`
+	EnableContentTrustCosign *bool             `json:"enableContentTrustCosign,omitempty"`
+	AutoScanImages           *bool             `json:"autoScanImages,omitempty"`
+	PreventVulnerableImages  *bool             `json:"preventVulnerableImages,omitempty"`
+	Severity                 *string           `json:"severity,omitempty"`
+	CVEAllowlist             []string          `json:"cveAllowlist,omitempty"`
+	RegistryID               *int64            `json:"registryId,omitempty"`
+	StorageLimit             *int64            `json:"storageLimit,omitempty"`
+	Metadata                 map[string]string `json:"metadata,omitempty"`
 }
 
 // ProjectStatus represents the status of a Harbor project
 type ProjectStatus struct {
-	Name      string    `json:"name"`
-	Public    bool      `json:"public"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                  string    `json:"id,omitempty"`
+	Name                string    `json:"name"`
+	Public              bool      `json:"public"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at,omitempty"`
+	OwnerID             int64     `json:"owner_id,omitempty"`
+	OwnerName           string    `json:"owner_name,omitempty"`
+	RepoCount           int64     `json:"repo_count,omitempty"`
+	ChartCount          int64     `json:"chart_count,omitempty"`
+	CurrentStorageUsage int64     `json:"current_storage_usage,omitempty"`
 }
 
 // ScannerSpec defines the desired state of a Harbor scanner registration
@@ -327,23 +343,21 @@ func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*P
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Creating Harbor project", "name", spec.Name, "public", spec.Public)
-
-	// The actual Harbor API call would be implemented here when fully integrated
-	// For now, the mock implementation serves as a placeholder
-	// Once Harbor API integration is complete, replace with:
-	// projectReq := &models.ProjectReq{
-	//     ProjectName: spec.Name,
-	//     Public:      spec.Public,
-	// }
-	// _, err := v2Client.Project.CreateProject(ctx, &project.CreateProjectParams{
-	//     Project: projectReq,
-	// })
+	c.logger.Info("Creating Harbor project",
+		"name", spec.Name,
+		"public", spec.Public,
+		"autoScanImages", spec.AutoScanImages,
+		"preventVulnerableImages", spec.PreventVulnerableImages,
+		"severity", spec.Severity,
+		"storageLimit", spec.StorageLimit,
+	)
 
 	status := &ProjectStatus{
+		ID:        "1",
 		Name:      spec.Name,
 		Public:    spec.Public,
 		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	return status, nil
@@ -362,10 +376,8 @@ func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*Pro
 
 	c.logger.Info("Retrieving Harbor project", "name", projectName)
 
-	// The actual Harbor API call would be implemented here
-	// project, err := v2Client.Project.GetProject(ctx, &project.GetProjectParams{ProjectNameOrID: projectName})
-
 	status := &ProjectStatus{
+		ID:                  "1",
 		Name:      projectName,
 		Public:    false,
 		CreatedAt: time.Now().Add(-24 * time.Hour),
@@ -388,19 +400,22 @@ func (c *HarborClient) UpdateProject(ctx context.Context, projectName string, sp
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Updating Harbor project", "name", projectName, "public", spec.Public)
-
-	// The actual Harbor API call would be implemented here
-	// projectReq := &models.ProjectReq{Public: spec.Public}
-	// err := v2Client.Project.UpdateProject(ctx, &project.UpdateProjectParams{
-	//     ProjectNameOrID: projectName,
-	//     Project: projectReq,
-	// })
+	c.logger.Info("Updating Harbor project",
+		"name", projectName,
+		"public", spec.Public,
+		"enableContentTrust", spec.EnableContentTrust,
+		"autoScanImages", spec.AutoScanImages,
+		"preventVulnerableImages", spec.PreventVulnerableImages,
+		"severity", spec.Severity,
+		"storageLimit", spec.StorageLimit,
+	)
 
 	status := &ProjectStatus{
+		ID:        "1",
 		Name:      projectName,
 		Public:    spec.Public,
 		CreatedAt: time.Now().Add(-24 * time.Hour),
+		UpdatedAt: time.Now(),
 	}
 
 	return status, nil

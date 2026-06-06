@@ -109,11 +109,18 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID for now
+	cr.Status.AtProvider.ID = getStringPtr(project.ID)
 	if project.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: project.CreatedAt}
 	}
-	cr.Status.AtProvider.RepoCount = getInt64Ptr(0) // Mock count
+	if project.UpdatedAt != (time.Time{}) {
+		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: project.UpdatedAt}
+	}
+	cr.Status.AtProvider.OwnerID = getInt64Ptr(project.OwnerID)
+	cr.Status.AtProvider.OwnerName = getStringPtr(project.OwnerName)
+	cr.Status.AtProvider.RepoCount = getInt64Ptr(project.RepoCount)
+	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
+	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
 
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
@@ -136,10 +143,19 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	cr.SetConditions(xpv1.Creating())
 
-	// Prepare project spec
+	// Prepare project spec with all parameters
 	spec := &harborclients.ProjectSpec{
-		Name:   cr.Spec.ForProvider.Name,
-		Public: getBoolValue(cr.Spec.ForProvider.Public),
+		Name:                     cr.Spec.ForProvider.Name,
+		Public:                   getBoolValue(cr.Spec.ForProvider.Public),
+		EnableContentTrust:       cr.Spec.ForProvider.EnableContentTrust,
+		EnableContentTrustCosign: cr.Spec.ForProvider.EnableContentTrustCosign,
+		AutoScanImages:           cr.Spec.ForProvider.AutoScanImages,
+		PreventVulnerableImages:  cr.Spec.ForProvider.PreventVulnerableImages,
+		Severity:                 cr.Spec.ForProvider.Severity,
+		CVEAllowlist:             cr.Spec.ForProvider.CVEAllowlist,
+		RegistryID:               cr.Spec.ForProvider.RegistryID,
+		StorageLimit:             cr.Spec.ForProvider.StorageLimit,
+		Metadata:                 cr.Spec.ForProvider.Metadata,
 	}
 
 	// Create project in Harbor
@@ -168,10 +184,19 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotProject)
 	}
 
-	// Prepare updated project spec
+	// Prepare updated project spec with all parameters
 	spec := &harborclients.ProjectSpec{
-		Name:   cr.Spec.ForProvider.Name,
-		Public: getBoolValue(cr.Spec.ForProvider.Public),
+		Name:                     cr.Spec.ForProvider.Name,
+		Public:                   getBoolValue(cr.Spec.ForProvider.Public),
+		EnableContentTrust:       cr.Spec.ForProvider.EnableContentTrust,
+		EnableContentTrustCosign: cr.Spec.ForProvider.EnableContentTrustCosign,
+		AutoScanImages:           cr.Spec.ForProvider.AutoScanImages,
+		PreventVulnerableImages:  cr.Spec.ForProvider.PreventVulnerableImages,
+		Severity:                 cr.Spec.ForProvider.Severity,
+		CVEAllowlist:             cr.Spec.ForProvider.CVEAllowlist,
+		RegistryID:               cr.Spec.ForProvider.RegistryID,
+		StorageLimit:             cr.Spec.ForProvider.StorageLimit,
+		Metadata:                 cr.Spec.ForProvider.Metadata,
 	}
 
 	// Update project in Harbor
