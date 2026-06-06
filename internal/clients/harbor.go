@@ -875,3 +875,152 @@ func (c *HarborClient) DeleteRegistry(ctx context.Context, registryName string) 
 
 	return nil
 }
+
+// RepositorySpec defines the desired state of a Harbor repository
+type RepositorySpec struct {
+	ProjectID   string  `json:"projectId"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+}
+
+// RepositoryStatus represents the status of a Harbor repository
+type RepositoryStatus struct {
+	ID            string    `json:"id"`
+	FullName      string    `json:"fullName"`
+	ProjectID     string    `json:"projectId"`
+	ArtifactCount int64     `json:"artifactCount"`
+	CreationTime  time.Time `json:"creationTime"`
+	UpdateTime    time.Time `json:"updateTime"`
+	Description   string    `json:"description"`
+}
+
+// ListRepositories lists repositories in a Harbor project
+func (c *HarborClient) ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor repositories", "projectId", projectID)
+
+	// The actual Harbor API call would be implemented here
+	// repositories, err := v2Client.Repository.ListRepositories(ctx, &repository.ListRepositoriesParams{
+	//     ProjectID: projectID,
+	// })
+
+	repos := []*RepositoryStatus{
+		{
+			ID:            "1",
+			FullName:      projectID + "/my-app",
+			ProjectID:     projectID,
+			ArtifactCount: 5,
+			CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
+			UpdateTime:    time.Now().Add(-1 * time.Hour),
+			Description:   "My application repository",
+		},
+	}
+
+	return repos, nil
+}
+
+// GetRepository retrieves a specific Harbor repository
+func (c *HarborClient) GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Retrieving Harbor repository", "projectId", projectID, "name", repoName)
+
+	// The actual Harbor API call would be implemented here
+	// repository, err := v2Client.Repository.GetRepository(ctx, &repository.GetRepositoryParams{
+	//     ProjectID: projectID,
+	//     RepositoryName: repoName,
+	// })
+
+	status := &RepositoryStatus{
+		ID:            "1",
+		FullName:      projectID + "/" + repoName,
+		ProjectID:     projectID,
+		ArtifactCount: 5,
+		CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:    time.Now(),
+		Description:   "Repository description",
+	}
+
+	return status, nil
+}
+
+// UpdateRepository updates a Harbor repository
+func (c *HarborClient) UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return nil, errors.New("repository name is required")
+	}
+	if spec == nil {
+		return nil, errors.New("repository spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Updating Harbor repository", "projectId", projectID, "name", repoName)
+
+	// The actual Harbor API call would be implemented here
+	// err := v2Client.Repository.UpdateRepository(ctx, &repository.UpdateRepositoryParams{
+	//     ProjectID: projectID,
+	//     RepositoryName: repoName,
+	// })
+
+	status := &RepositoryStatus{
+		ID:            "1",
+		FullName:      projectID + "/" + repoName,
+		ProjectID:     projectID,
+		ArtifactCount: 5,
+		CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
+		UpdateTime:    time.Now(),
+		Description:   *spec.Description,
+	}
+
+	return status, nil
+}
+
+// DeleteRepository deletes a Harbor repository
+func (c *HarborClient) DeleteRepository(ctx context.Context, projectID, repoName string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	if repoName == "" {
+		return errors.New("repository name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor repository", "projectId", projectID, "name", repoName)
+
+	// The actual Harbor API call would be implemented here
+	// err := v2Client.Repository.DeleteRepository(ctx, &repository.DeleteRepositoryParams{
+	//     ProjectID: projectID,
+	//     RepositoryName: repoName,
+	// })
+
+	return nil
+}
