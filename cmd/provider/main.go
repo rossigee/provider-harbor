@@ -24,7 +24,9 @@ import (
 	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
+	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
 	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
+	retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
 	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
 	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
@@ -126,6 +128,12 @@ func main() {
 
 	// Setup Webhook controller (Phase 3)
 	kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
+
+	// Setup Replication controller (Phase 4 - Enterprise)
+	kingpin.FatalIfError(replicationcontroller.Setup(mgr, o), "Cannot setup Replication controller")
+
+	// Setup Retention controller (Phase 4 - Enterprise)
+	kingpin.FatalIfError(retentioncontroller.Setup(mgr, o), "Cannot setup Retention controller")
 
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")

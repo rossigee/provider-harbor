@@ -13,7 +13,9 @@ import (
 	memberv1beta1 "github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	replicationv1beta1 "github.com/rossigee/provider-harbor/apis/replication/v1beta1"
 	repositoryv1beta1 "github.com/rossigee/provider-harbor/apis/repository/v1beta1"
+	retentionv1beta1 "github.com/rossigee/provider-harbor/apis/retention/v1beta1"
 	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	scanv1beta1 "github.com/rossigee/provider-harbor/apis/scan/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
@@ -43,6 +45,10 @@ func init() {
 		// Phase 3: Robot and Webhook for CI/CD automation
 		robotv1beta1.SchemeBuilder.AddToScheme,
 		webhookv1beta1.SchemeBuilder.AddToScheme,
+
+		// Phase 4: Enterprise features - Replication and Retention
+		replicationv1beta1.SchemeBuilder.AddToScheme,
+		retentionv1beta1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
 		v1beta1.SchemeBuilder.AddToScheme,
