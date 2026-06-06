@@ -20,8 +20,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
+	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
+	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
+	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
+	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	"github.com/rossigee/provider-harbor/internal/version"
@@ -102,6 +106,18 @@ func main() {
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
+
+	// Setup Repository controller (Phase 2)
+	kingpin.FatalIfError(repositorycontroller.Setup(mgr, o), "Cannot setup Repository controller")
+
+	// Setup Artifact controller (Phase 2)
+	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
+
+	// Setup Member controller (Phase 2)
+	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
+
+	// Setup Scan controller (Phase 2)
+	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
 
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")
