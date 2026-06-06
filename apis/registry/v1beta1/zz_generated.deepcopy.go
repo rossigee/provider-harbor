@@ -9,7 +9,7 @@ Copyright 2024 Crossplane Harbor Provider.
 package v1beta1
 
 import (
-	v1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -55,7 +55,7 @@ func (in *RegistryCredential) DeepCopyInto(out *RegistryCredential) {
 	}
 	if in.AccessSecretRef != nil {
 		in, out := &in.AccessSecretRef, &out.AccessSecretRef
-		*out = new(v1.SecretKeySelector)
+		*out = new(v2.SecretKeySelector)
 		**out = **in
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -95,9 +96,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.FullName = &status.FullName
 	cr.Status.AtProvider.ProjectID = &status.ProjectID
 	cr.Status.AtProvider.ArtifactCount = &status.ArtifactCount
-	t := status.CreationTime
+	t := metav1.NewTime(status.CreationTime)
 	cr.Status.AtProvider.CreationTime = &t
-	ut := status.UpdateTime
+	ut := metav1.NewTime(status.UpdateTime)
 	cr.Status.AtProvider.UpdateTime = &ut
 	if status.Description != "" {
 		cr.Status.AtProvider.Description = &status.Description
@@ -164,4 +165,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	return managed.ExternalDelete{}, nil
+}
+
+func (c *external) Disconnect(ctx context.Context) error {
+	return c.service.Close()
 }

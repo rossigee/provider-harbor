@@ -9,7 +9,7 @@ Copyright 2024 Crossplane Harbor Provider.
 package v1beta1
 
 import (
-	v1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -110,7 +110,7 @@ func (in *UserParameters) DeepCopyInto(out *UserParameters) {
 	*out = *in
 	if in.PasswordSecretRef != nil {
 		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef
-		*out = new(v1.SecretKeySelector)
+		*out = new(v2.SecretKeySelector)
 		**out = **in
 	}
 	if in.Realname != nil {

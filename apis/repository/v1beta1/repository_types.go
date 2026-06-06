@@ -57,12 +57,17 @@ type RepositorySpec struct {
 
 // A RepositoryStatus represents the observed state of a Repository.
 type RepositoryStatus struct {
-	xpv1.ManagedResourceStatus `json:",inline"`
-	AtProvider                 RepositoryObservation `json:"atProvider,omitempty"`
+	xpv1.ConditionedStatus `json:",inline"`
+	AtProvider             RepositoryObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
+// +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="REPOSITORY",type="string",JSONPath=".spec.forProvider.name"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,harbor}
 
 // A Repository is a managed resource that represents a Harbor repository.
