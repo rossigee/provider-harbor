@@ -104,10 +104,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		cr.Status.AtProvider.Description = &status.Description
 	}
 
-	upToDate := true
-	if cr.Spec.ForProvider.Description != nil && status.Description != "" && *cr.Spec.ForProvider.Description != status.Description {
-		upToDate = false
-	}
+	upToDate := cr.Spec.ForProvider.Description == nil || status.Description == "" || *cr.Spec.ForProvider.Description == status.Description
 
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }

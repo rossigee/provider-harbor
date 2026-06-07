@@ -92,10 +92,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	t := metav1.NewTime(status.CreationTime)
 	cr.Status.AtProvider.CreationTime = &t
 
-	upToDate := true
-	if cr.Spec.ForProvider.Role != "" && status.Role != "" && cr.Spec.ForProvider.Role != status.Role {
-		upToDate = false
-	}
+	upToDate := cr.Spec.ForProvider.Role == "" || status.Role == "" || cr.Spec.ForProvider.Role == status.Role
 
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
