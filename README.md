@@ -1,5 +1,7 @@
 # Provider Harbor
 
+[![Build](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml/badge.svg)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
+
 **✅ V2 NATIVE PROVIDER: PRODUCTION READY** - Fully v2-native Crossplane provider with comprehensive Harbor API coverage
 
 `provider-harbor` is a [Crossplane](https://crossplane.io/) v2-native provider that provides comprehensive integration with the [Harbor](https://goharbor.io/) container registry API.

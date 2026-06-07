@@ -6,14 +6,269 @@ package robot
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
+	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
-// ERROR CASE TESTS
+func TestConnectSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockRobotClient{}, nil
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Robot{})
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+}
+
+func TestConnectClientError(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return nil, errors.New("client creation failed")
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Robot{})
+	if err == nil {
+		t.Error("Connect should fail when client creation fails")
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	ctx := context.Background()
+	ext := &external{
+		service: &mockRobotClient{
+			closeFunc: func() error {
+				return nil
+			},
+		},
+	}
+
+	err := ext.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect should not fail, got %v", err)
+	}
+}
+
+func TestObserveRobotListError(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
+				return nil, errors.New("list failed")
+			},
+		},
+	}
+
+	_, err := ext.Observe(ctx, robot)
+	if err == nil {
+		t.Error("Observe should fail when client returns error")
+	}
+}
+
+func TestObserveRobotWithNilValues(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{
+						ID:            "robot-123",
+						Name:          "my-robot",
+						ProjectID:     pid,
+						Secret:        "",
+						ExpiresAt:     nil,
+						CreationTime:  time.Now(),
+						UpdateTime:    time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+}
+
+func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	otherProjectID := "project-2"
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{
+						ID:            "robot-123",
+						Name:          "my-robot",
+						ProjectID:     &otherProjectID,
+						CreationTime:  time.Now(),
+						UpdateTime:    time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be false when project ID differs")
+	}
+}
+
+func TestUpdateRobotNoID(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{}
+
+	_, err := ext.Update(ctx, robot)
+	if err == nil {
+		t.Error("Update should fail when ID not set")
+	}
+}
+
+func TestDeleteRobotNoID(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{},
+	}
+
+	_, err := ext.Delete(ctx, robot)
+	if err != nil {
+		t.Errorf("Delete should not fail when ID not set, got %v", err)
+	}
+}
+
+func TestConvertPermissions(t *testing.T) {
+	tests := []struct {
+		name      string
+		perms     []v1beta1.RobotPermission
+		wantLen   int
+	}{
+		{
+			name: "empty permissions",
+			perms: []v1beta1.RobotPermission{},
+			wantLen: 0,
+		},
+		{
+			name: "single permission",
+			perms: []v1beta1.RobotPermission{
+				{Namespace: "project", Access: []string{"pull"}},
+			},
+			wantLen: 1,
+		},
+		{
+			name: "multiple permissions",
+			perms: []v1beta1.RobotPermission{
+				{Namespace: "project", Access: []string{"pull", "push"}},
+				{Namespace: "repository", Access: []string{"delete"}},
+			},
+			wantLen: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertPermissions(tt.perms)
+			if len(result) != tt.wantLen {
+				t.Errorf("convertPermissions returned %d, want %d", len(result), tt.wantLen)
+			}
+		})
+	}
+}
 
 func TestConnectNotRobot(t *testing.T) {
 	ctx := context.Background()
@@ -65,7 +320,343 @@ func TestCreateNotRobot(t *testing.T) {
 	}
 }
 
-// HAPPY-PATH AND VALIDATION TESTS
+func TestObserveRobotNotFound(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when robot not found")
+	}
+}
+
+func TestObserveRobotExists(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{
+						ID:            "robot-123",
+						Name:          "my-robot",
+						ProjectID:     pid,
+						Secret:        "secret-token",
+						CreationTime:  time.Now(),
+						UpdateTime:    time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be true")
+	}
+}
+
+func TestObserveRobotNotUpToDate(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	desc := "old description"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Description: &desc,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				newDesc := "new description"
+				return []*harborclients.RobotStatus{
+					{
+						ID:            "robot-123",
+						Name:          "my-robot",
+						ProjectID:     pid,
+						Description:   &newDesc,
+						CreationTime:  time.Now(),
+						UpdateTime:    time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be false when description differs")
+	}
+}
+
+func TestCreateRobotSuccess(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			createRobotFunc: func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return &harborclients.RobotStatus{
+					ID:           "robot-123",
+					Name:         spec.Name,
+					CreationTime: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, robot)
+	if err != nil {
+		t.Errorf("Create should not fail, got %v", err)
+	}
+}
+
+func TestCreateRobotError(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			createRobotFunc: func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return nil, errors.New("create failed")
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, robot)
+	if err == nil {
+		t.Error("Create should fail when client fails")
+	}
+}
+
+func TestUpdateRobotSuccess(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robotID := "robot-123"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+		Status: v1beta1.RobotStatus{
+			AtProvider: v1beta1.RobotObservation{
+				ID: &robotID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			updateRobotFunc: func(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return &harborclients.RobotStatus{
+					ID:         robotID,
+					Name:       spec.Name,
+					UpdateTime: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, robot)
+	if err != nil {
+		t.Errorf("Update should not fail, got %v", err)
+	}
+}
+
+func TestUpdateRobotError(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robotID := "robot-123"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+		Status: v1beta1.RobotStatus{
+			AtProvider: v1beta1.RobotObservation{
+				ID: &robotID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			updateRobotFunc: func(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return nil, errors.New("update failed")
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, robot)
+	if err == nil {
+		t.Error("Update should fail when client fails")
+	}
+}
+
+func TestDeleteRobotSuccess(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robotID := "robot-123"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+		Status: v1beta1.RobotStatus{
+			AtProvider: v1beta1.RobotObservation{
+				ID: &robotID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			deleteRobotFunc: func(ctx context.Context, robotID string) error {
+				return nil
+			},
+		},
+	}
+
+	_, err := ext.Delete(ctx, robot)
+	if err != nil {
+		t.Errorf("Delete should not fail, got %v", err)
+	}
+}
+
+func TestDeleteRobotError(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robotID := "robot-123"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+		Status: v1beta1.RobotStatus{
+			AtProvider: v1beta1.RobotObservation{
+				ID: &robotID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			deleteRobotFunc: func(ctx context.Context, robotID string) error {
+				return errors.New("delete failed")
+			},
+		},
+	}
+
+	_, err := ext.Delete(ctx, robot)
+	if err == nil {
+		t.Error("Delete should fail when client fails")
+	}
+}
 
 func TestRobotHasRequiredFields(t *testing.T) {
 	robot := &v1beta1.Robot{
@@ -333,7 +924,54 @@ func TestRobotExpirationValidation(t *testing.T) {
 	}
 }
 
-// Helper functions
+type mockRobotClient struct {
+	harborclients.HarborClienter
+	listRobotsFunc  func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error)
+	createRobotFunc func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
+	updateRobotFunc func(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
+	deleteRobotFunc func(ctx context.Context, robotID string) error
+	closeFunc       func() error
+}
+
+func (m *mockRobotClient) ListRobots(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
+	if m.listRobotsFunc != nil {
+		return m.listRobotsFunc(ctx, projectID)
+	}
+	return nil, nil
+}
+
+func (m *mockRobotClient) CreateRobot(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+	if m.createRobotFunc != nil {
+		return m.createRobotFunc(ctx, spec)
+	}
+	return nil, nil
+}
+
+func (m *mockRobotClient) UpdateRobot(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+	if m.updateRobotFunc != nil {
+		return m.updateRobotFunc(ctx, robotID, spec)
+	}
+	return nil, nil
+}
+
+func (m *mockRobotClient) DeleteRobot(ctx context.Context, robotID string) error {
+	if m.deleteRobotFunc != nil {
+		return m.deleteRobotFunc(ctx, robotID)
+	}
+	return nil
+}
+
+func (m *mockRobotClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *mockRobotClient) GetBaseURL() string {
+	return "https://harbor.example.com"
+}
+
 func ptrString(s string) *string {
 	return &s
 }

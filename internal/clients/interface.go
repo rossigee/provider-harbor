@@ -2,16 +2,109 @@
 Copyright 2024 Crossplane Harbor Provider.
 */
 
-package testing
+package clients
 
 import (
 	"context"
 	"time"
-
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
-// MockHarborClient is a mock implementation of the Harbor client for testing
+// HarborClienter defines the interface for Harbor client operations
+// This allows for easy mocking in tests
+type HarborClienter interface {
+	// Base client methods
+	GetBaseURL() string
+	Close() error
+	TestConnection(ctx context.Context) error
+	GetVersion(ctx context.Context) (string, error)
+	GetMemoryFootprint() string
+
+	// Project operations
+	GetProject(ctx context.Context, projectName string) (*ProjectStatus, error)
+	CreateProject(ctx context.Context, spec *ProjectSpec) (*ProjectStatus, error)
+	UpdateProject(ctx context.Context, projectID string, spec *ProjectSpec) (*ProjectStatus, error)
+	DeleteProject(ctx context.Context, projectID string) error
+	ListProjects(ctx context.Context) ([]*ProjectStatus, error)
+
+	// Scanner operations
+	CreateScannerRegistration(ctx context.Context, spec *ScannerSpec) (*ScannerStatus, error)
+	GetScannerRegistration(ctx context.Context, scannerID string) (*ScannerStatus, error)
+	UpdateScannerRegistration(ctx context.Context, scannerID string, spec *ScannerSpec) (*ScannerStatus, error)
+	DeleteScannerRegistration(ctx context.Context, scannerID string) error
+	ListScannerRegistrations(ctx context.Context) ([]*ScannerStatus, error)
+
+	// User operations
+	GetUser(ctx context.Context, username string) (*UserStatus, error)
+	CreateUser(ctx context.Context, spec *UserSpec) (*UserStatus, error)
+	UpdateUser(ctx context.Context, username string, spec *UserSpec) (*UserStatus, error)
+	DeleteUser(ctx context.Context, username string) error
+
+	// Registry operations
+	CreateRegistry(ctx context.Context, spec *RegistrySpec) (*RegistryStatus, error)
+	GetRegistry(ctx context.Context, registryName string) (*RegistryStatus, error)
+	UpdateRegistry(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error)
+	DeleteRegistry(ctx context.Context, registryName string) error
+
+	// Repository operations
+	ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error)
+	GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error)
+	UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error)
+	DeleteRepository(ctx context.Context, projectID, repoName string) error
+
+	// Artifact operations
+	ListArtifacts(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error)
+	GetArtifact(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
+	DeleteArtifact(ctx context.Context, projectID, repoName, reference string) error
+	GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
+
+	// Member operations
+	AddProjectMember(ctx context.Context, projectID, username, role string) error
+	ListProjectMembers(ctx context.Context, projectID string) ([]*MemberStatus, error)
+	GetProjectMember(ctx context.Context, projectID, username string) (*MemberStatus, error)
+	UpdateProjectMember(ctx context.Context, projectID, username, role string) error
+	DeleteProjectMember(ctx context.Context, projectID, username string) error
+
+	// Scan operations
+	TriggerScan(ctx context.Context, projectID, repoName, reference string) error
+	ListScans(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error)
+	GetScan(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error)
+	StopScan(ctx context.Context, projectID, repoName, reference string) error
+
+	// Robot operations
+	CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error)
+	ListRobots(ctx context.Context, projectID *string) ([]*RobotStatus, error)
+	GetRobot(ctx context.Context, robotID string) (*RobotStatus, error)
+	UpdateRobot(ctx context.Context, robotID string, spec *RobotSpec) (*RobotStatus, error)
+	DeleteRobot(ctx context.Context, robotID string) error
+
+	// Webhook operations
+	CreateWebhook(ctx context.Context, spec *WebhookSpec) (*WebhookStatus, error)
+	ListWebhooks(ctx context.Context, projectID string) ([]*WebhookStatus, error)
+	GetWebhook(ctx context.Context, projectID, webhookID string) (*WebhookStatus, error)
+	UpdateWebhook(ctx context.Context, projectID, webhookID string, spec *WebhookSpec) (*WebhookStatus, error)
+	DeleteWebhook(ctx context.Context, projectID, webhookID string) error
+
+	// Replication operations
+	CreateReplicationPolicy(ctx context.Context, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error)
+	ListReplicationPolicies(ctx context.Context) ([]*ReplicationPolicyStatus, error)
+	GetReplicationPolicy(ctx context.Context, policyID string) (*ReplicationPolicyStatus, error)
+	UpdateReplicationPolicy(ctx context.Context, policyID string, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error)
+	DeleteReplicationPolicy(ctx context.Context, policyID string) error
+	TriggerReplication(ctx context.Context, policyID string) (*ReplicationExecution, error)
+	ListReplicationExecutions(ctx context.Context, policyID string) ([]*ReplicationExecution, error)
+
+	// Retention operations
+	CreateRetentionPolicy(ctx context.Context, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
+	ListRetentionPolicies(ctx context.Context, projectID string) ([]*RetentionPolicyStatus, error)
+	GetRetentionPolicy(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
+	UpdateRetentionPolicy(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
+	DeleteRetentionPolicy(ctx context.Context, projectID, policyID string) error
+}
+
+// Ensure HarborClient implements HarborClienter
+var _ HarborClienter = (*HarborClient)(nil)
+
+// MockHarborClient implements HarborClienter for testing
 type MockHarborClient struct {
 	// Base client methods
 	GetBaseURLFunc      func() string
@@ -20,85 +113,85 @@ type MockHarborClient struct {
 	GetVersionFunc      func(ctx context.Context) (string, error)
 	GetMemoryFootprintFunc func() string
 
-	// User operations
-	GetUserFunc    func(ctx context.Context, username string) (*harborclients.UserStatus, error)
-	CreateUserFunc func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
-	UpdateUserFunc func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
-	DeleteUserFunc func(ctx context.Context, username string) error
-
 	// Project operations
-	GetProjectFunc    func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error)
-	CreateProjectFunc func(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
-	UpdateProjectFunc func(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
+	GetProjectFunc    func(ctx context.Context, projectName string) (*ProjectStatus, error)
+	CreateProjectFunc func(ctx context.Context, spec *ProjectSpec) (*ProjectStatus, error)
+	UpdateProjectFunc func(ctx context.Context, projectID string, spec *ProjectSpec) (*ProjectStatus, error)
 	DeleteProjectFunc func(ctx context.Context, projectID string) error
-	ListProjectsFunc  func(ctx context.Context) ([]*harborclients.ProjectStatus, error)
+	ListProjectsFunc  func(ctx context.Context) ([]*ProjectStatus, error)
 
 	// Scanner operations
-	CreateScannerRegistrationFunc func(ctx context.Context, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error)
-	GetScannerRegistrationFunc    func(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error)
-	UpdateScannerRegistrationFunc func(ctx context.Context, scannerID string, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error)
+	CreateScannerRegistrationFunc func(ctx context.Context, spec *ScannerSpec) (*ScannerStatus, error)
+	GetScannerRegistrationFunc    func(ctx context.Context, scannerID string) (*ScannerStatus, error)
+	UpdateScannerRegistrationFunc func(ctx context.Context, scannerID string, spec *ScannerSpec) (*ScannerStatus, error)
 	DeleteScannerRegistrationFunc func(ctx context.Context, scannerID string) error
-	ListScannerRegistrationsFunc  func(ctx context.Context) ([]*harborclients.ScannerStatus, error)
+	ListScannerRegistrationsFunc  func(ctx context.Context) ([]*ScannerStatus, error)
+
+	// User operations
+	GetUserFunc    func(ctx context.Context, username string) (*UserStatus, error)
+	CreateUserFunc func(ctx context.Context, spec *UserSpec) (*UserStatus, error)
+	UpdateUserFunc func(ctx context.Context, username string, spec *UserSpec) (*UserStatus, error)
+	DeleteUserFunc func(ctx context.Context, username string) error
 
 	// Registry operations
-	CreateRegistryFunc func(ctx context.Context, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error)
-	GetRegistryFunc    func(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error)
-	UpdateRegistryFunc func(ctx context.Context, registryName string, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error)
+	CreateRegistryFunc func(ctx context.Context, spec *RegistrySpec) (*RegistryStatus, error)
+	GetRegistryFunc    func(ctx context.Context, registryName string) (*RegistryStatus, error)
+	UpdateRegistryFunc func(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error)
 	DeleteRegistryFunc func(ctx context.Context, registryName string) error
 
 	// Repository operations
-	ListRepositoriesFunc func(ctx context.Context, projectID string) ([]*harborclients.RepositoryStatus, error)
-	GetRepositoryFunc    func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error)
-	UpdateRepositoryFunc func(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error)
+	ListRepositoriesFunc func(ctx context.Context, projectID string) ([]*RepositoryStatus, error)
+	GetRepositoryFunc    func(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error)
+	UpdateRepositoryFunc func(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error)
 	DeleteRepositoryFunc func(ctx context.Context, projectID, repoName string) error
 
 	// Artifact operations
-	ListArtifactsFunc              func(ctx context.Context, projectID, repoName string) ([]*harborclients.ArtifactStatus, error)
-	GetArtifactFunc                func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error)
+	ListArtifactsFunc              func(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error)
+	GetArtifactFunc                func(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
 	DeleteArtifactFunc             func(ctx context.Context, projectID, repoName, reference string) error
-	GetArtifactVulnerabilitiesFunc func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error)
+	GetArtifactVulnerabilitiesFunc func(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
 
 	// Member operations
 	AddProjectMemberFunc    func(ctx context.Context, projectID, username, role string) error
-	ListProjectMembersFunc  func(ctx context.Context, projectID string) ([]*harborclients.MemberStatus, error)
-	GetProjectMemberFunc    func(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error)
+	ListProjectMembersFunc  func(ctx context.Context, projectID string) ([]*MemberStatus, error)
+	GetProjectMemberFunc    func(ctx context.Context, projectID, username string) (*MemberStatus, error)
 	UpdateProjectMemberFunc func(ctx context.Context, projectID, username, role string) error
 	DeleteProjectMemberFunc func(ctx context.Context, projectID, username string) error
 
 	// Scan operations
 	TriggerScanFunc func(ctx context.Context, projectID, repoName, reference string) error
-	ListScansFunc   func(ctx context.Context, projectID, repoName string) ([]*harborclients.ScanStatus, error)
-	GetScanFunc     func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error)
+	ListScansFunc   func(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error)
+	GetScanFunc     func(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error)
 	StopScanFunc    func(ctx context.Context, projectID, repoName, reference string) error
 
 	// Robot operations
-	CreateRobotFunc func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
-	ListRobotsFunc  func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error)
-	GetRobotFunc    func(ctx context.Context, robotID string) (*harborclients.RobotStatus, error)
-	UpdateRobotFunc func(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
+	CreateRobotFunc func(ctx context.Context, spec *RobotSpec) (*RobotStatus, error)
+	ListRobotsFunc  func(ctx context.Context, projectID *string) ([]*RobotStatus, error)
+	GetRobotFunc    func(ctx context.Context, robotID string) (*RobotStatus, error)
+	UpdateRobotFunc func(ctx context.Context, robotID string, spec *RobotSpec) (*RobotStatus, error)
 	DeleteRobotFunc func(ctx context.Context, robotID string) error
 
 	// Webhook operations
-	CreateWebhookFunc func(ctx context.Context, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error)
-	ListWebhooksFunc  func(ctx context.Context, projectID string) ([]*harborclients.WebhookStatus, error)
-	GetWebhookFunc    func(ctx context.Context, projectID, webhookID string) (*harborclients.WebhookStatus, error)
-	UpdateWebhookFunc func(ctx context.Context, projectID, webhookID string, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error)
+	CreateWebhookFunc func(ctx context.Context, spec *WebhookSpec) (*WebhookStatus, error)
+	ListWebhooksFunc  func(ctx context.Context, projectID string) ([]*WebhookStatus, error)
+	GetWebhookFunc    func(ctx context.Context, projectID, webhookID string) (*WebhookStatus, error)
+	UpdateWebhookFunc func(ctx context.Context, projectID, webhookID string, spec *WebhookSpec) (*WebhookStatus, error)
 	DeleteWebhookFunc func(ctx context.Context, projectID, webhookID string) error
 
 	// Replication operations
-	CreateReplicationPolicyFunc   func(ctx context.Context, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error)
-	ListReplicationPoliciesFunc   func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error)
-	GetReplicationPolicyFunc      func(ctx context.Context, policyID string) (*harborclients.ReplicationPolicyStatus, error)
-	UpdateReplicationPolicyFunc   func(ctx context.Context, policyID string, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error)
+	CreateReplicationPolicyFunc   func(ctx context.Context, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error)
+	ListReplicationPoliciesFunc   func(ctx context.Context) ([]*ReplicationPolicyStatus, error)
+	GetReplicationPolicyFunc      func(ctx context.Context, policyID string) (*ReplicationPolicyStatus, error)
+	UpdateReplicationPolicyFunc   func(ctx context.Context, policyID string, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error)
 	DeleteReplicationPolicyFunc   func(ctx context.Context, policyID string) error
-	TriggerReplicationFunc        func(ctx context.Context, policyID string) (*harborclients.ReplicationExecution, error)
-	ListReplicationExecutionsFunc func(ctx context.Context, policyID string) ([]*harborclients.ReplicationExecution, error)
+	TriggerReplicationFunc        func(ctx context.Context, policyID string) (*ReplicationExecution, error)
+	ListReplicationExecutionsFunc func(ctx context.Context, policyID string) ([]*ReplicationExecution, error)
 
 	// Retention operations
-	CreateRetentionPolicyFunc   func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
-	ListRetentionPoliciesFunc   func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
-	GetRetentionPolicyFunc      func(ctx context.Context, projectID, policyID string) (*harborclients.RetentionPolicyStatus, error)
-	UpdateRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
+	CreateRetentionPolicyFunc   func(ctx context.Context, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
+	ListRetentionPoliciesFunc   func(ctx context.Context, projectID string) ([]*RetentionPolicyStatus, error)
+	GetRetentionPolicyFunc      func(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
+	UpdateRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
 	DeleteRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string) error
 }
 
@@ -143,7 +236,7 @@ func (m *MockHarborClient) GetMemoryFootprint() string {
 }
 
 // GetUser calls GetUserFunc
-func (m *MockHarborClient) GetUser(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+func (m *MockHarborClient) GetUser(ctx context.Context, username string) (*UserStatus, error) {
 	if m.GetUserFunc != nil {
 		return m.GetUserFunc(ctx, username)
 	}
@@ -151,11 +244,11 @@ func (m *MockHarborClient) GetUser(ctx context.Context, username string) (*harbo
 }
 
 // CreateUser calls CreateUserFunc
-func (m *MockHarborClient) CreateUser(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+func (m *MockHarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserStatus, error) {
 	if m.CreateUserFunc != nil {
 		return m.CreateUserFunc(ctx, spec)
 	}
-	return &harborclients.UserStatus{
+	return &UserStatus{
 		Username:  spec.Username,
 		Email:     spec.Email,
 		AdminFlag: spec.AdminFlag,
@@ -164,11 +257,11 @@ func (m *MockHarborClient) CreateUser(ctx context.Context, spec *harborclients.U
 }
 
 // UpdateUser calls UpdateUserFunc
-func (m *MockHarborClient) UpdateUser(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+func (m *MockHarborClient) UpdateUser(ctx context.Context, username string, spec *UserSpec) (*UserStatus, error) {
 	if m.UpdateUserFunc != nil {
 		return m.UpdateUserFunc(ctx, username, spec)
 	}
-	return &harborclients.UserStatus{
+	return &UserStatus{
 		Username:  spec.Username,
 		Email:     spec.Email,
 		AdminFlag: spec.AdminFlag,
@@ -184,7 +277,7 @@ func (m *MockHarborClient) DeleteUser(ctx context.Context, username string) erro
 }
 
 // GetProject calls GetProjectFunc
-func (m *MockHarborClient) GetProject(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+func (m *MockHarborClient) GetProject(ctx context.Context, projectName string) (*ProjectStatus, error) {
 	if m.GetProjectFunc != nil {
 		return m.GetProjectFunc(ctx, projectName)
 	}
@@ -192,22 +285,22 @@ func (m *MockHarborClient) GetProject(ctx context.Context, projectName string) (
 }
 
 // CreateProject calls CreateProjectFunc
-func (m *MockHarborClient) CreateProject(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+func (m *MockHarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*ProjectStatus, error) {
 	if m.CreateProjectFunc != nil {
 		return m.CreateProjectFunc(ctx, spec)
 	}
-	return &harborclients.ProjectStatus{
+	return &ProjectStatus{
 		Name:   spec.Name,
 		Public: spec.Public,
 	}, nil
 }
 
 // UpdateProject calls UpdateProjectFunc
-func (m *MockHarborClient) UpdateProject(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+func (m *MockHarborClient) UpdateProject(ctx context.Context, projectID string, spec *ProjectSpec) (*ProjectStatus, error) {
 	if m.UpdateProjectFunc != nil {
 		return m.UpdateProjectFunc(ctx, projectID, spec)
 	}
-	return &harborclients.ProjectStatus{
+	return &ProjectStatus{
 		Name:   spec.Name,
 		Public: spec.Public,
 	}, nil
@@ -222,7 +315,7 @@ func (m *MockHarborClient) DeleteProject(ctx context.Context, projectID string) 
 }
 
 // ListProjects calls ListProjectsFunc
-func (m *MockHarborClient) ListProjects(ctx context.Context) ([]*harborclients.ProjectStatus, error) {
+func (m *MockHarborClient) ListProjects(ctx context.Context) ([]*ProjectStatus, error) {
 	if m.ListProjectsFunc != nil {
 		return m.ListProjectsFunc(ctx)
 	}
@@ -230,11 +323,11 @@ func (m *MockHarborClient) ListProjects(ctx context.Context) ([]*harborclients.P
 }
 
 // CreateScannerRegistration calls CreateScannerRegistrationFunc
-func (m *MockHarborClient) CreateScannerRegistration(ctx context.Context, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error) {
+func (m *MockHarborClient) CreateScannerRegistration(ctx context.Context, spec *ScannerSpec) (*ScannerStatus, error) {
 	if m.CreateScannerRegistrationFunc != nil {
 		return m.CreateScannerRegistrationFunc(ctx, spec)
 	}
-	return &harborclients.ScannerStatus{
+	return &ScannerStatus{
 		UUID:       "mock-scanner-uuid",
 		Name:       spec.Name,
 		URL:        spec.URL,
@@ -244,7 +337,7 @@ func (m *MockHarborClient) CreateScannerRegistration(ctx context.Context, spec *
 }
 
 // GetScannerRegistration calls GetScannerRegistrationFunc
-func (m *MockHarborClient) GetScannerRegistration(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error) {
+func (m *MockHarborClient) GetScannerRegistration(ctx context.Context, scannerID string) (*ScannerStatus, error) {
 	if m.GetScannerRegistrationFunc != nil {
 		return m.GetScannerRegistrationFunc(ctx, scannerID)
 	}
@@ -252,11 +345,11 @@ func (m *MockHarborClient) GetScannerRegistration(ctx context.Context, scannerID
 }
 
 // UpdateScannerRegistration calls UpdateScannerRegistrationFunc
-func (m *MockHarborClient) UpdateScannerRegistration(ctx context.Context, scannerID string, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error) {
+func (m *MockHarborClient) UpdateScannerRegistration(ctx context.Context, scannerID string, spec *ScannerSpec) (*ScannerStatus, error) {
 	if m.UpdateScannerRegistrationFunc != nil {
 		return m.UpdateScannerRegistrationFunc(ctx, scannerID, spec)
 	}
-	return &harborclients.ScannerStatus{
+	return &ScannerStatus{
 		UUID:       scannerID,
 		Name:       spec.Name,
 		URL:        spec.URL,
@@ -274,7 +367,7 @@ func (m *MockHarborClient) DeleteScannerRegistration(ctx context.Context, scanne
 }
 
 // ListScannerRegistrations calls ListScannerRegistrationsFunc
-func (m *MockHarborClient) ListScannerRegistrations(ctx context.Context) ([]*harborclients.ScannerStatus, error) {
+func (m *MockHarborClient) ListScannerRegistrations(ctx context.Context) ([]*ScannerStatus, error) {
 	if m.ListScannerRegistrationsFunc != nil {
 		return m.ListScannerRegistrationsFunc(ctx)
 	}
@@ -282,11 +375,11 @@ func (m *MockHarborClient) ListScannerRegistrations(ctx context.Context) ([]*har
 }
 
 // CreateRegistry calls CreateRegistryFunc
-func (m *MockHarborClient) CreateRegistry(ctx context.Context, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error) {
+func (m *MockHarborClient) CreateRegistry(ctx context.Context, spec *RegistrySpec) (*RegistryStatus, error) {
 	if m.CreateRegistryFunc != nil {
 		return m.CreateRegistryFunc(ctx, spec)
 	}
-	return &harborclients.RegistryStatus{
+	return &RegistryStatus{
 		Name:      spec.Name,
 		Type:      spec.Type,
 		URL:       spec.URL,
@@ -296,7 +389,7 @@ func (m *MockHarborClient) CreateRegistry(ctx context.Context, spec *harborclien
 }
 
 // GetRegistry calls GetRegistryFunc
-func (m *MockHarborClient) GetRegistry(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
+func (m *MockHarborClient) GetRegistry(ctx context.Context, registryName string) (*RegistryStatus, error) {
 	if m.GetRegistryFunc != nil {
 		return m.GetRegistryFunc(ctx, registryName)
 	}
@@ -304,11 +397,11 @@ func (m *MockHarborClient) GetRegistry(ctx context.Context, registryName string)
 }
 
 // UpdateRegistry calls UpdateRegistryFunc
-func (m *MockHarborClient) UpdateRegistry(ctx context.Context, registryName string, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error) {
+func (m *MockHarborClient) UpdateRegistry(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error) {
 	if m.UpdateRegistryFunc != nil {
 		return m.UpdateRegistryFunc(ctx, registryName, spec)
 	}
-	return &harborclients.RegistryStatus{
+	return &RegistryStatus{
 		Name:      spec.Name,
 		Type:      spec.Type,
 		URL:       spec.URL,
@@ -326,7 +419,7 @@ func (m *MockHarborClient) DeleteRegistry(ctx context.Context, registryName stri
 }
 
 // ListRepositories calls ListRepositoriesFunc
-func (m *MockHarborClient) ListRepositories(ctx context.Context, projectID string) ([]*harborclients.RepositoryStatus, error) {
+func (m *MockHarborClient) ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error) {
 	if m.ListRepositoriesFunc != nil {
 		return m.ListRepositoriesFunc(ctx, projectID)
 	}
@@ -334,7 +427,7 @@ func (m *MockHarborClient) ListRepositories(ctx context.Context, projectID strin
 }
 
 // GetRepository calls GetRepositoryFunc
-func (m *MockHarborClient) GetRepository(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
+func (m *MockHarborClient) GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error) {
 	if m.GetRepositoryFunc != nil {
 		return m.GetRepositoryFunc(ctx, projectID, repoName)
 	}
@@ -342,11 +435,11 @@ func (m *MockHarborClient) GetRepository(ctx context.Context, projectID, repoNam
 }
 
 // UpdateRepository calls UpdateRepositoryFunc
-func (m *MockHarborClient) UpdateRepository(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error) {
+func (m *MockHarborClient) UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error) {
 	if m.UpdateRepositoryFunc != nil {
 		return m.UpdateRepositoryFunc(ctx, projectID, repoName, spec)
 	}
-	return &harborclients.RepositoryStatus{
+	return &RepositoryStatus{
 		ID:            "1",
 		FullName:      projectID + "/" + repoName,
 		ProjectID:     projectID,
@@ -365,7 +458,7 @@ func (m *MockHarborClient) DeleteRepository(ctx context.Context, projectID, repo
 }
 
 // ListArtifacts calls ListArtifactsFunc
-func (m *MockHarborClient) ListArtifacts(ctx context.Context, projectID, repoName string) ([]*harborclients.ArtifactStatus, error) {
+func (m *MockHarborClient) ListArtifacts(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error) {
 	if m.ListArtifactsFunc != nil {
 		return m.ListArtifactsFunc(ctx, projectID, repoName)
 	}
@@ -373,7 +466,7 @@ func (m *MockHarborClient) ListArtifacts(ctx context.Context, projectID, repoNam
 }
 
 // GetArtifact calls GetArtifactFunc
-func (m *MockHarborClient) GetArtifact(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error) {
+func (m *MockHarborClient) GetArtifact(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
 	if m.GetArtifactFunc != nil {
 		return m.GetArtifactFunc(ctx, projectID, repoName, reference)
 	}
@@ -389,7 +482,7 @@ func (m *MockHarborClient) DeleteArtifact(ctx context.Context, projectID, repoNa
 }
 
 // GetArtifactVulnerabilities calls GetArtifactVulnerabilitiesFunc
-func (m *MockHarborClient) GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error) {
+func (m *MockHarborClient) GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
 	if m.GetArtifactVulnerabilitiesFunc != nil {
 		return m.GetArtifactVulnerabilitiesFunc(ctx, projectID, repoName, reference)
 	}
@@ -405,7 +498,7 @@ func (m *MockHarborClient) AddProjectMember(ctx context.Context, projectID, user
 }
 
 // ListProjectMembers calls ListProjectMembersFunc
-func (m *MockHarborClient) ListProjectMembers(ctx context.Context, projectID string) ([]*harborclients.MemberStatus, error) {
+func (m *MockHarborClient) ListProjectMembers(ctx context.Context, projectID string) ([]*MemberStatus, error) {
 	if m.ListProjectMembersFunc != nil {
 		return m.ListProjectMembersFunc(ctx, projectID)
 	}
@@ -413,7 +506,7 @@ func (m *MockHarborClient) ListProjectMembers(ctx context.Context, projectID str
 }
 
 // GetProjectMember calls GetProjectMemberFunc
-func (m *MockHarborClient) GetProjectMember(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error) {
+func (m *MockHarborClient) GetProjectMember(ctx context.Context, projectID, username string) (*MemberStatus, error) {
 	if m.GetProjectMemberFunc != nil {
 		return m.GetProjectMemberFunc(ctx, projectID, username)
 	}
@@ -445,7 +538,7 @@ func (m *MockHarborClient) TriggerScan(ctx context.Context, projectID, repoName,
 }
 
 // ListScans calls ListScansFunc
-func (m *MockHarborClient) ListScans(ctx context.Context, projectID, repoName string) ([]*harborclients.ScanStatus, error) {
+func (m *MockHarborClient) ListScans(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error) {
 	if m.ListScansFunc != nil {
 		return m.ListScansFunc(ctx, projectID, repoName)
 	}
@@ -453,7 +546,7 @@ func (m *MockHarborClient) ListScans(ctx context.Context, projectID, repoName st
 }
 
 // GetScan calls GetScanFunc
-func (m *MockHarborClient) GetScan(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error) {
+func (m *MockHarborClient) GetScan(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error) {
 	if m.GetScanFunc != nil {
 		return m.GetScanFunc(ctx, projectID, repoName, reference)
 	}
@@ -469,11 +562,11 @@ func (m *MockHarborClient) StopScan(ctx context.Context, projectID, repoName, re
 }
 
 // CreateRobot calls CreateRobotFunc
-func (m *MockHarborClient) CreateRobot(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+func (m *MockHarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error) {
 	if m.CreateRobotFunc != nil {
 		return m.CreateRobotFunc(ctx, spec)
 	}
-	return &harborclients.RobotStatus{
+	return &RobotStatus{
 		ID:           "mock-robot-id",
 		Name:         spec.Name,
 		Description:  spec.Description,
@@ -485,7 +578,7 @@ func (m *MockHarborClient) CreateRobot(ctx context.Context, spec *harborclients.
 }
 
 // ListRobots calls ListRobotsFunc
-func (m *MockHarborClient) ListRobots(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
+func (m *MockHarborClient) ListRobots(ctx context.Context, projectID *string) ([]*RobotStatus, error) {
 	if m.ListRobotsFunc != nil {
 		return m.ListRobotsFunc(ctx, projectID)
 	}
@@ -493,7 +586,7 @@ func (m *MockHarborClient) ListRobots(ctx context.Context, projectID *string) ([
 }
 
 // GetRobot calls GetRobotFunc
-func (m *MockHarborClient) GetRobot(ctx context.Context, robotID string) (*harborclients.RobotStatus, error) {
+func (m *MockHarborClient) GetRobot(ctx context.Context, robotID string) (*RobotStatus, error) {
 	if m.GetRobotFunc != nil {
 		return m.GetRobotFunc(ctx, robotID)
 	}
@@ -501,11 +594,11 @@ func (m *MockHarborClient) GetRobot(ctx context.Context, robotID string) (*harbo
 }
 
 // UpdateRobot calls UpdateRobotFunc
-func (m *MockHarborClient) UpdateRobot(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+func (m *MockHarborClient) UpdateRobot(ctx context.Context, robotID string, spec *RobotSpec) (*RobotStatus, error) {
 	if m.UpdateRobotFunc != nil {
 		return m.UpdateRobotFunc(ctx, robotID, spec)
 	}
-	return &harborclients.RobotStatus{
+	return &RobotStatus{
 		ID:           robotID,
 		Name:         spec.Name,
 		Description:  spec.Description,
@@ -524,11 +617,11 @@ func (m *MockHarborClient) DeleteRobot(ctx context.Context, robotID string) erro
 }
 
 // CreateWebhook calls CreateWebhookFunc
-func (m *MockHarborClient) CreateWebhook(ctx context.Context, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error) {
+func (m *MockHarborClient) CreateWebhook(ctx context.Context, spec *WebhookSpec) (*WebhookStatus, error) {
 	if m.CreateWebhookFunc != nil {
 		return m.CreateWebhookFunc(ctx, spec)
 	}
-	return &harborclients.WebhookStatus{
+	return &WebhookStatus{
 		ID:           "mock-webhook-id",
 		ProjectID:    spec.ProjectID,
 		Name:         spec.Name,
@@ -541,7 +634,7 @@ func (m *MockHarborClient) CreateWebhook(ctx context.Context, spec *harborclient
 }
 
 // ListWebhooks calls ListWebhooksFunc
-func (m *MockHarborClient) ListWebhooks(ctx context.Context, projectID string) ([]*harborclients.WebhookStatus, error) {
+func (m *MockHarborClient) ListWebhooks(ctx context.Context, projectID string) ([]*WebhookStatus, error) {
 	if m.ListWebhooksFunc != nil {
 		return m.ListWebhooksFunc(ctx, projectID)
 	}
@@ -549,7 +642,7 @@ func (m *MockHarborClient) ListWebhooks(ctx context.Context, projectID string) (
 }
 
 // GetWebhook calls GetWebhookFunc
-func (m *MockHarborClient) GetWebhook(ctx context.Context, projectID, webhookID string) (*harborclients.WebhookStatus, error) {
+func (m *MockHarborClient) GetWebhook(ctx context.Context, projectID, webhookID string) (*WebhookStatus, error) {
 	if m.GetWebhookFunc != nil {
 		return m.GetWebhookFunc(ctx, projectID, webhookID)
 	}
@@ -557,11 +650,11 @@ func (m *MockHarborClient) GetWebhook(ctx context.Context, projectID, webhookID 
 }
 
 // UpdateWebhook calls UpdateWebhookFunc
-func (m *MockHarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID string, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error) {
+func (m *MockHarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID string, spec *WebhookSpec) (*WebhookStatus, error) {
 	if m.UpdateWebhookFunc != nil {
 		return m.UpdateWebhookFunc(ctx, projectID, webhookID, spec)
 	}
-	return &harborclients.WebhookStatus{
+	return &WebhookStatus{
 		ID:           webhookID,
 		ProjectID:    projectID,
 		Name:         spec.Name,
@@ -582,11 +675,11 @@ func (m *MockHarborClient) DeleteWebhook(ctx context.Context, projectID, webhook
 }
 
 // CreateReplicationPolicy calls CreateReplicationPolicyFunc
-func (m *MockHarborClient) CreateReplicationPolicy(ctx context.Context, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error) {
+func (m *MockHarborClient) CreateReplicationPolicy(ctx context.Context, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error) {
 	if m.CreateReplicationPolicyFunc != nil {
 		return m.CreateReplicationPolicyFunc(ctx, spec)
 	}
-	return &harborclients.ReplicationPolicyStatus{
+	return &ReplicationPolicyStatus{
 		ID:           "mock-policy-id",
 		Name:         spec.Name,
 		Description:  spec.Description,
@@ -597,7 +690,7 @@ func (m *MockHarborClient) CreateReplicationPolicy(ctx context.Context, spec *ha
 }
 
 // ListReplicationPolicies calls ListReplicationPoliciesFunc
-func (m *MockHarborClient) ListReplicationPolicies(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
+func (m *MockHarborClient) ListReplicationPolicies(ctx context.Context) ([]*ReplicationPolicyStatus, error) {
 	if m.ListReplicationPoliciesFunc != nil {
 		return m.ListReplicationPoliciesFunc(ctx)
 	}
@@ -605,7 +698,7 @@ func (m *MockHarborClient) ListReplicationPolicies(ctx context.Context) ([]*harb
 }
 
 // GetReplicationPolicy calls GetReplicationPolicyFunc
-func (m *MockHarborClient) GetReplicationPolicy(ctx context.Context, policyID string) (*harborclients.ReplicationPolicyStatus, error) {
+func (m *MockHarborClient) GetReplicationPolicy(ctx context.Context, policyID string) (*ReplicationPolicyStatus, error) {
 	if m.GetReplicationPolicyFunc != nil {
 		return m.GetReplicationPolicyFunc(ctx, policyID)
 	}
@@ -613,11 +706,11 @@ func (m *MockHarborClient) GetReplicationPolicy(ctx context.Context, policyID st
 }
 
 // UpdateReplicationPolicy calls UpdateReplicationPolicyFunc
-func (m *MockHarborClient) UpdateReplicationPolicy(ctx context.Context, policyID string, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error) {
+func (m *MockHarborClient) UpdateReplicationPolicy(ctx context.Context, policyID string, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error) {
 	if m.UpdateReplicationPolicyFunc != nil {
 		return m.UpdateReplicationPolicyFunc(ctx, policyID, spec)
 	}
-	return &harborclients.ReplicationPolicyStatus{
+	return &ReplicationPolicyStatus{
 		ID:           policyID,
 		Name:         spec.Name,
 		Description:  spec.Description,
@@ -636,11 +729,11 @@ func (m *MockHarborClient) DeleteReplicationPolicy(ctx context.Context, policyID
 }
 
 // TriggerReplication calls TriggerReplicationFunc
-func (m *MockHarborClient) TriggerReplication(ctx context.Context, policyID string) (*harborclients.ReplicationExecution, error) {
+func (m *MockHarborClient) TriggerReplication(ctx context.Context, policyID string) (*ReplicationExecution, error) {
 	if m.TriggerReplicationFunc != nil {
 		return m.TriggerReplicationFunc(ctx, policyID)
 	}
-	return &harborclients.ReplicationExecution{
+	return &ReplicationExecution{
 		ID:        "mock-execution-id",
 		PolicyID:  policyID,
 		Status:    "pending",
@@ -649,7 +742,7 @@ func (m *MockHarborClient) TriggerReplication(ctx context.Context, policyID stri
 }
 
 // ListReplicationExecutions calls ListReplicationExecutionsFunc
-func (m *MockHarborClient) ListReplicationExecutions(ctx context.Context, policyID string) ([]*harborclients.ReplicationExecution, error) {
+func (m *MockHarborClient) ListReplicationExecutions(ctx context.Context, policyID string) ([]*ReplicationExecution, error) {
 	if m.ListReplicationExecutionsFunc != nil {
 		return m.ListReplicationExecutionsFunc(ctx, policyID)
 	}
@@ -657,11 +750,11 @@ func (m *MockHarborClient) ListReplicationExecutions(ctx context.Context, policy
 }
 
 // CreateRetentionPolicy calls CreateRetentionPolicyFunc
-func (m *MockHarborClient) CreateRetentionPolicy(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error) {
+func (m *MockHarborClient) CreateRetentionPolicy(ctx context.Context, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error) {
 	if m.CreateRetentionPolicyFunc != nil {
 		return m.CreateRetentionPolicyFunc(ctx, spec)
 	}
-	return &harborclients.RetentionPolicyStatus{
+	return &RetentionPolicyStatus{
 		ID:           "mock-retention-id",
 		ProjectID:    spec.ProjectID,
 		Description:  spec.Description,
@@ -672,7 +765,7 @@ func (m *MockHarborClient) CreateRetentionPolicy(ctx context.Context, spec *harb
 }
 
 // ListRetentionPolicies calls ListRetentionPoliciesFunc
-func (m *MockHarborClient) ListRetentionPolicies(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
+func (m *MockHarborClient) ListRetentionPolicies(ctx context.Context, projectID string) ([]*RetentionPolicyStatus, error) {
 	if m.ListRetentionPoliciesFunc != nil {
 		return m.ListRetentionPoliciesFunc(ctx, projectID)
 	}
@@ -680,7 +773,7 @@ func (m *MockHarborClient) ListRetentionPolicies(ctx context.Context, projectID 
 }
 
 // GetRetentionPolicy calls GetRetentionPolicyFunc
-func (m *MockHarborClient) GetRetentionPolicy(ctx context.Context, projectID, policyID string) (*harborclients.RetentionPolicyStatus, error) {
+func (m *MockHarborClient) GetRetentionPolicy(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error) {
 	if m.GetRetentionPolicyFunc != nil {
 		return m.GetRetentionPolicyFunc(ctx, projectID, policyID)
 	}
@@ -688,11 +781,11 @@ func (m *MockHarborClient) GetRetentionPolicy(ctx context.Context, projectID, po
 }
 
 // UpdateRetentionPolicy calls UpdateRetentionPolicyFunc
-func (m *MockHarborClient) UpdateRetentionPolicy(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error) {
+func (m *MockHarborClient) UpdateRetentionPolicy(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error) {
 	if m.UpdateRetentionPolicyFunc != nil {
 		return m.UpdateRetentionPolicyFunc(ctx, projectID, policyID, spec)
 	}
-	return &harborclients.RetentionPolicyStatus{
+	return &RetentionPolicyStatus{
 		ID:           policyID,
 		ProjectID:    projectID,
 		Description:  spec.Description,

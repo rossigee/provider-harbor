@@ -6,14 +6,18 @@ package project
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
-
-// ERROR CASE TESTS
 
 func TestConnectNotProject(t *testing.T) {
 	ctx := context.Background()
@@ -65,7 +69,287 @@ func TestCreateNotProject(t *testing.T) {
 	}
 }
 
-// HAPPY-PATH AND VALIDATION TESTS
+func TestObserveProjectNotFound(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return nil, errors.New("not found")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, project)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when project not found")
+	}
+}
+
+func TestObserveProjectExists(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name:   "my-project",
+				Public: ptrBool(false),
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return &harborclients.ProjectStatus{
+					Name:      "my-project",
+					Public:    false,
+					OwnerID:   1,
+					OwnerName: "admin",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, project)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be true")
+	}
+}
+
+func TestObserveProjectNotUpToDate(t *testing.T) {
+	ctx := context.Background()
+	isPublic := true
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name:   "my-project",
+				Public: &isPublic,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return &harborclients.ProjectStatus{
+					Name:      "my-project",
+					Public:    false,
+					OwnerID:   1,
+					OwnerName: "admin",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, project)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be false when public flag differs")
+	}
+}
+
+func TestCreateProjectSuccess(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			createProjectFunc: func(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+				return &harborclients.ProjectStatus{
+					Name:      spec.Name,
+					Public:    spec.Public,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, project)
+	if err != nil {
+		t.Errorf("Create should not fail, got %v", err)
+	}
+}
+
+func TestCreateProjectError(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			createProjectFunc: func(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+				return nil, errors.New("create failed")
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, project)
+	if err == nil {
+		t.Error("Create should fail when client fails")
+	}
+}
+
+func TestUpdateProjectSuccess(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name:   "my-project",
+				Public: ptrBool(true),
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			updateProjectFunc: func(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+				return &harborclients.ProjectStatus{
+					Name:      spec.Name,
+					Public:    spec.Public,
+					UpdatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, project)
+	if err != nil {
+		t.Errorf("Update should not fail, got %v", err)
+	}
+}
+
+func TestDeleteProjectSuccess(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			deleteProjectFunc: func(ctx context.Context, projectID string) error {
+				return nil
+			},
+		},
+	}
+
+	_, err := ext.Delete(ctx, project)
+	if err != nil {
+		t.Errorf("Delete should not fail, got %v", err)
+	}
+}
+
+func TestDeleteProjectError(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			deleteProjectFunc: func(ctx context.Context, projectID string) error {
+				return errors.New("delete failed")
+			},
+		},
+	}
+
+	_, err := ext.Delete(ctx, project)
+	if err == nil {
+		t.Error("Delete should fail when client fails")
+	}
+}
+
+func TestHelperFunctions(t *testing.T) {
+	intVal := int64(42)
+	result := getInt64Ptr(intVal)
+	if result == nil || *result != intVal {
+		t.Errorf("getInt64Ptr failed")
+	}
+
+	strVal := "test"
+	resultStr := getStringPtr(strVal)
+	if resultStr == nil || *resultStr != strVal {
+		t.Errorf("getStringPtr failed")
+	}
+
+	boolVal := true
+	resultBool := getBoolValue(&boolVal)
+	if !resultBool {
+		t.Errorf("getBoolValue failed")
+	}
+
+	nilBool := getBoolValue(nil)
+	if nilBool {
+		t.Errorf("getBoolValue with nil should return false")
+	}
+}
 
 func TestProjectHasRequiredFields(t *testing.T) {
 	project := &v1beta1.Project{
@@ -158,7 +442,7 @@ func TestProjectParametersValidation(t *testing.T) {
 			name: "valid with storage limit",
 			params: v1beta1.ProjectParameters{
 				Name:         "project-with-quota",
-				StorageLimit: ptrInt64(1073741824), // 1GB
+				StorageLimit: ptrInt64(1073741824),
 			},
 			isValid: true,
 		},
@@ -254,6 +538,160 @@ func TestProjectStorageLimitValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConnectProjectSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockProjectClient{}, nil
+		},
+	}
+
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext, err := conn.Connect(ctx, project)
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+	if ext == nil {
+		t.Error("Connect should return external client")
+	}
+}
+
+func TestUpdateProjectError(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name:   "my-project",
+				Public: ptrBool(true),
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			updateProjectFunc: func(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+				return nil, errors.New("update failed")
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, project)
+	if err == nil {
+		t.Error("Update should fail when client fails")
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	ctx := context.Background()
+	ext := &external{
+		service: &mockProjectClient{},
+	}
+
+	err := ext.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect should not fail, got %v", err)
+	}
+}
+
+func TestObserveProjectNilPublic(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return &harborclients.ProjectStatus{
+					Name:      "my-project",
+					Public:    false,
+					OwnerID:   1,
+					OwnerName: "admin",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, project)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be true when Public is nil in spec")
+	}
+}
+
+// mockProjectClient implements HarborClienter for project tests
+type mockProjectClient struct {
+	harborclients.HarborClienter
+	getProjectFunc    func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error)
+	createProjectFunc func(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
+	updateProjectFunc func(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
+	deleteProjectFunc func(ctx context.Context, projectID string) error
+}
+
+func (m *mockProjectClient) GetProject(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+	if m.getProjectFunc != nil {
+		return m.getProjectFunc(ctx, projectName)
+	}
+	return nil, nil
+}
+
+func (m *mockProjectClient) CreateProject(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+	if m.createProjectFunc != nil {
+		return m.createProjectFunc(ctx, spec)
+	}
+	return nil, nil
+}
+
+func (m *mockProjectClient) UpdateProject(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error) {
+	if m.updateProjectFunc != nil {
+		return m.updateProjectFunc(ctx, projectID, spec)
+	}
+	return nil, nil
+}
+
+func (m *mockProjectClient) DeleteProject(ctx context.Context, projectID string) error {
+	if m.deleteProjectFunc != nil {
+		return m.deleteProjectFunc(ctx, projectID)
+	}
+	return nil
+}
+
+func (m *mockProjectClient) Close() error {
+	return nil
+}
+
+func (m *mockProjectClient) GetBaseURL() string {
+	return "https://harbor.example.com"
 }
 
 // Helper functions

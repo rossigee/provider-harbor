@@ -221,7 +221,7 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 
 // NewHarborClientFromProviderConfig creates a Harbor client from a ProviderConfig
 // This maintains compatibility with the existing Crossplane provider pattern
-func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Client, mg resource.Managed) (*HarborClient, error) {
+func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Client, mg resource.Managed) (HarborClienter, error) {
 	// Get provider config reference from the managed resource
 	// In v2, we need to access it through the spec directly
 	var configRef *xpv1.ProviderConfigReference

@@ -58,7 +58,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 // connector is responsible for producing ExternalClients.
 type connector struct {
 	kube         client.Client
-	newServiceFn func(context.Context, client.Client, resource.Managed) (*harborclients.HarborClient, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 // Connect produces an ExternalClient by creating a Harbor client.
@@ -78,7 +78,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 // external observes, then either creates, updates, or deletes an external resource.
 type external struct {
-	service *harborclients.HarborClient
+	service harborclients.HarborClienter
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -104,7 +104,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		cr.Status.AtProvider.Description = &status.Description
 	}
 
-	return managed.ExternalObservation{ResourceExists: true}, nil
+	upToDate := true
+	if cr.Spec.ForProvider.Description != nil && status.Description != "" && *cr.Spec.ForProvider.Description != status.Description {
+		upToDate = false
+	}
+
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
