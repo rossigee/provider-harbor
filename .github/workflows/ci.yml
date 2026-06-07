@@ -87,7 +87,7 @@ jobs:
 
       - name: Check Diff
         run: |
-          make reviewable
+          make lint
           git diff --exit-code
 
   unit-tests:
