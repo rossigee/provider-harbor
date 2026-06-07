@@ -16,7 +16,7 @@ const (
 
 var (
 	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
-	SchemeBuilder      = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+	SchemeBuilder      = &scheme.Builder{GroupVersion: SchemeGroupVersion} //nolint:staticcheck
 )
 
 func init() {

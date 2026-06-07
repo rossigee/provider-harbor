@@ -63,7 +63,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 // is called.
 type connector struct {
 	kube         client.Client
-	newServiceFn func(ctx context.Context, kube client.Client, mg resource.Managed) (*harborclients.HarborClient, error)
+	newServiceFn func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -88,7 +88,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	service *harborclients.HarborClient
+	service harborclients.HarborClienter
 	kube    client.Client
 }
 

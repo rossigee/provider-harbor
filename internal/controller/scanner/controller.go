@@ -89,7 +89,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // external observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	service *clients.HarborClient
+	service clients.HarborClienter
 	logger  logging.Logger
 }
 

@@ -53,7 +53,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 type connector struct {
 	kube         client.Client
-	newServiceFn func(context.Context, client.Client, resource.Managed) (*harborclients.HarborClient, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
@@ -71,7 +71,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 }
 
 type external struct {
-	service *harborclients.HarborClient
+	service harborclients.HarborClienter
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -92,7 +92,28 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			cr.Status.AtProvider.CreationTime = &t
 			ut := metav1.NewTime(webhook.UpdateTime)
 			cr.Status.AtProvider.UpdateTime = &ut
-			return managed.ExternalObservation{ResourceExists: true}, nil
+
+			upToDate := true
+			if cr.Spec.ForProvider.Description != nil && webhook.Description != nil && *cr.Spec.ForProvider.Description != *webhook.Description {
+				upToDate = false
+			}
+			if cr.Spec.ForProvider.URL != "" && cr.Spec.ForProvider.URL != webhook.URL {
+				upToDate = false
+			}
+			if len(cr.Spec.ForProvider.EventTypes) > 0 && len(webhook.EventTypes) > 0 {
+				if len(cr.Spec.ForProvider.EventTypes) != len(webhook.EventTypes) {
+					upToDate = false
+				} else {
+					for i, e := range cr.Spec.ForProvider.EventTypes {
+						if e != webhook.EventTypes[i] {
+							upToDate = false
+							break
+						}
+					}
+				}
+			}
+
+			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
 

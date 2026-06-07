@@ -34,7 +34,7 @@ GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 
 # Override golangci-lint version for modern Go support
 GOLANGCILINT_VERSION ?= 2.12.2
-GO_REQUIRED_VERSION ?= 1.26.3
+GO_REQUIRED_VERSION ?= 1.26.4.3
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -224,3 +224,8 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special
+
+# ====================================================================================
+# Local Development Extensions
+# Include local development targets if Makefile.dev exists
+-include Makefile.dev

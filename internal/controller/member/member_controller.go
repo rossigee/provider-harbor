@@ -53,7 +53,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 type connector struct {
 	kube         client.Client
-	newServiceFn func(context.Context, client.Client, resource.Managed) (*harborclients.HarborClient, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
@@ -71,7 +71,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 }
 
 type external struct {
-	service *harborclients.HarborClient
+	service harborclients.HarborClienter
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -92,7 +92,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	t := metav1.NewTime(status.CreationTime)
 	cr.Status.AtProvider.CreationTime = &t
 
-	return managed.ExternalObservation{ResourceExists: true}, nil
+	upToDate := cr.Spec.ForProvider.Role == "" || status.Role == "" || cr.Spec.ForProvider.Role == status.Role
+
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {

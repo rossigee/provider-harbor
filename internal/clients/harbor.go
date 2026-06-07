@@ -22,7 +22,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
@@ -47,11 +46,6 @@ const (
 	errGetProviderConfig = "cannot get referenced ProviderConfig"
 	// errExtractCredentials is returned when the credentials cannot be extracted from the provider config.
 	errExtractCredentials = "cannot extract credentials"
-
-	// Retry configuration
-	defaultRetryAttempts = 3
-	defaultRetryDelay    = 100 * time.Millisecond
-	maxRetryDelay        = 5 * time.Second
 )
 
 // HarborClient provides Harbor API operations using the native Go client
@@ -221,7 +215,7 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 
 // NewHarborClientFromProviderConfig creates a Harbor client from a ProviderConfig
 // This maintains compatibility with the existing Crossplane provider pattern
-func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Client, mg resource.Managed) (*HarborClient, error) {
+func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Client, mg resource.Managed) (HarborClienter, error) {
 	// Get provider config reference from the managed resource
 	// In v2, we need to access it through the spec directly
 	var configRef *xpv1.ProviderConfigReference
@@ -2123,94 +2117,3 @@ func (c *HarborClient) DeleteRetentionPolicy(ctx context.Context, projectID, pol
 	return nil
 }
 
-// retryWithExponentialBackoff retries a function with exponential backoff
-func (c *HarborClient) retryWithExponentialBackoff(ctx context.Context, operationName string, fn func() error) error {
-	var lastErr error
-	delay := defaultRetryDelay
-
-	for attempt := 0; attempt < defaultRetryAttempts; attempt++ {
-		// Check context cancellation
-		if ctx.Err() != nil {
-			return errors.Wrap(ctx.Err(), "context cancelled during retry")
-		}
-
-		err := fn()
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if error is transient
-		if !isTransientError(err) {
-			c.logger.Info("Operation failed with permanent error",
-				"operation", operationName,
-				"error", err.Error())
-			return err
-		}
-
-		if attempt < defaultRetryAttempts-1 {
-			c.logger.Info("Operation failed, retrying with backoff",
-				"operation", operationName,
-				"attempt", attempt+1,
-				"maxAttempts", defaultRetryAttempts,
-				"delayMs", delay.Milliseconds(),
-				"error", err.Error())
-
-			// Apply exponential backoff
-			select {
-			case <-time.After(delay):
-				// Continue to next attempt
-			case <-ctx.Done():
-				return errors.Wrap(ctx.Err(), "context cancelled during backoff")
-			}
-
-			// Increase delay for next attempt (capped at maxRetryDelay)
-			delay = delay * 2
-			if delay > maxRetryDelay {
-				delay = maxRetryDelay
-			}
-		}
-	}
-
-	return errors.Wrapf(lastErr, "operation %s failed after %d attempts", operationName, defaultRetryAttempts)
-}
-
-// isTransientError determines if an error is transient and should be retried
-func isTransientError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errStr := err.Error()
-
-	// Network errors
-	if _, ok := err.(net.Error); ok {
-		return true
-	}
-
-	// Timeout errors
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
-
-	// Check for common transient error messages
-	transientMessages := []string{
-		"connection refused",
-		"connection reset",
-		"EOF",
-		"i/o timeout",
-		"temporary failure",
-		"temporarily unavailable",
-		"service unavailable",
-		"request timeout",
-	}
-
-	for _, msg := range transientMessages {
-		if strings.Contains(strings.ToLower(errStr), msg) {
-			return true
-		}
-	}
-
-	return false
-}
