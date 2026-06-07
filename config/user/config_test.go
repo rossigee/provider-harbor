@@ -10,10 +10,10 @@ import (
 
 func TestExternalNameLogic(t *testing.T) {
 	// Test our external name functions work correctly
-	getExternalNameFn := func(tfstate map[string]any) (string, error) {
-		if id, ok := tfstate["id"].(string); ok && id != "" {
+	getExternalNameFn := func(state map[string]any) (string, error) {
+		if id, ok := state["id"].(string); ok && id != "" {
 			if strings.HasPrefix(id, "/users/") {
-				if username, ok := tfstate["username"].(string); ok && username != "" {
+				if username, ok := state["username"].(string); ok && username != "" {
 					return username, nil
 				}
 				idPart := strings.TrimPrefix(id, "/users/")
@@ -24,18 +24,18 @@ func TestExternalNameLogic(t *testing.T) {
 			}
 			return id, nil
 		}
-		return "", errors.New("no ID found in terraform state")
+		return "", errors.New("no ID found in state")
 	}
 	
 	tests := []struct {
 		name     string
-		tfstate  map[string]any
+		state  map[string]any
 		expected string
 		wantErr  bool
 	}{
 		{
 			name: "numeric ID with username in state",
-			tfstate: map[string]any{
+			state: map[string]any{
 				"id":       "/users/123",
 				"username": "testuser",
 			},
@@ -44,7 +44,7 @@ func TestExternalNameLogic(t *testing.T) {
 		},
 		{
 			name: "username ID format",
-			tfstate: map[string]any{
+			state: map[string]any{
 				"id":       "/users/testuser",
 				"username": "testuser",
 			},
@@ -53,7 +53,7 @@ func TestExternalNameLogic(t *testing.T) {
 		},
 		{
 			name: "username without prefix",
-			tfstate: map[string]any{
+			state: map[string]any{
 				"id":       "testuser",
 				"username": "testuser",
 			},
@@ -62,7 +62,7 @@ func TestExternalNameLogic(t *testing.T) {
 		},
 		{
 			name: "numeric ID without username",
-			tfstate: map[string]any{
+			state: map[string]any{
 				"id": "/users/123",
 			},
 			expected: "",
@@ -70,7 +70,7 @@ func TestExternalNameLogic(t *testing.T) {
 		},
 		{
 			name:     "empty state",
-			tfstate:  map[string]any{},
+			state:  map[string]any{},
 			expected: "",
 			wantErr:  true,
 		},
@@ -78,7 +78,7 @@ func TestExternalNameLogic(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := getExternalNameFn(tt.tfstate)
+			result, err := getExternalNameFn(tt.state)
 			
 			if tt.wantErr {
 				if err == nil {
