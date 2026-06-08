@@ -46,6 +46,7 @@ jobs:
       - name: Build Artifacts
         run: |
           make build.init
+          make build.code
           make do.build.artifacts
 
       - name: Publish Artifacts
