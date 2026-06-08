@@ -43,6 +43,11 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Build Artifacts
+        run: |
+          make build.init
+          make build.artifacts
+
       - name: Publish Artifacts
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
