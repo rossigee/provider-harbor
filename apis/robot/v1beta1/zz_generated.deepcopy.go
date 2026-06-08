@@ -129,7 +129,9 @@ func (in *RobotParameters) DeepCopyInto(out *RobotParameters) {
 	if in.Permissions != nil {
 		in, out := &in.Permissions, &out.Permissions
 		*out = make([]RobotPermission, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 

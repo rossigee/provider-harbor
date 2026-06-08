@@ -112,6 +112,11 @@ func (in *WebhookParameters) DeepCopyInto(out *WebhookParameters) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.EventTypes != nil {
+		in, out := &in.EventTypes, &out.EventTypes
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.AuthHeader != nil {
 		in, out := &in.AuthHeader, &out.AuthHeader
 		*out = new(string)
@@ -126,11 +131,6 @@ func (in *WebhookParameters) DeepCopyInto(out *WebhookParameters) {
 		in, out := &in.Enabled, &out.Enabled
 		*out = new(bool)
 		**out = **in
-	}
-	if in.EventTypes != nil {
-		in, out := &in.EventTypes, &out.EventTypes
-		*out = make([]string, len(*in))
-		copy(*out, *in)
 	}
 }
 
