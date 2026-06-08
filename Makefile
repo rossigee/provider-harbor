@@ -64,6 +64,8 @@ REGISTRY_ORGS = ghcr.io/rossigee
 # Primary registry: GitHub Container Registry under rossigee
 XPKG_REG_ORGS ?= ghcr.io/rossigee
 XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/rossigee
+# Exclude documentation and test files from xpkg build
+XPKG_IGNORE ?= '*.md|native-provider-test.yaml|phase2-resources.yaml|install.yaml'
 
 # Optional registries (can be enabled via environment variables)
 # Harbor publishing has been removed - using only ghcr.io/rossigee
