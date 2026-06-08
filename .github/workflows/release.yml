@@ -46,7 +46,7 @@ jobs:
       - name: Publish Artifacts
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          make BRANCH_NAME=release VERSION=$VERSION publish.artifacts
+          make BRANCH_NAME=master VERSION=$VERSION publish.artifacts
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
