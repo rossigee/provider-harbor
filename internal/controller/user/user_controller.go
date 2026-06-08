@@ -15,27 +15,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 const (
-	errNotUser           = "managed resource is not a User custom resource"
-	errTrackPCUsage      = "cannot track ProviderConfig usage"
-	errGetPC             = "cannot get ProviderConfig"
-	errGetCreds          = "cannot get credentials"
-	errNewClient         = "cannot create new Harbor client"
-	errUserCreate        = "cannot create Harbor user"
-	errUserGet           = "cannot get Harbor user"
-	errUserUpdate        = "cannot update Harbor user"
-	errUserDelete        = "cannot delete Harbor user"
+	errNotUser      = "managed resource is not a User custom resource"
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	errGetPC        = "cannot get ProviderConfig"
+	errGetCreds     = "cannot get credentials"
+	errNewClient    = "cannot create new Harbor client"
+	errUserCreate   = "cannot create Harbor user"
+	errUserGet      = "cannot get Harbor user"
+	errUserUpdate   = "cannot update Harbor user"
+	errUserDelete   = "cannot delete Harbor user"
 )
 
 // Setup adds a controller that reconciles User managed resources.

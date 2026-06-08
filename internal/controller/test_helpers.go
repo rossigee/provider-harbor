@@ -17,12 +17,12 @@ import (
 
 // MockHarborClient is a mock implementation of HarborClient for testing
 type MockHarborClient struct {
-	GetProjectFn func(ctx context.Context, projectName string) (*clients.ProjectStatus, error)
+	GetProjectFn    func(ctx context.Context, projectName string) (*clients.ProjectStatus, error)
 	CreateProjectFn func(ctx context.Context, spec *clients.ProjectSpec) (*clients.ProjectStatus, error)
 	UpdateProjectFn func(ctx context.Context, projectName string, spec *clients.ProjectSpec) (*clients.ProjectStatus, error)
 	DeleteProjectFn func(ctx context.Context, projectName string) error
-	ListProjectsFn func(ctx context.Context) ([]*clients.ProjectStatus, error)
-	CloseFn func() error
+	ListProjectsFn  func(ctx context.Context) ([]*clients.ProjectStatus, error)
+	CloseFn         func() error
 }
 
 func (m *MockHarborClient) GetProject(ctx context.Context, projectName string) (*clients.ProjectStatus, error) {
@@ -69,7 +69,7 @@ func (m *MockHarborClient) Close() error {
 
 // MockKubeClient is a mock Kubernetes client for testing
 type MockKubeClient struct {
-	GetFn func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+	GetFn    func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
 	CreateFn func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
 	UpdateFn func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
 	DeleteFn func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error

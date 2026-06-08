@@ -81,13 +81,13 @@ type ScannerRegistrationObservation struct {
 // A ScannerRegistrationSpec defines the desired state of a ScannerRegistration.
 type ScannerRegistrationSpec struct {
 	xpv1.ManagedResourceSpec `json:",inline"`
-	ForProvider       ScannerRegistrationParameters `json:"forProvider"`
+	ForProvider              ScannerRegistrationParameters `json:"forProvider"`
 }
 
 // A ScannerRegistrationStatus represents the observed state of a ScannerRegistration.
 type ScannerRegistrationStatus struct {
 	xpv1.ConditionedStatus `json:",inline"`
-	AtProvider          ScannerRegistrationObservation `json:"atProvider,omitempty"`
+	AtProvider             ScannerRegistrationObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -14,27 +14,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 const (
-	errNotRegistry       = "managed resource is not a Registry custom resource"
-	errTrackPCUsage      = "cannot track ProviderConfig usage"
-	errGetPC             = "cannot get ProviderConfig"
-	errGetCreds          = "cannot get credentials"
-	errNewClient         = "cannot create new Harbor client"
-	errRegistryCreate    = "cannot create Harbor registry"
-	errRegistryGet       = "cannot get Harbor registry"
-	errRegistryUpdate    = "cannot update Harbor registry"
-	errRegistryDelete    = "cannot delete Harbor registry"
+	errNotRegistry    = "managed resource is not a Registry custom resource"
+	errTrackPCUsage   = "cannot track ProviderConfig usage"
+	errGetPC          = "cannot get ProviderConfig"
+	errGetCreds       = "cannot get credentials"
+	errNewClient      = "cannot create new Harbor client"
+	errRegistryCreate = "cannot create Harbor registry"
+	errRegistryGet    = "cannot get Harbor registry"
+	errRegistryUpdate = "cannot update Harbor registry"
+	errRegistryDelete = "cannot delete Harbor registry"
 )
 
 // Setup adds a controller that reconciles Registry managed resources.

@@ -7,10 +7,10 @@ package testing
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 )
 
 // NewTestUser creates a test User resource

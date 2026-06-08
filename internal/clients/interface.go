@@ -114,10 +114,10 @@ var _ HarborClienter = (*HarborClient)(nil)
 // MockHarborClient implements HarborClienter for testing
 type MockHarborClient struct {
 	// Base client methods
-	GetBaseURLFunc      func() string
-	CloseFunc           func() error
-	TestConnectionFunc  func(ctx context.Context) error
-	GetVersionFunc      func(ctx context.Context) (string, error)
+	GetBaseURLFunc         func() string
+	CloseFunc              func() error
+	TestConnectionFunc     func(ctx context.Context) error
+	GetVersionFunc         func(ctx context.Context) (string, error)
 	GetMemoryFootprintFunc func() string
 
 	// Project operations
@@ -195,11 +195,11 @@ type MockHarborClient struct {
 	ListReplicationExecutionsFunc func(ctx context.Context, policyID string) ([]*ReplicationExecution, error)
 
 	// Retention operations
-	CreateRetentionPolicyFunc   func(ctx context.Context, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
-	ListRetentionPoliciesFunc   func(ctx context.Context, projectID string) ([]*RetentionPolicyStatus, error)
-	GetRetentionPolicyFunc      func(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
-	UpdateRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
-	DeleteRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string) error
+	CreateRetentionPolicyFunc func(ctx context.Context, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
+	ListRetentionPoliciesFunc func(ctx context.Context, projectID string) ([]*RetentionPolicyStatus, error)
+	GetRetentionPolicyFunc    func(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
+	UpdateRetentionPolicyFunc func(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
+	DeleteRetentionPolicyFunc func(ctx context.Context, projectID, policyID string) error
 
 	// UserGroup operations
 	CreateUserGroupFunc func(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)

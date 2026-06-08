@@ -116,11 +116,11 @@ func TestObserveRetentionExists(t *testing.T) {
 			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
 				return []*harborclients.RetentionPolicyStatus{
 					{
-						ID:            "retention-123",
-						ProjectID:     "project-1",
-						Enabled:       true,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "retention-123",
+						ProjectID:    "project-1",
+						Enabled:      true,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -162,12 +162,12 @@ func TestObserveRetentionNotUpToDate(t *testing.T) {
 				newDesc := "new description"
 				return []*harborclients.RetentionPolicyStatus{
 					{
-						ID:            "retention-123",
-						ProjectID:     "project-1",
-						Description:   &newDesc,
-						Enabled:       true,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "retention-123",
+						ProjectID:    "project-1",
+						Description:  &newDesc,
+						Enabled:      true,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -499,10 +499,10 @@ func TestRetentionParametersValidation(t *testing.T) {
 
 type mockRetentionClient struct {
 	harborclients.HarborClienter
-	listRetentionPoliciesFunc  func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
-	createRetentionPolicyFunc  func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
-	updateRetentionPolicyFunc  func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
-	deleteRetentionPolicyFunc  func(ctx context.Context, projectID, policyID string) error
+	listRetentionPoliciesFunc func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
+	createRetentionPolicyFunc func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
+	updateRetentionPolicyFunc func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
+	deleteRetentionPolicyFunc func(ctx context.Context, projectID, policyID string) error
 }
 
 func (m *mockRetentionClient) ListRetentionPolicies(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {

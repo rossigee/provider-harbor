@@ -32,12 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	"github.com/rossigee/provider-harbor/apis/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
-	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/v1beta1"
 )
 
 const (
@@ -51,9 +51,9 @@ const (
 
 // HarborClient provides Harbor API operations using the native Go client
 type HarborClient struct {
-	clientSet *harbor.ClientSet
-	config    *harbor.ClientSetConfig
-	logger    logging.Logger
+	clientSet  *harbor.ClientSet
+	config     *harbor.ClientSetConfig
+	logger     logging.Logger
 	httpClient *http.Client
 }
 
@@ -207,9 +207,9 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	logger := logging.NewNopLogger().WithValues("client", "harbor")
 
 	return &HarborClient{
-		clientSet: clientSet,
-		config:    csConfig,
-		logger:    logger,
+		clientSet:  clientSet,
+		config:     csConfig,
+		logger:     logger,
 		httpClient: httpClient,
 	}, nil
 }
@@ -380,7 +380,7 @@ func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*Pro
 	c.logger.Info("Retrieving Harbor project", "name", projectName)
 
 	status := &ProjectStatus{
-		ID:                  "1",
+		ID:        "1",
 		Name:      projectName,
 		Public:    false,
 		CreatedAt: time.Now().Add(-24 * time.Hour),
@@ -1048,7 +1048,7 @@ type ArtifactSpec struct {
 	ProjectID      string
 	RepositoryName string
 	Reference      string
-	Type          *string
+	Type           *string
 }
 
 // ArtifactStatus represents the status of a Harbor artifact
@@ -1306,14 +1306,14 @@ func (c *HarborClient) DeleteProjectMember(ctx context.Context, projectID, usern
 
 // ScanStatus represents the status of an artifact scan
 type ScanStatus struct {
-	ID             string
-	Status         string
-	CriticalCount  int64
-	HighCount      int64
-	MediumCount    int64
-	LowCount       int64
-	StartTime      time.Time
-	EndTime        time.Time
+	ID            string
+	Status        string
+	CriticalCount int64
+	HighCount     int64
+	MediumCount   int64
+	LowCount      int64
+	StartTime     time.Time
+	EndTime       time.Time
 }
 
 // TriggerScan triggers a vulnerability scan for an artifact
@@ -1572,12 +1572,12 @@ func (c *HarborClient) DeleteRobot(ctx context.Context, robotID string) error {
 
 // WebhookSpec defines the desired state of a Harbor webhook
 type WebhookSpec struct {
-	ProjectID   string
-	Name        string
-	Description *string
-	URL         string
-	EventTypes  []string
-	AuthHeader  *string
+	ProjectID      string
+	Name           string
+	Description    *string
+	URL            string
+	EventTypes     []string
+	AuthHeader     *string
 	SkipCertVerify bool
 }
 
@@ -1751,15 +1751,15 @@ type ReplicationPolicyDestination struct {
 
 // ReplicationPolicySpec defines the desired state of a replication policy
 type ReplicationPolicySpec struct {
-	Name             string
-	Description      *string
-	SourceRegistry   *string
-	DestinationReg   *ReplicationPolicyDestination
-	Filters          []ReplicationPolicyFilter
-	Trigger          string // manual, scheduled, event_based
-	DeleteSourceTag  *bool
-	Override         *bool
-	Enabled          *bool
+	Name            string
+	Description     *string
+	SourceRegistry  *string
+	DestinationReg  *ReplicationPolicyDestination
+	Filters         []ReplicationPolicyFilter
+	Trigger         string // manual, scheduled, event_based
+	DeleteSourceTag *bool
+	Override        *bool
+	Enabled         *bool
 }
 
 // ReplicationPolicyStatus represents the status of a replication policy
@@ -2216,4 +2216,3 @@ func (c *HarborClient) DeleteUserGroup(ctx context.Context, groupID int64) error
 	// TODO: Implement actual Harbor API call
 	return nil
 }
-

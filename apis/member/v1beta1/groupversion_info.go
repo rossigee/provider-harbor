@@ -20,6 +20,6 @@ const (
 
 var (
 	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
-	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion} //nolint:staticcheck
-	AddToScheme = SchemeBuilder.AddToScheme
+	SchemeBuilder      = &scheme.Builder{GroupVersion: SchemeGroupVersion} //nolint:staticcheck
+	AddToScheme        = SchemeBuilder.AddToScheme
 )

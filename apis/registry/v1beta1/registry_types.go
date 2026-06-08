@@ -73,13 +73,13 @@ type RegistryObservation struct {
 // A RegistrySpec defines the desired state of a Registry.
 type RegistrySpec struct {
 	xpv1.ManagedResourceSpec `json:",inline"`
-	ForProvider       RegistryParameters `json:"forProvider"`
+	ForProvider              RegistryParameters `json:"forProvider"`
 }
 
 // A RegistryStatus represents the observed state of a Registry.
 type RegistryStatus struct {
 	xpv1.ConditionedStatus `json:",inline"`
-	AtProvider          RegistryObservation `json:"atProvider,omitempty"`
+	AtProvider             RegistryObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

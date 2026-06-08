@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	errNotArtifact      = "managed resource is not an Artifact custom resource"
-	errArtifactDelete   = "cannot delete Harbor artifact"
-	errNewClient        = "cannot create new Harbor client"
+	errNotArtifact    = "managed resource is not an Artifact custom resource"
+	errArtifactDelete = "cannot delete Harbor artifact"
+	errNewClient      = "cannot create new Harbor client"
 )
 
 func Setup(mgr ctrl.Manager, o controller.Options) error {

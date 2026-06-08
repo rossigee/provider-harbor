@@ -14,10 +14,10 @@ import (
 // MockHarborClient is a mock implementation of the Harbor client for testing
 type MockHarborClient struct {
 	// Base client methods
-	GetBaseURLFunc      func() string
-	CloseFunc           func() error
-	TestConnectionFunc  func(ctx context.Context) error
-	GetVersionFunc      func(ctx context.Context) (string, error)
+	GetBaseURLFunc         func() string
+	CloseFunc              func() error
+	TestConnectionFunc     func(ctx context.Context) error
+	GetVersionFunc         func(ctx context.Context) (string, error)
 	GetMemoryFootprintFunc func() string
 
 	// User operations
@@ -95,11 +95,11 @@ type MockHarborClient struct {
 	ListReplicationExecutionsFunc func(ctx context.Context, policyID string) ([]*harborclients.ReplicationExecution, error)
 
 	// Retention operations
-	CreateRetentionPolicyFunc   func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
-	ListRetentionPoliciesFunc   func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
-	GetRetentionPolicyFunc      func(ctx context.Context, projectID, policyID string) (*harborclients.RetentionPolicyStatus, error)
-	UpdateRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
-	DeleteRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string) error
+	CreateRetentionPolicyFunc func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
+	ListRetentionPoliciesFunc func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
+	GetRetentionPolicyFunc    func(ctx context.Context, projectID, policyID string) (*harborclients.RetentionPolicyStatus, error)
+	UpdateRetentionPolicyFunc func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
+	DeleteRetentionPolicyFunc func(ctx context.Context, projectID, policyID string) error
 }
 
 // GetBaseURL calls GetBaseURLFunc

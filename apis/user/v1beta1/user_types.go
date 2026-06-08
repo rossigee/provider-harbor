@@ -56,13 +56,13 @@ type UserObservation struct {
 // A UserSpec defines the desired state of a User.
 type UserSpec struct {
 	xpv1.ManagedResourceSpec `json:",inline"`
-	ForProvider       UserParameters `json:"forProvider"`
+	ForProvider              UserParameters `json:"forProvider"`
 }
 
 // A UserStatus represents the observed state of a User.
 type UserStatus struct {
 	xpv1.ConditionedStatus `json:",inline"`
-	AtProvider          UserObservation `json:"atProvider,omitempty"`
+	AtProvider             UserObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

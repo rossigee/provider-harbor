@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -115,13 +115,13 @@ func TestObserveRobotWithNilValues(t *testing.T) {
 			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
 				return []*harborclients.RobotStatus{
 					{
-						ID:            "robot-123",
-						Name:          "my-robot",
-						ProjectID:     pid,
-						Secret:        "",
-						ExpiresAt:     nil,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "robot-123",
+						Name:         "my-robot",
+						ProjectID:    pid,
+						Secret:       "",
+						ExpiresAt:    nil,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -159,11 +159,11 @@ func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
 			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
 				return []*harborclients.RobotStatus{
 					{
-						ID:            "robot-123",
-						Name:          "my-robot",
-						ProjectID:     &otherProjectID,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "robot-123",
+						Name:         "my-robot",
+						ProjectID:    &otherProjectID,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -234,13 +234,13 @@ func TestDeleteRobotNoID(t *testing.T) {
 
 func TestConvertPermissions(t *testing.T) {
 	tests := []struct {
-		name      string
-		perms     []v1beta1.RobotPermission
-		wantLen   int
+		name    string
+		perms   []v1beta1.RobotPermission
+		wantLen int
 	}{
 		{
-			name: "empty permissions",
-			perms: []v1beta1.RobotPermission{},
+			name:    "empty permissions",
+			perms:   []v1beta1.RobotPermission{},
 			wantLen: 0,
 		},
 		{
@@ -374,12 +374,12 @@ func TestObserveRobotExists(t *testing.T) {
 			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
 				return []*harborclients.RobotStatus{
 					{
-						ID:            "robot-123",
-						Name:          "my-robot",
-						ProjectID:     pid,
-						Secret:        "secret-token",
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "robot-123",
+						Name:         "my-robot",
+						ProjectID:    pid,
+						Secret:       "secret-token",
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -422,12 +422,12 @@ func TestObserveRobotNotUpToDate(t *testing.T) {
 				newDesc := "new description"
 				return []*harborclients.RobotStatus{
 					{
-						ID:            "robot-123",
-						Name:          "my-robot",
-						ProjectID:     pid,
-						Description:   &newDesc,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "robot-123",
+						Name:         "my-robot",
+						ProjectID:    pid,
+						Description:  &newDesc,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},

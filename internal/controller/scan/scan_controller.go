@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	errNotScan      = "managed resource is not a Scan custom resource"
-	errScanDelete   = "cannot delete Harbor scan"
-	errNewClient    = "cannot create new Harbor client"
+	errNotScan    = "managed resource is not a Scan custom resource"
+	errScanDelete = "cannot delete Harbor scan"
+	errNewClient  = "cannot create new Harbor client"
 )
 
 func Setup(mgr ctrl.Manager, o controller.Options) error {

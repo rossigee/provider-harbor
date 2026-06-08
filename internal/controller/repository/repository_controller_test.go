@@ -237,7 +237,7 @@ func TestCreateRepositoryAlreadyExists(t *testing.T) {
 		service: &mockRepositoryClient{
 			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
 				return &harborclients.RepositoryStatus{
-					ID:     "repo-123",
+					ID:       "repo-123",
 					FullName: projectID + "/" + repoName,
 				}, nil
 			},
@@ -436,7 +436,7 @@ func TestRepositoryStatusFields(t *testing.T) {
 		},
 		Status: v1beta1.RepositoryStatus{
 			AtProvider: v1beta1.RepositoryObservation{
-				ID:     ptrString("repo-123"),
+				ID:       ptrString("repo-123"),
 				FullName: ptrString("project-1/my-repo"),
 			},
 		},

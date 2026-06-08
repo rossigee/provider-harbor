@@ -93,13 +93,13 @@ type ProjectObservation struct {
 // A ProjectSpec defines the desired state of a Project.
 type ProjectSpec struct {
 	xpv1.ManagedResourceSpec `json:",inline"`
-	ForProvider       ProjectParameters `json:"forProvider"`
+	ForProvider              ProjectParameters `json:"forProvider"`
 }
 
 // A ProjectStatus represents the observed state of a Project.
 type ProjectStatus struct {
 	xpv1.ConditionedStatus `json:",inline"`
-	AtProvider          ProjectObservation `json:"atProvider,omitempty"`
+	AtProvider             ProjectObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

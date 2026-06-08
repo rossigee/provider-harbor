@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	errNotMember      = "managed resource is not a Member custom resource"
-	errMemberDelete   = "cannot delete Harbor member"
-	errNewClient      = "cannot create new Harbor client"
+	errNotMember    = "managed resource is not a Member custom resource"
+	errMemberDelete = "cannot delete Harbor member"
+	errNewClient    = "cannot create new Harbor client"
 )
 
 func Setup(mgr ctrl.Manager, o controller.Options) error {

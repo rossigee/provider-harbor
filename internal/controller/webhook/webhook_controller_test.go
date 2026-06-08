@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -166,10 +166,10 @@ func TestObserveWebhookNotUpToDate(t *testing.T) {
 		},
 		Spec: v1beta1.WebhookSpec{
 			ForProvider: v1beta1.WebhookParameters{
-				ProjectID:    "project-1",
-				Name:         "test-webhook",
-				URL:          "https://webhook.example.com",
-				EventTypes:   []string{"PUSH_ARTIFACT"},
+				ProjectID:   "project-1",
+				Name:        "test-webhook",
+				URL:         "https://webhook.example.com",
+				EventTypes:  []string{"PUSH_ARTIFACT"},
 				Description: ptrString("updated description"),
 			},
 		},
@@ -783,11 +783,11 @@ func TestWebhookParametersValidation(t *testing.T) {
 		{
 			name: "valid with description",
 			params: v1beta1.WebhookParameters{
-				ProjectID:    "project-1",
-				Name:         "test-webhook",
-				URL:          "https://webhook.example.com",
-				EventTypes:   []string{"PUSH_ARTIFACT"},
-				Description:  ptrString("My webhook"),
+				ProjectID:      "project-1",
+				Name:           "test-webhook",
+				URL:            "https://webhook.example.com",
+				EventTypes:     []string{"PUSH_ARTIFACT"},
+				Description:    ptrString("My webhook"),
 				SkipCertVerify: ptrBool(false),
 			},
 			isValid: true,
@@ -846,7 +846,7 @@ type mockWebhookClient struct {
 	createWebhookFunc func(ctx context.Context, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error)
 	updateWebhookFunc func(ctx context.Context, projectID, webhookID string, spec *harborclients.WebhookSpec) (*harborclients.WebhookStatus, error)
 	deleteWebhookFunc func(ctx context.Context, projectID, webhookID string) error
-	closeFunc          func() error
+	closeFunc         func() error
 }
 
 func (m *mockWebhookClient) ListWebhooks(ctx context.Context, projectID string) ([]*harborclients.WebhookStatus, error) {

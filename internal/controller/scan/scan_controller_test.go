@@ -138,14 +138,14 @@ func TestObserveScanSuccess(t *testing.T) {
 		service: &mockScanClient{
 			getScanFunc: func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error) {
 				return &harborclients.ScanStatus{
-					ID:             "scan-123",
-					Status:         status,
-					CriticalCount:  0,
-					HighCount:      1,
-					MediumCount:    5,
-					LowCount:       10,
-					StartTime:      time.Now().Add(-1 * time.Hour),
-					EndTime:        time.Now(),
+					ID:            "scan-123",
+					Status:        status,
+					CriticalCount: 0,
+					HighCount:     1,
+					MediumCount:   5,
+					LowCount:      10,
+					StartTime:     time.Now().Add(-1 * time.Hour),
+					EndTime:       time.Now(),
 				}, nil
 			},
 		},
@@ -472,14 +472,14 @@ func TestObserveScanEmptyStatus(t *testing.T) {
 		service: &mockScanClient{
 			getScanFunc: func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error) {
 				return &harborclients.ScanStatus{
-					ID:             "scan-123",
-					Status:         "",
-					CriticalCount:  0,
-					HighCount:      0,
-					MediumCount:    0,
-					LowCount:       0,
-					StartTime:      time.Time{},
-					EndTime:        time.Time{},
+					ID:            "scan-123",
+					Status:        "",
+					CriticalCount: 0,
+					HighCount:     0,
+					MediumCount:   0,
+					LowCount:      0,
+					StartTime:     time.Time{},
+					EndTime:       time.Time{},
 				}, nil
 			},
 		},
@@ -680,10 +680,10 @@ func TestScanVulnerabilityCounts(t *testing.T) {
 // mockScanClient implements HarborClienter for scan tests
 type mockScanClient struct {
 	harborclients.HarborClienter
-	getScanFunc      func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error)
-	triggerScanFunc  func(ctx context.Context, projectID, repoName, reference string) error
-	stopScanFunc     func(ctx context.Context, projectID, repoName, reference string) error
-	closeFunc        func() error
+	getScanFunc     func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error)
+	triggerScanFunc func(ctx context.Context, projectID, repoName, reference string) error
+	stopScanFunc    func(ctx context.Context, projectID, repoName, reference string) error
+	closeFunc       func() error
 }
 
 func (m *mockScanClient) GetScan(ctx context.Context, projectID, repoName, reference string) (*harborclients.ScanStatus, error) {

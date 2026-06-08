@@ -6,8 +6,8 @@ package clients
 
 // UserGroupSpec defines the desired state of a UserGroup
 type UserGroupSpec struct {
-	GroupName   string `json:"groupName"`
-	GroupType   int64  `json:"groupType"`
+	GroupName   string  `json:"groupName"`
+	GroupType   int64   `json:"groupType"`
 	LdapGroupDn *string `json:"ldapGroupDn,omitempty"`
 }
 

@@ -145,8 +145,8 @@ func TestObserveUserNotUpToDate(t *testing.T) {
 		},
 		Spec: v1beta1.UserSpec{
 			ForProvider: v1beta1.UserParameters{
-				Username:    "testuser",
-				Email:       "new@example.com",
+				Username:     "testuser",
+				Email:        "new@example.com",
 				SysAdminFlag: ptrBool(true),
 			},
 		},
@@ -413,8 +413,8 @@ func TestUserParametersValidation(t *testing.T) {
 		{
 			name: "valid with admin flag",
 			params: v1beta1.UserParameters{
-				Username:    "admin1",
-				Email:       "admin@example.com",
+				Username:     "admin1",
+				Email:        "admin@example.com",
 				SysAdminFlag: ptrBool(true),
 			},
 			isValid: true,

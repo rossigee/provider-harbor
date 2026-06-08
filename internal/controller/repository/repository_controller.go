@@ -25,12 +25,12 @@ import (
 )
 
 const (
-	errNotRepository      = "managed resource is not a Repository custom resource"
-	errRepositoryCreate   = "cannot create Harbor repository"
-	errRepositoryGet      = "cannot get Harbor repository"
-	errRepositoryUpdate   = "cannot update Harbor repository"
-	errRepositoryDelete   = "cannot delete Harbor repository"
-	errNewClient          = "cannot create new Harbor client"
+	errNotRepository    = "managed resource is not a Repository custom resource"
+	errRepositoryCreate = "cannot create Harbor repository"
+	errRepositoryGet    = "cannot get Harbor repository"
+	errRepositoryUpdate = "cannot update Harbor repository"
+	errRepositoryDelete = "cannot delete Harbor repository"
+	errNewClient        = "cannot create new Harbor client"
 )
 
 // Setup adds a controller that reconciles Repository managed resources.

@@ -12,15 +12,15 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 )
 
 func TestConnectNotScannerRegistration(t *testing.T) {
 	ctx := context.Background()
 	conn := &connector{
-		kube: nil,
+		kube:   nil,
 		logger: logging.NewNopLogger(),
 	}
 
@@ -33,7 +33,7 @@ func TestConnectNotScannerRegistration(t *testing.T) {
 func TestConnectClientError(t *testing.T) {
 	ctx := context.Background()
 	conn := &connector{
-		kube: nil,
+		kube:   nil,
 		logger: logging.NewNopLogger(),
 	}
 
@@ -106,12 +106,12 @@ func TestObserveScannerRegistrationAuthMismatch(t *testing.T) {
 			getScannerRegistrationFunc: func(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error) {
 				oldAuth := "Basic"
 				return &harborclients.ScannerStatus{
-					UUID:        "scanner-uuid-123",
-					Name:        "test-scanner",
-					URL:         "https://scanner.example.com",
-					Auth:        &oldAuth,
-					CreateTime:  time.Now(),
-					UpdateTime:  time.Now(),
+					UUID:       "scanner-uuid-123",
+					Name:       "test-scanner",
+					URL:        "https://scanner.example.com",
+					Auth:       &oldAuth,
+					CreateTime: time.Now(),
+					UpdateTime: time.Now(),
 				}, nil
 			},
 		},
@@ -139,9 +139,9 @@ func TestObserveScannerRegistrationCredentialMismatch(t *testing.T) {
 		},
 		Spec: v1beta1.ScannerRegistrationSpec{
 			ForProvider: v1beta1.ScannerRegistrationParameters{
-				Name:              "test-scanner",
-				URL:               "https://scanner.example.com",
-				AccessCredential:  &cred,
+				Name:             "test-scanner",
+				URL:              "https://scanner.example.com",
+				AccessCredential: &cred,
 			},
 		},
 	}
@@ -266,11 +266,11 @@ func TestObserveScannerRegistrationExists(t *testing.T) {
 		service: &mockScannerClient{
 			getScannerRegistrationFunc: func(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error) {
 				return &harborclients.ScannerStatus{
-					UUID:        "scanner-uuid-123",
-					Name:        "test-scanner",
-					URL:         "https://scanner.example.com",
-					CreateTime:  time.Now(),
-					UpdateTime:  time.Now(),
+					UUID:       "scanner-uuid-123",
+					Name:       "test-scanner",
+					URL:        "https://scanner.example.com",
+					CreateTime: time.Now(),
+					UpdateTime: time.Now(),
 				}, nil
 			},
 		},
@@ -456,11 +456,11 @@ func TestCreateScannerRegistrationWithOptionalFields(t *testing.T) {
 		},
 		Spec: v1beta1.ScannerRegistrationSpec{
 			ForProvider: v1beta1.ScannerRegistrationParameters{
-				Name:              "test-scanner",
-				URL:               "https://scanner.example.com",
-				Description:       &desc,
-				Auth:              &auth,
-				AccessCredential:  &cred,
+				Name:             "test-scanner",
+				URL:              "https://scanner.example.com",
+				Description:      &desc,
+				Auth:             &auth,
+				AccessCredential: &cred,
 			},
 		},
 	}

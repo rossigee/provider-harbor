@@ -421,12 +421,12 @@ func TestProjectParametersValidation(t *testing.T) {
 		{
 			name: "valid with security settings",
 			params: v1beta1.ProjectParameters{
-				Name:                    "secure-project",
-				EnableContentTrust:      ptrBool(true),
+				Name:                     "secure-project",
+				EnableContentTrust:       ptrBool(true),
 				EnableContentTrustCosign: ptrBool(true),
-				AutoScanImages:          ptrBool(true),
-				PreventVulnerableImages: ptrBool(true),
-				Severity:                ptrString("high"),
+				AutoScanImages:           ptrBool(true),
+				PreventVulnerableImages:  ptrBool(true),
+				Severity:                 ptrString("high"),
 			},
 			isValid: true,
 		},

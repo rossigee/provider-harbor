@@ -24,9 +24,9 @@ func TestObserveArtifactSuccess(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -67,9 +67,9 @@ func TestObserveArtifactError(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -96,9 +96,9 @@ func TestObserveArtifactNotFound(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "nonexistent",
+				Reference:      "nonexistent",
 			},
 		},
 	}
@@ -128,9 +128,9 @@ func TestObserveArtifactPopulatesStatus(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -204,9 +204,9 @@ func TestCreateArtifactSuccess(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -229,9 +229,9 @@ func TestUpdateArtifactSuccess(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -254,9 +254,9 @@ func TestDeleteArtifactSuccess(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -283,9 +283,9 @@ func TestDeleteArtifactError(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -312,9 +312,9 @@ func TestArtifactHasRequiredFields(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 	}
@@ -340,9 +340,9 @@ func TestArtifactStatusFields(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 		},
 		Status: v1beta1.ArtifactStatus{
@@ -373,19 +373,19 @@ func TestArtifactParametersValidation(t *testing.T) {
 		{
 			name: "valid with required fields",
 			params: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 			isValid: true,
 		},
 		{
 			name: "valid with type",
 			params: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
-				Type:          ptrString("image"),
+				Reference:      "latest",
+				Type:           ptrString("image"),
 			},
 			isValid: true,
 		},
@@ -393,7 +393,7 @@ func TestArtifactParametersValidation(t *testing.T) {
 			name: "missing required project ID",
 			params: v1beta1.ArtifactParameters{
 				RepositoryName: "my-repo",
-				Reference:     "latest",
+				Reference:      "latest",
 			},
 			isValid: false,
 		},
@@ -408,7 +408,7 @@ func TestArtifactParametersValidation(t *testing.T) {
 		{
 			name: "missing required reference",
 			params: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
 			},
 			isValid: false,
@@ -434,10 +434,10 @@ func TestArtifactWithOptionalType(t *testing.T) {
 		},
 		Spec: v1beta1.ArtifactSpec{
 			ForProvider: v1beta1.ArtifactParameters{
-				ProjectID:     "project-1",
+				ProjectID:      "project-1",
 				RepositoryName: "my-repo",
-				Reference:     "latest",
-				Type:          &artifactType,
+				Reference:      "latest",
+				Type:           &artifactType,
 			},
 		},
 	}

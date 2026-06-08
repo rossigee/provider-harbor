@@ -5,8 +5,8 @@ Copyright 2024 Crossplane Harbor Provider.
 package v1beta1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ScanParameters struct {
@@ -16,14 +16,14 @@ type ScanParameters struct {
 }
 
 type ScanObservation struct {
-	ID             *string      `json:"id,omitempty"`
-	Status         *string      `json:"status,omitempty"`
-	CriticalCount  *int64       `json:"criticalCount,omitempty"`
-	HighCount      *int64       `json:"highCount,omitempty"`
-	MediumCount    *int64       `json:"mediumCount,omitempty"`
-	LowCount       *int64       `json:"lowCount,omitempty"`
-	StartTime      *metav1.Time `json:"startTime,omitempty"`
-	EndTime        *metav1.Time `json:"endTime,omitempty"`
+	ID            *string      `json:"id,omitempty"`
+	Status        *string      `json:"status,omitempty"`
+	CriticalCount *int64       `json:"criticalCount,omitempty"`
+	HighCount     *int64       `json:"highCount,omitempty"`
+	MediumCount   *int64       `json:"mediumCount,omitempty"`
+	LowCount      *int64       `json:"lowCount,omitempty"`
+	StartTime     *metav1.Time `json:"startTime,omitempty"`
+	EndTime       *metav1.Time `json:"endTime,omitempty"`
 }
 
 type ScanSpec struct {

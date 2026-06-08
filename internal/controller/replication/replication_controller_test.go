@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/replication/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -111,12 +111,12 @@ func TestObserveReplicationWithNilDescription(t *testing.T) {
 			listReplicationPoliciesFunc: func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
 				return []*harborclients.ReplicationPolicyStatus{
 					{
-						ID:            "policy-123",
-						Name:          "my-replication",
-						Description:   nil,
-						Enabled:       true,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "policy-123",
+						Name:         "my-replication",
+						Description:  nil,
+						Enabled:      true,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -152,11 +152,11 @@ func TestObserveReplicationUpToDateEnabledChange(t *testing.T) {
 			listReplicationPoliciesFunc: func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
 				return []*harborclients.ReplicationPolicyStatus{
 					{
-						ID:            "policy-123",
-						Name:          "my-replication",
-						Enabled:       false,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "policy-123",
+						Name:         "my-replication",
+						Enabled:      false,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -376,11 +376,11 @@ func TestObserveReplicationExists(t *testing.T) {
 			listReplicationPoliciesFunc: func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
 				return []*harborclients.ReplicationPolicyStatus{
 					{
-						ID:            "policy-123",
-						Name:          "my-replication",
-						Enabled:       true,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "policy-123",
+						Name:         "my-replication",
+						Enabled:      true,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -422,12 +422,12 @@ func TestObserveReplicationNotUpToDate(t *testing.T) {
 				newDesc := "new description"
 				return []*harborclients.ReplicationPolicyStatus{
 					{
-						ID:            "policy-123",
-						Name:          "my-replication",
-						Description:   &newDesc,
-						Enabled:       true,
-						CreationTime:  time.Now(),
-						UpdateTime:    time.Now(),
+						ID:           "policy-123",
+						Name:         "my-replication",
+						Description:  &newDesc,
+						Enabled:      true,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
 					},
 				}, nil
 			},
@@ -791,11 +791,11 @@ func TestReplicationParametersValidation(t *testing.T) {
 
 type mockReplicationClient struct {
 	harborclients.HarborClienter
-	listReplicationPoliciesFunc  func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error)
-	createReplicationPolicyFunc  func(ctx context.Context, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error)
+	listReplicationPoliciesFunc func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error)
+	createReplicationPolicyFunc func(ctx context.Context, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error)
 	updateReplicationPolicyFunc func(ctx context.Context, policyID string, spec *harborclients.ReplicationPolicySpec) (*harborclients.ReplicationPolicyStatus, error)
 	deleteReplicationPolicyFunc func(ctx context.Context, policyID string) error
-	closeFunc                    func() error
+	closeFunc                   func() error
 }
 
 func (m *mockReplicationClient) ListReplicationPolicies(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
