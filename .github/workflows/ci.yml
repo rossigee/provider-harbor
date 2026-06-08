@@ -27,7 +27,7 @@ permissions:
   actions: read    # Needed for detecting duplicate actions
 
 env:
-  GO_VERSION: '1.26.3'
+  GO_VERSION: '1.26.4'
   GOLANGCI_VERSION: 'latest'
   GOLANGCILINT_VERSION: '2.12.2'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
