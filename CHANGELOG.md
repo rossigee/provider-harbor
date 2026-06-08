@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.16.0 (2025-06-09)
+
+### Fixes
+
+**Critical Bug Fixes**
+- Fixed CRD API group mismatch where v1beta1 controllers expected v1beta1 CRDs but only v1alpha1 were deployed
+- Fixed User controller not reconciling by enabling proper Logr logging (replaced NopLogger)
+- Implemented password secret reading in User controller instead of returning mock values
+
+**Code Quality**
+- Enabled structured logging in all 11 managed resource controllers for visibility
+- Fixed deprecated logger usage across entire controller suite
+
+### Features
+
+**New Resources**
+- UserGroup controller for Harbor user group management
+- Support for LDAP groups (type 1), HTTP groups (type 2), OIDC groups (type 3)
+- Full CRUD operations for user groups
+
+### Technical
+
+**API Generation**
+- Regenerated all v1beta1 CRDs with proper Crossplane annotations
+- Updated angryjet methodsets for all controllers
+- Verified code compilation and test suite
+
 ## v0.14.0 (2025-06-06)
 
 ### Features
