@@ -44,15 +44,12 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Artifacts
-        run: |
-          make build.init
-          make build.code
-          make do.build.artifacts
+        run: make -j2 build.all
+        env:
+          BUILD_ARGS: "--load"
 
       - name: Publish Artifacts
-        run: |
-          VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          make BRANCH_NAME=master VERSION=$VERSION publish.artifacts
+        run: make -j2 publish BRANCH_NAME=${GITHUB_REF##*/}
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
