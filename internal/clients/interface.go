@@ -99,6 +99,13 @@ type HarborClienter interface {
 	GetRetentionPolicy(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
 	UpdateRetentionPolicy(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
 	DeleteRetentionPolicy(ctx context.Context, projectID, policyID string) error
+
+	// UserGroup operations
+	CreateUserGroup(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)
+	ListUserGroups(ctx context.Context) ([]*UserGroupStatus, error)
+	GetUserGroup(ctx context.Context, groupID int64) (*UserGroupStatus, error)
+	UpdateUserGroup(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
+	DeleteUserGroup(ctx context.Context, groupID int64) error
 }
 
 // Ensure HarborClient implements HarborClienter
@@ -193,6 +200,13 @@ type MockHarborClient struct {
 	GetRetentionPolicyFunc      func(ctx context.Context, projectID, policyID string) (*RetentionPolicyStatus, error)
 	UpdateRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string, spec *RetentionPolicySpec) (*RetentionPolicyStatus, error)
 	DeleteRetentionPolicyFunc   func(ctx context.Context, projectID, policyID string) error
+
+	// UserGroup operations
+	CreateUserGroupFunc func(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)
+	ListUserGroupsFunc  func(ctx context.Context) ([]*UserGroupStatus, error)
+	GetUserGroupFunc    func(ctx context.Context, groupID int64) (*UserGroupStatus, error)
+	UpdateUserGroupFunc func(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
+	DeleteUserGroupFunc func(ctx context.Context, groupID int64) error
 }
 
 // GetBaseURL calls GetBaseURLFunc
@@ -799,6 +813,56 @@ func (m *MockHarborClient) UpdateRetentionPolicy(ctx context.Context, projectID,
 func (m *MockHarborClient) DeleteRetentionPolicy(ctx context.Context, projectID, policyID string) error {
 	if m.DeleteRetentionPolicyFunc != nil {
 		return m.DeleteRetentionPolicyFunc(ctx, projectID, policyID)
+	}
+	return nil
+}
+
+// CreateUserGroup calls CreateUserGroupFunc
+func (m *MockHarborClient) CreateUserGroup(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error) {
+	if m.CreateUserGroupFunc != nil {
+		return m.CreateUserGroupFunc(ctx, spec)
+	}
+	return &UserGroupStatus{
+		ID:          1,
+		GroupName:   spec.GroupName,
+		GroupType:   spec.GroupType,
+		LdapGroupDn: "",
+	}, nil
+}
+
+// ListUserGroups calls ListUserGroupsFunc
+func (m *MockHarborClient) ListUserGroups(ctx context.Context) ([]*UserGroupStatus, error) {
+	if m.ListUserGroupsFunc != nil {
+		return m.ListUserGroupsFunc(ctx)
+	}
+	return nil, nil
+}
+
+// GetUserGroup calls GetUserGroupFunc
+func (m *MockHarborClient) GetUserGroup(ctx context.Context, groupID int64) (*UserGroupStatus, error) {
+	if m.GetUserGroupFunc != nil {
+		return m.GetUserGroupFunc(ctx, groupID)
+	}
+	return nil, nil
+}
+
+// UpdateUserGroup calls UpdateUserGroupFunc
+func (m *MockHarborClient) UpdateUserGroup(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error) {
+	if m.UpdateUserGroupFunc != nil {
+		return m.UpdateUserGroupFunc(ctx, groupID, spec)
+	}
+	return &UserGroupStatus{
+		ID:          groupID,
+		GroupName:   spec.GroupName,
+		GroupType:   spec.GroupType,
+		LdapGroupDn: "",
+	}, nil
+}
+
+// DeleteUserGroup calls DeleteUserGroupFunc
+func (m *MockHarborClient) DeleteUserGroup(ctx context.Context, groupID int64) error {
+	if m.DeleteUserGroupFunc != nil {
+		return m.DeleteUserGroupFunc(ctx, groupID)
 	}
 	return nil
 }

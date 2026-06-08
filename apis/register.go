@@ -19,6 +19,7 @@ import (
 	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	scanv1beta1 "github.com/rossigee/provider-harbor/apis/scan/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 
@@ -35,6 +36,7 @@ func init() {
 		registryv1beta1.SchemeBuilder.AddToScheme,
 		scannerv1beta1.SchemeBuilder.AddToScheme,
 		userv1beta1.SchemeBuilder.AddToScheme,
+		usergroupv1beta1.SchemeBuilder.AddToScheme,
 
 		// Phase 2: New resources for repository, artifact, member, scan management
 		artifactv1beta1.SchemeBuilder.AddToScheme,

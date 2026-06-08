@@ -36,6 +36,7 @@ import (
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 )
 
@@ -229,6 +230,8 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		configRef = user.Spec.ProviderConfigReference
 	} else if registry, ok := mg.(*registryv1beta1.Registry); ok {
 		configRef = registry.Spec.ProviderConfigReference
+	} else if usergroup, ok := mg.(*usergroupv1beta1.UserGroup); ok {
+		configRef = usergroup.Spec.ProviderConfigReference
 	} else {
 		// Fallback: assume the managed resource has ProviderConfigReference
 		// This is a bit of a hack but works for most cases
@@ -2114,6 +2117,103 @@ func (c *HarborClient) DeleteRetentionPolicy(ctx context.Context, projectID, pol
 
 	c.logger.Info("Deleting Harbor retention policy", "projectId", projectID, "policyId", policyID)
 
+	return nil
+}
+
+// CreateUserGroup creates a new user group in Harbor
+func (c *HarborClient) CreateUserGroup(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error) {
+	if spec == nil {
+		return nil, errors.New("user group spec is required")
+	}
+	if spec.GroupName == "" {
+		return nil, errors.New("group name is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Creating Harbor user group", "groupName", spec.GroupName, "groupType", spec.GroupType)
+
+	// TODO: Implement actual Harbor API call
+	return &UserGroupStatus{
+		ID:          1,
+		GroupName:   spec.GroupName,
+		GroupType:   spec.GroupType,
+		LdapGroupDn: *spec.LdapGroupDn,
+	}, nil
+}
+
+// ListUserGroups lists all user groups in Harbor
+func (c *HarborClient) ListUserGroups(ctx context.Context) ([]*UserGroupStatus, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Listing Harbor user groups")
+
+	// TODO: Implement actual Harbor API call
+	return []*UserGroupStatus{}, nil
+}
+
+// GetUserGroup retrieves a specific user group from Harbor
+func (c *HarborClient) GetUserGroup(ctx context.Context, groupID int64) (*UserGroupStatus, error) {
+	if groupID <= 0 {
+		return nil, errors.New("group ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Getting Harbor user group", "groupId", groupID)
+
+	// TODO: Implement actual Harbor API call
+	return nil, nil
+}
+
+// UpdateUserGroup updates a user group in Harbor
+func (c *HarborClient) UpdateUserGroup(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error) {
+	if groupID <= 0 {
+		return nil, errors.New("group ID is required")
+	}
+	if spec == nil {
+		return nil, errors.New("user group spec is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Updating Harbor user group", "groupId", groupID, "groupName", spec.GroupName)
+
+	// TODO: Implement actual Harbor API call
+	return &UserGroupStatus{
+		ID:          groupID,
+		GroupName:   spec.GroupName,
+		GroupType:   spec.GroupType,
+		LdapGroupDn: *spec.LdapGroupDn,
+	}, nil
+}
+
+// DeleteUserGroup deletes a user group from Harbor
+func (c *HarborClient) DeleteUserGroup(ctx context.Context, groupID int64) error {
+	if groupID <= 0 {
+		return errors.New("group ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Deleting Harbor user group", "groupId", groupID)
+
+	// TODO: Implement actual Harbor API call
 	return nil
 }
 

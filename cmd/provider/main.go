@@ -31,6 +31,7 @@ import (
 	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
+	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
 	// webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
@@ -107,6 +108,9 @@ func main() {
 
 	// Setup User controller
 	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
+
+	// Setup UserGroup controller
+	kingpin.FatalIfError(usergroupcontroller.Setup(mgr, o), "Cannot setup UserGroup controller")
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
