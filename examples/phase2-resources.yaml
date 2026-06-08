@@ -1,4 +1,3 @@
----
 # Phase 2 Example: Harbor Provider Resources
 # This demonstrates how to use the new Repository, Artifact, Member, and Scan resources
 # from the Crossplane Harbor Provider
