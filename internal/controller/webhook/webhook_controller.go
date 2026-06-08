@@ -39,7 +39,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
-		managed.WithLogger(logging.NewNopLogger().WithValues("controller", name)),
+		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
 		managed.WithPollInterval(1*time.Minute),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 

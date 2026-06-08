@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,7 +48,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
-		managed.WithLogger(logging.NewNopLogger().WithValues("controller", name)),
+		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
 		managed.WithPollInterval(1*time.Minute),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 
@@ -238,9 +239,36 @@ func (c *external) Disconnect(ctx context.Context) error {
 
 // Helper function to get password from secret
 func (c *external) getPasswordFromSecret(ctx context.Context, cr *v1beta1.User) (string, error) {
-	// This would need to be implemented to read from Kubernetes secret
-	// For now, return a placeholder
-	return "mock-password", nil
+	if cr.Spec.ForProvider.PasswordSecretRef == nil {
+		return "", errors.New("no password secret reference provided")
+	}
+
+	secret := &corev1.Secret{}
+	secretRef := cr.Spec.ForProvider.PasswordSecretRef
+	secretNamespace := cr.GetNamespace()
+	if secretRef.Namespace != "" {
+		secretNamespace = secretRef.Namespace
+	}
+
+	err := c.kube.Get(ctx, client.ObjectKey{
+		Name:      secretRef.Name,
+		Namespace: secretNamespace,
+	}, secret)
+	if err != nil {
+		return "", errors.Wrap(err, "cannot get password secret")
+	}
+
+	key := secretRef.Key
+	if key == "" {
+		key = "password"
+	}
+
+	password, ok := secret.Data[key]
+	if !ok {
+		return "", errors.Errorf("secret key %q not found in secret %s/%s", key, secretNamespace, secretRef.Name)
+	}
+
+	return string(password), nil
 }
 
 // Helper functions
