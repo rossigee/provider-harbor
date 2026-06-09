@@ -101,7 +101,6 @@ spec:
   # Note: Creating this resource triggers a scan job in Harbor
   # The Status.AtProvider fields show the scan results
 
----
 # Provider Config Reference
 # This should be created before the above resources:
 #
