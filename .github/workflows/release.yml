@@ -41,7 +41,7 @@ jobs:
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: oauth2
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Docker Buildx
