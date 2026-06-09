@@ -24,7 +24,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
@@ -46,6 +46,12 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      - name: Verify Docker Auth
+        run: |
+          echo "Testing docker auth to GHCR..."
+          docker pull ghcr.io/rossigee/provider-harbor:latest 2>&1 | head -5 || true
+          cat ~/.docker/config.json | jq '.auths["ghcr.io"] // "NOT FOUND"' || echo "No auth config"
 
       - name: Build and Publish Artifacts
         run: make build.all && make publish BRANCH_NAME=master
