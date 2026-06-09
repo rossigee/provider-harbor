@@ -46,6 +46,9 @@ jobs:
           go mod vendor
           make vendor.check
 
+      - name: Init build submodule
+        run: git submodule update --init --depth 1 build
+
       - name: Extract Version
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
