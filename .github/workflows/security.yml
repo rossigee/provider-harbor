@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0  # Full history for better analysis
@@ -119,7 +119,7 @@ jobs:
     if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == ''
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
