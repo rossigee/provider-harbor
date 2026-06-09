@@ -150,7 +150,7 @@ jobs:
           govulncheck ./...
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v9.2.0/21.4
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
