@@ -96,7 +96,7 @@ jobs:
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
-    needs: release
+    needs: publish
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -111,7 +111,7 @@ jobs:
 
   # Add publication verification (preserves your custom verification)
   verify-publication:
-    needs: release
+    needs: publish
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GHCR using PAT
