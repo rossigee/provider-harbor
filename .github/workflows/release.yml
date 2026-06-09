@@ -55,6 +55,11 @@ jobs:
           AUTH_B64=$(cat ~/.docker/config.json | jq -r '.auths["ghcr.io"].auth')
           echo "Auth token present: $([ -n "$AUTH_B64" ] && echo 'YES' || echo 'NO')"
 
+          # Decode and show what credentials are being used
+          echo "Decoded auth credentials:"
+          echo "$AUTH_B64" | base64 -d
+          echo ""
+
           # Test OCI blob upload (simulates what xpkg does)
           echo "Testing OCI blob upload to GHCR..."
           CURL_RESPONSE=$(curl -v -X POST \
