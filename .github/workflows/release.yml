@@ -57,10 +57,11 @@ jobs:
 
           # Test OCI blob upload (simulates what xpkg does)
           echo "Testing OCI blob upload to GHCR..."
-          curl -v -X POST \
+          CURL_RESPONSE=$(curl -v -X POST \
             -H "Authorization: Basic $AUTH_B64" \
             https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
-            2>&1 | head -50
+            2>&1)
+          echo "$CURL_RESPONSE" | grep -E "^< HTTP|DENIED|permission_denied|error|Location:"
 
           echo ""
           echo "Token info:"
