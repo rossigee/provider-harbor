@@ -49,6 +49,14 @@ jobs:
       - name: Init build submodule
         run: git submodule update --init --depth 1 build
 
+      - name: Install Crossplane CLI
+        run: |
+          PLATFORM=$(go env GOOS)-$(go env GOARCH)
+          mkdir -p .cache/tools/${PLATFORM}
+          curl -sSL "https://github.com/crossplane/crossplane/releases/download/v2.0.2/crossplane-${PLATFORM}" -o .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2
+          chmod +x .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2
+          ln -sf .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2 .cache/tools/${PLATFORM}/crossplane-cli
+
       - name: Extract Version
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
