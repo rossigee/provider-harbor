@@ -87,18 +87,18 @@ jobs:
 
       - name: Initialize CodeQL
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/init@v6
+        uses: github/codeql-action/init@v4
         with:
           languages: go
           queries: security-extended,security-and-quality
 
       - name: Autobuild for CodeQL
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/autobuild@v6
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/analyze@v6
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:go"
 
@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload Gosec Results
         if: (github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == '') && always() && hashFiles('gosec-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v6
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: gosec-results.sarif
           category: gosec
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload OSV scan results
         if: always() && hashFiles('osv-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v6
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: osv-results.sarif
 
@@ -222,7 +222,7 @@ jobs:
 #
 # 5. STANDARDIZED VERSION
 #    - Go 1.26.4
-#    - Actions: checkout@v4, setup-go@v6, codeql-action@v6
+#    - Actions: checkout@v4, setup-go@v6, codeql-action@v4
 #    - Runners: ubuntu-24.04
 #
 # To apply this template:
