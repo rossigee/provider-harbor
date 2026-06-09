@@ -93,11 +93,13 @@ jobs:
           echo "  Job permissions: contents:write, packages:write, id-token:write"
 
       - name: Build and Publish Artifacts
-        run: make build.all && make publish BRANCH_NAME=master
+        run: |
+          echo "Docker config before build:"
+          cat ~/.docker/config.json | jq '.auths | keys' 2>/dev/null || echo "No docker config"
+          echo ""
+          make build.all && CROSSPLANE_CLI="$(which crossplane)" make publish BRANCH_NAME=master --verbose
         env:
           BUILD_ARGS: "--load"
-          DOCKER_USERNAME: ${{ github.repository_owner }}
-          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
