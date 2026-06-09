@@ -60,6 +60,17 @@ jobs:
           echo "$AUTH_B64" | base64 -d
           echo ""
 
+          # Check what token we actually have
+          echo "Checking secrets.GITHUB_TOKEN:"
+          if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "✓ Token present and non-empty"
+            TOKEN_LEN=$(echo -n "${{ secrets.GITHUB_TOKEN }}" | wc -c)
+            echo "  Length: $TOKEN_LEN characters"
+            echo "  Starts with: $(echo -n '${{ secrets.GITHUB_TOKEN }}' | head -c 20)..."
+          else
+            echo "✗ Token is empty or missing"
+          fi
+
           # Test OCI blob upload (simulates what xpkg does)
           echo "Testing OCI blob upload to GHCR..."
           CURL_RESPONSE=$(curl -v -X POST \
