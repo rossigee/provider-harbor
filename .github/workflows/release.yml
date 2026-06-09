@@ -89,7 +89,7 @@ jobs:
           rm -rf _output/artifacts-*
 
       - name: Publish Artifacts
-        run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+        run: make publish BRANCH_NAME=master
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
