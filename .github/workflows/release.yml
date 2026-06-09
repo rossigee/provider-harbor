@@ -51,6 +51,11 @@ jobs:
         run: |
           echo "Testing docker auth to GHCR..."
           docker pull ghcr.io/rossigee/provider-harbor:latest 2>&1 | head -5 || true
+
+          echo "Testing docker push to GHCR..."
+          docker tag ghcr.io/rossigee/provider-harbor:latest ghcr.io/rossigee/provider-harbor:test-auth
+          docker push ghcr.io/rossigee/provider-harbor:test-auth 2>&1 | tail -20
+
           echo "Docker config location:"
           ls -la ~/.docker/config.json || echo "NOT FOUND"
           echo "Docker config content:"
