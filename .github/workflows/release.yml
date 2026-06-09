@@ -71,13 +71,21 @@ jobs:
             echo "✗ Token is empty or missing"
           fi
 
-          # Test OCI blob upload (simulates what xpkg does)
-          echo "Testing OCI blob upload to GHCR..."
+          # Test OCI blob upload with Basic auth (what xpkg uses)
+          echo "Testing OCI blob upload to GHCR with Basic auth..."
           CURL_RESPONSE=$(curl -v -X POST \
             -H "Authorization: Basic $AUTH_B64" \
             https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
             2>&1)
           echo "$CURL_RESPONSE" | grep -E "^< HTTP|DENIED|permission_denied|error|Location:"
+
+          # Test with Bearer token instead
+          echo ""
+          echo "Testing OCI blob upload to GHCR with Bearer token..."
+          curl -v -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
+            2>&1 | grep -E "^< HTTP|DENIED|permission_denied|error|Location:" | head -3
 
           echo ""
           echo "Token info:"
