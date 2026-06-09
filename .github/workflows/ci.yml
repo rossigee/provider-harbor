@@ -29,7 +29,7 @@ permissions:
 env:
   GO_VERSION: '1.26.4'
   GOLANGCI_VERSION: 'latest'
-  GOLANGCILINT_VERSION: 'v2.12.2'
+  GOLANGCILINT_VERSION: '2.12.2'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v9.2.0/3.1
+        uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
@@ -54,6 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          token: ${{ github.token }}
           submodules: true
 
       - name: Setup Go
@@ -75,6 +76,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          token: ${{ github.token }}
           submodules: true
 
       - name: Setup Go
@@ -98,6 +100,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          token: ${{ github.token }}
           submodules: true
           fetch-depth: 0
 
@@ -130,6 +133,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          token: ${{ github.token }}
           submodules: true
 
       - name: Setup Go
@@ -179,7 +183,8 @@ jobs:
   #       uses: actions/checkout@v6
   #       with:
   #         fetch-depth: 0
-  #         submodules: true
+  #         token: ${{ github.token }}
+          submodules: true
 
   #     - name: Setup Go
   #       uses: actions/setup-go@v6
