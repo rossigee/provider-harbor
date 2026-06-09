@@ -53,9 +53,9 @@ jobs:
         run: |
           PLATFORM=$(go env GOOS)_$(go env GOARCH)
           mkdir -p .cache/tools/${PLATFORM}
-          curl -sSL "https://github.com/crossplane/crossplane/releases/download/v2.0.2/crossplane-${PLATFORM}" -o .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2
-          chmod +x .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2
-          ln -sf .cache/tools/${PLATFORM}/crossplane-cli-v2.0.2 .cache/tools/${PLATFORM}/crossplane-cli
+          curl -sSL "https://github.com/crossplane/crossplane/releases/download/v2.3.2/crossplane-${PLATFORM}" -o .cache/tools/${PLATFORM}/crossplane-cli-v2.3.2
+          chmod +x .cache/tools/${PLATFORM}/crossplane-cli-v2.3.2
+          ln -sf .cache/tools/${PLATFORM}/crossplane-cli-v2.3.2 .cache/tools/${PLATFORM}/crossplane-cli
 
       - name: Extract Version
         id: version
