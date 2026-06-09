@@ -1,19 +1,10 @@
-# Official Provider-Workflows Release Template
-# Uses crossplane-contrib/provider-workflows with GHCR registry
-# Compatible with rossigee GHCR setup
-
-name: Release (Official Workflows)
+name: Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag to release (e.g., v1.0.0)'
-        required: true
-        type: string
 
 jobs:
   release:
@@ -37,132 +28,19 @@ jobs:
       - name: Vendor Dependencies
         run: go mod vendor
 
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: oauth2
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Verify GHCR Token Scopes
-        run: |
-          echo "=== Testing GHCR OCI Push Capability ==="
+      - name: Build and Publish
+        run: make build.all && make publish BRANCH_NAME=${GITHUB_REF##*/}
 
-          # Extract base64 auth from docker config
-          AUTH_B64=$(cat ~/.docker/config.json | jq -r '.auths["ghcr.io"].auth')
-          echo "Auth token present: $([ -n "$AUTH_B64" ] && echo 'YES' || echo 'NO')"
-
-          # Decode and show what credentials are being used
-          echo "Decoded auth credentials:"
-          echo "$AUTH_B64" | base64 -d
-          echo ""
-
-          # Check what token we actually have
-          echo "Checking secrets.GITHUB_TOKEN:"
-          if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
-            echo "✓ Token present and non-empty"
-            TOKEN_LEN=$(echo -n "${{ secrets.GITHUB_TOKEN }}" | wc -c)
-            echo "  Length: $TOKEN_LEN characters"
-            echo "  Starts with: $(echo -n '${{ secrets.GITHUB_TOKEN }}' | head -c 20)..."
-          else
-            echo "✗ Token is empty or missing"
-          fi
-
-          # Test OCI blob upload with Basic auth (what xpkg uses)
-          echo "Testing OCI blob upload to GHCR with Basic auth..."
-          CURL_RESPONSE=$(curl -v -X POST \
-            -H "Authorization: Basic $AUTH_B64" \
-            https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
-            2>&1)
-          echo "$CURL_RESPONSE" | grep -E "^< HTTP|DENIED|permission_denied|error|Location:"
-
-          # Test with Bearer token instead
-          echo ""
-          echo "Testing OCI blob upload to GHCR with Bearer token..."
-          curl -v -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
-            2>&1 | grep -E "^< HTTP|DENIED|permission_denied|error|Location:" | head -3
-
-          echo ""
-          echo "Token info:"
-          echo "  Username: ${{ github.repository_owner }}"
-          echo "  Job permissions: contents:write, packages:write, id-token:write"
-
-      - name: Build and Publish Artifacts
-        run: |
-          echo "Docker config before build:"
-          cat ~/.docker/config.json | jq '.auths | keys' 2>/dev/null || echo "No docker config"
-          echo ""
-          make build.all && make publish BRANCH_NAME=master
-        env:
-          BUILD_ARGS: "--load"
-
-  # Add GitHub release creation (preserves your custom feature)
   github-release:
     needs: release
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.event.inputs.version || github.ref_name }}
-          draft: false
-          prerelease: false
           generate_release_notes: true
-
-  # Add publication verification (preserves your custom verification)
-  verify-publication:
-    needs: release
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - name: Verify Publication
-        run: |
-          set -e  # Fail fast on any error
-
-          VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          PROVIDER_NAME="${{ github.event.repository.name }}"
-          REGISTRY_PATH="ghcr.io/rossigee/${PROVIDER_NAME}"
-
-          echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
-
-          # Verify version tag exists and is pullable
-          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
-            echo "✅ Verified container image ${VERSION}"
-          else
-            echo "❌ Failed to pull container image ${VERSION}"
-            exit 1
-          fi
-
-          # Verify latest tag exists and is pullable
-          if docker pull "${REGISTRY_PATH}:latest" > /dev/null 2>&1; then
-            echo "✅ Verified container image latest"
-          else
-            echo "❌ Failed to pull container image latest"
-            exit 1
-          fi
-
-          # Verify both tags point to same image (identical digests)
-          VERSION_DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
-          LATEST_DIGEST=$(docker inspect "${REGISTRY_PATH}:latest" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
-
-          if [ "$VERSION_DIGEST" = "$LATEST_DIGEST" ]; then
-            echo "✅ Version and latest tags point to identical image"
-            echo "   Digest: ${VERSION_DIGEST}"
-          else
-            echo "❌ Version and latest tags point to different images"
-            echo "   Version digest: ${VERSION_DIGEST}"
-            echo "   Latest digest:  ${LATEST_DIGEST}"
-            exit 1
-          fi
