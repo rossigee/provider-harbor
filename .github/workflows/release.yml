@@ -16,40 +16,7 @@ on:
         type: string
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.26.4'
-
-      - name: Vendor Dependencies
-        run: go mod vendor
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build Artifacts
-        run: make build.all
-        env:
-          BUILD_ARGS: "--load"
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v5
-        with:
-          name: build-artifacts
-          path: _output/
-          retention-days: 1
-
-  publish:
-    needs: build
+  release:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -76,24 +43,14 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v5
-        with:
-          path: _output/
-
-      - name: Organize Artifacts
-        run: |
-          mkdir -p _output/bin _output/images _output/xpkg
-          mv _output/artifacts-linux_amd64/_output/* _output/ 2>/dev/null || true
-          mv _output/artifacts-linux_arm64/_output/* _output/ 2>/dev/null || true
-          rm -rf _output/artifacts-*
-
-      - name: Publish Artifacts
-        run: make publish BRANCH_NAME=master
+      - name: Build and Publish Artifacts
+        run: make build.all && make publish BRANCH_NAME=master
+        env:
+          BUILD_ARGS: "--load"
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
-    needs: publish
+    needs: release
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -108,7 +65,7 @@ jobs:
 
   # Add publication verification (preserves your custom verification)
   verify-publication:
-    needs: publish
+    needs: release
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GHCR
