@@ -51,12 +51,18 @@ jobs:
         run: |
           echo "Testing docker auth to GHCR..."
           docker pull ghcr.io/rossigee/provider-harbor:latest 2>&1 | head -5 || true
-          cat ~/.docker/config.json | jq '.auths["ghcr.io"] // "NOT FOUND"' || echo "No auth config"
+          echo "Docker config location:"
+          ls -la ~/.docker/config.json || echo "NOT FOUND"
+          echo "Docker config content:"
+          cat ~/.docker/config.json | jq '.auths["ghcr.io"] // "NOT FOUND"' 2>/dev/null || echo "Failed to parse"
+          echo "DOCKER_CONFIG env var: $DOCKER_CONFIG"
 
       - name: Build and Publish Artifacts
         run: make build.all && make publish BRANCH_NAME=master
         env:
           BUILD_ARGS: "--load"
+          DOCKER_USERNAME: ${{ github.repository_owner }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   # Add GitHub release creation (preserves your custom feature)
   github-release:
