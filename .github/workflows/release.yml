@@ -39,6 +39,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Publish
+        env:
+          DOCKER_USERNAME: ${{ github.repository_owner }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: make build.all && make publish BRANCH_NAME=master
 
   github-release:
