@@ -97,7 +97,7 @@ jobs:
           echo "Docker config before build:"
           cat ~/.docker/config.json | jq '.auths | keys' 2>/dev/null || echo "No docker config"
           echo ""
-          make build.all && CROSSPLANE_CLI="$(which crossplane)" make publish BRANCH_NAME=master --verbose
+          make build.all && make publish BRANCH_NAME=master
         env:
           BUILD_ARGS: "--load"
 
