@@ -16,11 +16,8 @@ on:
         type: string
 
 jobs:
-  build-matrix:
+  build:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        platform: [linux_amd64, linux_arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,20 +36,20 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Artifacts for ${{ matrix.platform }}
-        run: make build.code PLATFORM=${{ matrix.platform }} && make build.artifacts.platform PLATFORM=${{ matrix.platform }}
+      - name: Build Artifacts
+        run: make build.all
         env:
           BUILD_ARGS: "--load"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-${{ matrix.platform }}
+          name: build-artifacts
           path: _output/
           retention-days: 1
 
   publish:
-    needs: build-matrix
+    needs: build
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
