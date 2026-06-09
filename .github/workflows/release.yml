@@ -47,20 +47,25 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Verify Docker Auth
+      - name: Verify GHCR Token Scopes
         run: |
-          echo "Testing docker auth to GHCR..."
-          docker pull ghcr.io/rossigee/provider-harbor:latest 2>&1 | head -5 || true
+          echo "=== Testing GHCR OCI Push Capability ==="
 
-          echo "Testing docker push to GHCR..."
-          docker tag ghcr.io/rossigee/provider-harbor:latest ghcr.io/rossigee/provider-harbor:test-auth
-          docker push ghcr.io/rossigee/provider-harbor:test-auth 2>&1 | tail -20
+          # Extract base64 auth from docker config
+          AUTH_B64=$(cat ~/.docker/config.json | jq -r '.auths["ghcr.io"].auth')
+          echo "Auth token present: $([ -n "$AUTH_B64" ] && echo 'YES' || echo 'NO')"
 
-          echo "Docker config location:"
-          ls -la ~/.docker/config.json || echo "NOT FOUND"
-          echo "Docker config content:"
-          cat ~/.docker/config.json | jq '.auths["ghcr.io"] // "NOT FOUND"' 2>/dev/null || echo "Failed to parse"
-          echo "DOCKER_CONFIG env var: $DOCKER_CONFIG"
+          # Test OCI blob upload (simulates what xpkg does)
+          echo "Testing OCI blob upload to GHCR..."
+          curl -v -X POST \
+            -H "Authorization: Basic $AUTH_B64" \
+            https://ghcr.io/v2/rossigee/provider-harbor/blobs/uploads/ \
+            2>&1 | head -50
+
+          echo ""
+          echo "Token info:"
+          echo "  Username: ${{ github.repository_owner }}"
+          echo "  Job permissions: contents:write, packages:write, id-token:write"
 
       - name: Build and Publish Artifacts
         run: make build.all && make publish BRANCH_NAME=master
