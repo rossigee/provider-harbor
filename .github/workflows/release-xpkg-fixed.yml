@@ -78,8 +78,10 @@ jobs:
 
       - name: Install Crossplane CLI
         run: |
+          # The Crossplane CLI ("crank") is published on releases.crossplane.io,
+          # not as a GitHub release asset.
           curl -fsSL \
-            "https://github.com/crossplane/crossplane/releases/download/${CROSSPLANE_CLI_VERSION}/crossplane-linux_amd64" \
+            "https://releases.crossplane.io/stable/${CROSSPLANE_CLI_VERSION}/bin/linux_amd64/crank" \
             -o /usr/local/bin/crossplane
           chmod +x /usr/local/bin/crossplane
           crossplane --version || true
