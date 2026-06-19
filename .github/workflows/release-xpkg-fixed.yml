@@ -1,0 +1,152 @@
+name: Release xpkg (fixed packaging)
+
+# Why this workflow exists
+# ------------------------
+# The stock release.yml runs `make publish` with REGISTRY_ORGS (the runtime
+# controller Docker image) and XPKG_REG_ORGS (the Crossplane package) pointing
+# at the SAME ref: ghcr.io/<owner>/provider-harbor:<tag>. The two artifacts
+# collide on that one tag and the plain runtime image wins. A consumer that
+# does `kubectl apply` of a Provider referencing that tag therefore pulls the
+# runtime image, whose /package/package.yaml contains ONLY the
+# `meta.pkg.crossplane.io Provider` doc (the 15 CRDs sit as loose files under
+# /package/crds/, which the Crossplane package runtime never reads). Result:
+# the ProviderRevision goes Healthy but registers 0 CRDs, and every managed
+# resource fails with `no matches for kind ...`.
+#
+# This workflow does it the right way:
+#   1. build the provider binary,
+#   2. build the runtime controller image LOCALLY (not pushed to the provider ref),
+#   3. `crossplane xpkg build` it into a real package (recurses package/ so the
+#      CRDs are merged into package.yaml, with the runtime embedded),
+#   4. VERIFY package.yaml actually contains the CRDs (the guard the stock
+#      pipeline lacked), and only then
+#   5. push the SINGLE xpkg artifact to ghcr.io/<owner>/provider-harbor:<tag>.
+#
+# NOTE: this is amd64-only for now (matches the homelab dev cluster); add
+# linux/arm64 + a multi-platform `crossplane xpkg push -f a.xpkg,b.xpkg` to
+# restore multi-arch. The controller code itself is unchanged — this fixes
+# packaging only; the stubbed Robot/Member controllers are a separate concern.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "OCI tag to publish (semver, e.g. v0.16.1-crdfix.1)"
+        required: true
+        default: "v0.16.1-crdfix.1"
+  push:
+    tags:
+      - 'v*-crdfix*'
+
+env:
+  GO_VERSION: '1.26.4'
+  CROSSPLANE_CLI_VERSION: 'v2.3.2'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Resolve version + lowercase owner
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            V="${GITHUB_REF#refs/tags/}"
+          else
+            V="${{ inputs.version }}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "Publishing version=$V"
+
+      - name: Build provider binary (linux/amd64)
+        run: |
+          mkdir -p bin/linux_amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -o bin/linux_amd64/provider ./cmd/provider
+          file bin/linux_amd64/provider
+
+      - name: Install Crossplane CLI
+        run: |
+          curl -fsSL \
+            "https://github.com/crossplane/crossplane/releases/download/${CROSSPLANE_CLI_VERSION}/crossplane-linux_amd64" \
+            -o /usr/local/bin/crossplane
+          chmod +x /usr/local/bin/crossplane
+          crossplane --version || true
+
+      - name: Build runtime controller image LOCALLY (not pushed to the provider ref)
+        run: |
+          # Load into the local Docker daemon so `crossplane xpkg build
+          # --embed-runtime-image` can read it. This image is embedded into the
+          # xpkg; it is intentionally NOT pushed to the provider tag (that
+          # collision is the original bug).
+          docker build \
+            --build-arg TARGETOS=linux \
+            --build-arg TARGETARCH=amd64 \
+            -t provider-harbor-runtime:${{ steps.meta.outputs.version }} \
+            -f cluster/images/provider-harbor/Dockerfile \
+            .
+
+      - name: Build xpkg (embed runtime, merge CRDs from package/)
+        run: |
+          # --package-root recurses package/ (crossplane.yaml + crds/*.yaml),
+          # so all 15 CRDs are merged into the package's package.yaml.
+          crossplane xpkg build \
+            --package-root=package \
+            --embed-runtime-image=provider-harbor-runtime:${{ steps.meta.outputs.version }} \
+            --package-file=provider-harbor.xpkg
+          ls -la provider-harbor.xpkg
+
+      - name: VERIFY package.yaml contains the CRDs (hard gate)
+        run: |
+          set -euo pipefail
+          rm -rf _verify && mkdir _verify
+          tar -xf provider-harbor.xpkg -C _verify
+          # The xpkg is an OCI image tar. Find the layer blob whose tar payload
+          # contains package.yaml, extract it, and count CRD docs.
+          PKG_YAML=""
+          for blob in $(find _verify -type f); do
+            if tar -tzf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
+              tar -xzf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
+            fi
+            if tar -tf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
+              tar -xf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
+            fi
+          done
+          if [ -z "$PKG_YAML" ]; then
+            echo "::error::could not locate package.yaml inside the built xpkg"
+            exit 1
+          fi
+          PROV=$(grep -c '^kind: Provider$' "$PKG_YAML" || true)
+          CRDS=$(grep -c '^kind: CustomResourceDefinition$' "$PKG_YAML" || true)
+          echo "package.yaml: Provider docs=$PROV  CustomResourceDefinition docs=$CRDS"
+          EXPECTED=$(ls package/crds/*.yaml | wc -l | tr -d ' ')
+          if [ "$PROV" -lt 1 ]; then echo "::error::no Provider meta in package.yaml"; exit 1; fi
+          if [ "$CRDS" -ne "$EXPECTED" ]; then
+            echo "::error::expected $EXPECTED CRDs in package.yaml, found $CRDS — packaging is still broken"
+            exit 1
+          fi
+          echo "✅ package.yaml carries the Provider meta + all $CRDS CRDs"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the SINGLE xpkg artifact (no runtime-image collision)
+        run: |
+          REF="ghcr.io/${{ steps.meta.outputs.owner }}/provider-harbor:${{ steps.meta.outputs.version }}"
+          crossplane xpkg push -f provider-harbor.xpkg "$REF"
+          echo "Pushed $REF"
