@@ -1,22 +1,24 @@
 ---
-# Standardized Release Workflow for Crossplane Providers
-# Version: 2026-06-09 - Unified publish pattern across all providers
+# DISABLED — superseded by release-xpkg-fixed.yml
+# ------------------------------------------------
+# This workflow's `make publish` pushed the runtime Docker image and the
+# Crossplane package to the SAME ghcr.io/<owner>/provider-harbor:<tag> ref;
+# the runtime image (package.yaml with no CRDs) won the collision, so installed
+# ProviderRevisions registered 0 CRDs. release-xpkg-fixed.yml is now the
+# canonical release path. This file is kept for reference only and no longer
+# triggers on tags — it can only be run manually, and should not be.
 #
-# Pattern:
+# Original pattern (do not re-enable without removing the tag-ref collision):
 # 1. Build provider binaries and packages (make build)
 # 2. Publish to GHCR in a SINGLE step using make publish with both:
 #    - REGISTRY_ORGS for Docker images
 #    - XPKG_REG_ORGS for Crossplane packages
 # 3. Create GitHub release
-#
-# Triggered on version tags (v*)
 
-name: Release
+name: Release (disabled — see release-xpkg-fixed.yml)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch: {}
 
 env:
   GO_VERSION: '1.26.4'
