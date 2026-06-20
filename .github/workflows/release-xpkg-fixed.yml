@@ -1,8 +1,8 @@
-name: Release xpkg (fixed packaging)
+name: Release
 
 # Why this workflow exists
 # ------------------------
-# The stock release.yml runs `make publish` with REGISTRY_ORGS (the runtime
+# The stock release.yml ran `make publish` with REGISTRY_ORGS (the runtime
 # controller Docker image) and XPKG_REG_ORGS (the Crossplane package) pointing
 # at the SAME ref: ghcr.io/<owner>/provider-harbor:<tag>. The two artifacts
 # collide on that one tag and the plain runtime image wins. A consumer that
@@ -13,34 +13,36 @@ name: Release xpkg (fixed packaging)
 # the ProviderRevision goes Healthy but registers 0 CRDs, and every managed
 # resource fails with `no matches for kind ...`.
 #
-# This workflow does it the right way:
+# This workflow does it the right way, per architecture:
 #   1. build the provider binary,
 #   2. build the runtime controller image LOCALLY (not pushed to the provider ref),
 #   3. `crossplane xpkg build` it into a real package (recurses package/ so the
 #      CRDs are merged into package.yaml, with the runtime embedded),
 #   4. VERIFY package.yaml actually contains the CRDs (the guard the stock
-#      pipeline lacked), and only then
-#   5. push the SINGLE xpkg artifact to ghcr.io/<owner>/provider-harbor:<tag>.
+#      pipeline lacked),
+# then push all per-arch xpkgs as a SINGLE multi-platform package index to
+# ghcr.io/<owner>/provider-harbor:<tag>.
 #
-# NOTE: this is amd64-only for now (matches the homelab dev cluster); add
-# linux/arm64 + a multi-platform `crossplane xpkg push -f a.xpkg,b.xpkg` to
-# restore multi-arch. The controller code itself is unchanged — this fixes
-# packaging only; the stubbed Robot/Member controllers are a separate concern.
+# This is the canonical release path; the old release.yml is disabled so it
+# cannot race this workflow on the same tag. The controller code is unchanged —
+# this fixes packaging only.
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "OCI tag to publish (semver, e.g. v0.16.1-crdfix.1)"
+        description: "OCI tag to publish (semver, e.g. v0.17.0)"
         required: true
-        default: "v0.16.1-crdfix.1"
   push:
     tags:
-      - 'v*-crdfix*'
+      - 'v*'
 
 env:
   GO_VERSION: '1.26.4'
   CROSSPLANE_CLI_VERSION: 'v2.3.2'
+  # Architectures published in the multi-platform package. Add/remove arches
+  # here — every step that fans out over arch reads this list.
+  PLATFORMS: 'amd64 arm64'
 
 jobs:
   release:
@@ -67,14 +69,7 @@ jobs:
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "Publishing version=$V"
-
-      - name: Build provider binary (linux/amd64)
-        run: |
-          mkdir -p bin/linux_amd64
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
-            -o bin/linux_amd64/provider ./cmd/provider
-          file bin/linux_amd64/provider
+          echo "Publishing version=$V for: ${PLATFORMS}"
 
       - name: Install Crossplane CLI
         run: |
@@ -86,59 +81,75 @@ jobs:
           chmod +x /usr/local/bin/crossplane
           crossplane --version || true
 
-      - name: Build runtime controller image LOCALLY (not pushed to the provider ref)
-        run: |
-          # Load into the local Docker daemon so `crossplane xpkg build
-          # --embed-runtime-image` can read it. This image is embedded into the
-          # xpkg; it is intentionally NOT pushed to the provider tag (that
-          # collision is the original bug).
-          docker build \
-            --build-arg TARGETOS=linux \
-            --build-arg TARGETARCH=amd64 \
-            -t provider-harbor-runtime:${{ steps.meta.outputs.version }} \
-            -f cluster/images/provider-harbor/Dockerfile \
-            .
+      - name: Set up QEMU (cross-arch runtime image builds)
+        uses: docker/setup-qemu-action@v3
 
-      - name: Build xpkg (embed runtime, merge CRDs from package/)
-        run: |
-          # --package-root recurses package/ (crossplane.yaml + crds/*.yaml),
-          # so all 15 CRDs are merged into the package's package.yaml.
-          crossplane xpkg build \
-            --package-root=package \
-            --embed-runtime-image=provider-harbor-runtime:${{ steps.meta.outputs.version }} \
-            --package-file=provider-harbor.xpkg
-          ls -la provider-harbor.xpkg
-
-      - name: VERIFY package.yaml contains the CRDs (hard gate)
+      - name: Build per-arch xpkgs (binary -> runtime image -> xpkg + CRD verify)
         run: |
           set -euo pipefail
-          rm -rf _verify && mkdir _verify
-          tar -xf provider-harbor.xpkg -C _verify
-          # The xpkg is an OCI image tar. Find the layer blob whose tar payload
-          # contains package.yaml, extract it, and count CRD docs.
-          PKG_YAML=""
-          for blob in $(find _verify -type f); do
-            if tar -tzf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
-              tar -xzf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
-            fi
-            if tar -tf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
-              tar -xf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
-            fi
-          done
-          if [ -z "$PKG_YAML" ]; then
-            echo "::error::could not locate package.yaml inside the built xpkg"
-            exit 1
-          fi
-          PROV=$(grep -c '^kind: Provider$' "$PKG_YAML" || true)
-          CRDS=$(grep -c '^kind: CustomResourceDefinition$' "$PKG_YAML" || true)
-          echo "package.yaml: Provider docs=$PROV  CustomResourceDefinition docs=$CRDS"
+          VERSION="${{ steps.meta.outputs.version }}"
           EXPECTED=$(ls package/crds/*.yaml | wc -l | tr -d ' ')
-          if [ "$PROV" -lt 1 ]; then echo "::error::no Provider meta in package.yaml"; exit 1; fi
-          if [ "$CRDS" -ne "$EXPECTED" ]; then
-            echo "::error::expected $EXPECTED CRDs in package.yaml, found $CRDS — packaging is still broken"
-            exit 1
-          fi
-          echo "✅ package.yaml carries the Provider meta + all $CRDS CRDs"
+          XPKG_FILES=""
+
+          for ARCH in ${PLATFORMS}; do
+            echo "::group::build $ARCH"
+
+            # 1. provider binary for this arch
+            mkdir -p "bin/linux_${ARCH}"
+            CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build -trimpath \
+              -o "bin/linux_${ARCH}/provider" ./cmd/provider
+            file "bin/linux_${ARCH}/provider"
+
+            # 2. runtime controller image LOCALLY (embedded into the xpkg; never
+            #    pushed to the provider tag — that collision is the original bug).
+            #    --platform + QEMU so the arm64 image is genuinely arm64.
+            RUNTIME="provider-harbor-runtime:${VERSION}-${ARCH}"
+            docker build \
+              --platform "linux/${ARCH}" \
+              --build-arg TARGETOS=linux \
+              --build-arg TARGETARCH="${ARCH}" \
+              -t "${RUNTIME}" \
+              -f cluster/images/provider-harbor/Dockerfile \
+              .
+
+            # 3. xpkg: --package-root recurses package/ (crossplane.yaml +
+            #    crds/*.yaml), merging all CRDs into the package's package.yaml.
+            XPKG="provider-harbor-${ARCH}.xpkg"
+            crossplane xpkg build \
+              --package-root=package \
+              --embed-runtime-image="${RUNTIME}" \
+              --package-file="${XPKG}"
+            ls -la "${XPKG}"
+
+            # 4. hard gate: package.yaml must carry the Provider meta + all CRDs.
+            rm -rf _verify && mkdir _verify
+            tar -xf "${XPKG}" -C _verify
+            PKG_YAML=""
+            for blob in $(find _verify -type f); do
+              if tar -tzf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
+                tar -xzf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
+              fi
+              if tar -tf "$blob" 2>/dev/null | grep -qx 'package.yaml'; then
+                tar -xf "$blob" -C _verify package.yaml 2>/dev/null && PKG_YAML="_verify/package.yaml" && break
+              fi
+            done
+            if [ -z "$PKG_YAML" ]; then
+              echo "::error::[$ARCH] could not locate package.yaml inside the built xpkg"; exit 1
+            fi
+            PROV=$(grep -c '^kind: Provider$' "$PKG_YAML" || true)
+            CRDS=$(grep -c '^kind: CustomResourceDefinition$' "$PKG_YAML" || true)
+            echo "[$ARCH] package.yaml: Provider docs=$PROV  CustomResourceDefinition docs=$CRDS"
+            if [ "$PROV" -lt 1 ]; then echo "::error::[$ARCH] no Provider meta in package.yaml"; exit 1; fi
+            if [ "$CRDS" -ne "$EXPECTED" ]; then
+              echo "::error::[$ARCH] expected $EXPECTED CRDs in package.yaml, found $CRDS — packaging is still broken"; exit 1
+            fi
+            echo "✅ [$ARCH] package.yaml carries the Provider meta + all $CRDS CRDs"
+
+            XPKG_FILES="${XPKG_FILES:+$XPKG_FILES,}${XPKG}"
+            echo "::endgroup::"
+          done
+
+          echo "XPKG_FILES=${XPKG_FILES}" >> "$GITHUB_ENV"
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -147,8 +158,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push the SINGLE xpkg artifact (no runtime-image collision)
+      - name: Push multi-platform package index (no runtime-image collision)
         run: |
           REF="ghcr.io/${{ steps.meta.outputs.owner }}/provider-harbor:${{ steps.meta.outputs.version }}"
-          crossplane xpkg push -f provider-harbor.xpkg "$REF"
-          echo "Pushed $REF"
+          # A comma-separated -f list makes crossplane push a single OCI index
+          # referencing every per-arch xpkg, so Crossplane selects the matching
+          # arch on the node it schedules onto.
+          crossplane xpkg push -f "${XPKG_FILES}" "$REF"
+          echo "Pushed multi-platform $REF (${XPKG_FILES})"
