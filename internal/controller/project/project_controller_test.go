@@ -10,10 +10,12 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -85,7 +87,7 @@ func TestObserveProjectNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockProjectClient{
 			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
-				return nil, errors.New("not found")
+				return nil, nil // not found -> (nil, nil)
 			},
 		},
 	}
@@ -96,6 +98,28 @@ func TestObserveProjectNotFound(t *testing.T) {
 	}
 	if obs.ResourceExists {
 		t.Error("ResourceExists should be false when project not found")
+	}
+}
+
+// A non-not-found error from GetProject must propagate, not be treated as
+// "resource absent" (which would trigger a spurious Create).
+func TestObserveProjectGetError(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-project"},
+		Spec:       v1beta1.ProjectSpec{ForProvider: v1beta1.ProjectParameters{Name: "my-project"}},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return nil, errors.New("503 service unavailable")
+			},
+		},
+	}
+
+	if _, err := ext.Observe(ctx, project); err == nil {
+		t.Error("Observe must return the error for a non-not-found failure")
 	}
 }
 
@@ -138,6 +162,10 @@ func TestObserveProjectExists(t *testing.T) {
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true")
 	}
+	// crossplane-runtime v2 no longer sets Available() for us; Observe must.
+	if c := project.GetCondition(xpv1.TypeReady); c.Status != corev1.ConditionTrue || c.Reason != xpv1.ReasonAvailable {
+		t.Errorf("expected Ready=True/Available after Observe of existing project, got %s/%s", c.Status, c.Reason)
+	}
 }
 
 func TestObserveProjectNotUpToDate(t *testing.T) {
@@ -179,6 +207,11 @@ func TestObserveProjectNotUpToDate(t *testing.T) {
 	}
 	if obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be false when public flag differs")
+	}
+	// Drift must NOT report Available — the resource keeps its prior Ready
+	// while the reconciler issues an Update.
+	if c := project.GetCondition(xpv1.TypeReady); c.Reason == xpv1.ReasonAvailable {
+		t.Error("Ready should not be Available while the project is not up to date")
 	}
 }
 

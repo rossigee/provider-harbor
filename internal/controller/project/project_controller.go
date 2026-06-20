@@ -56,7 +56,10 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Project{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		// A non-nil rate limiter is required: ratelimiter.Reconciler.When()
+		// dereferences it on every reconcile (nil -> panic). NewGlobal returns a
+		// string-keyed limiter matching ratelimiter.NewReconciler's signature.
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method
@@ -102,10 +105,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	projectName := cr.Spec.ForProvider.Name
 	project, err := c.service.GetProject(ctx, projectName)
 	if err != nil {
-		// If project doesn't exist, we need to create it
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+		// A real failure (auth/network/5xx) must surface, not be treated as
+		// "absent" (which would spuriously recreate the project).
+		return managed.ExternalObservation{}, errors.Wrap(err, errProjectGet)
+	}
+	if project == nil {
+		// Not found -> let Crossplane create it.
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	// Update status with observed state
@@ -125,12 +131,25 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
 
+	// Mark the managed resource Available once it exists AND matches desired
+	// state. crossplane-runtime v2's reconciler no longer sets Available() for
+	// us (it only marks ReconcileSuccess on the up-to-date path), so readiness
+	// is the provider's responsibility — without this, Ready stays stuck on
+	// whatever Create() set (Creating) forever. We gate on upToDate (not mere
+	// existence) to mirror the reconciler's historical behaviour: a project
+	// that exists but has drifted keeps its prior Ready while the reconciler
+	// issues an Update, rather than being reported Available before it matches
+	// spec. Drift is signalled via ResourceUpToDate, not a Ready downgrade.
+	if upToDate {
+		cr.SetConditions(xpv1.Available())
+	}
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(project.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(project.ID),
 		},
 	}, nil
 }
@@ -164,8 +183,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(err, errProjectCreate)
 	}
 
-	// Update status with created resource info
-	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
+	// Update status with created resource info (real Harbor project ID)
+	cr.Status.AtProvider.ID = getStringPtr(status.ID)
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
@@ -173,7 +192,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(status.ID),
 		},
 	}, nil
 }
@@ -205,15 +224,16 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.Wrap(err, errProjectUpdate)
 	}
 
-	// Update status
-	if status.CreatedAt != (time.Time{}) {
-		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: time.Now()}
+	// Update status with the observed update time + real project ID.
+	if status.UpdatedAt != (time.Time{}) {
+		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: status.UpdatedAt}
 	}
+	cr.Status.AtProvider.ID = getStringPtr(status.ID)
 
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(status.ID),
 		},
 	}, nil
 }

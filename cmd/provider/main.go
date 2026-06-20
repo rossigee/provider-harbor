@@ -50,12 +50,12 @@ func main() {
 
 	zl := zap.New(zap.UseDevMode(*debug))
 	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
-	if *debug {
-		// The controller-runtime runs with a no-op logger by default. It is
-		// *very* verbose even at info level, so we only provide it a real
-		// logger when we're running in debug mode.
-		ctrl.SetLogger(zl)
-	}
+	// Always set controller-runtime's root logger. If it is left unset,
+	// controller-runtime logs a one-time "log.SetLogger(...) was never called"
+	// warning (with a goroutine stack) and silently drops its own framework
+	// logs. Verbosity is controlled by the zap level / --debug, not by leaving
+	// the logger unset.
+	ctrl.SetLogger(zl)
 
 	// Log startup information with build and configuration details
 	log.Info("Provider starting up",

@@ -22,13 +22,18 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/go-openapi/runtime"
 	"github.com/goharbor/go-client/pkg/harbor"
+	harborproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
+	harbormodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
@@ -333,6 +338,52 @@ func (c *HarborClient) TestConnection(ctx context.Context) error {
 }
 
 // CreateProject creates a new Harbor project
+// projectMetadata maps the spec's boolean/string settings onto Harbor's
+// string-typed ProjectMetadata (Harbor stores these as "true"/"false").
+func projectMetadata(spec *ProjectSpec) *harbormodels.ProjectMetadata {
+	md := &harbormodels.ProjectMetadata{Public: strconv.FormatBool(spec.Public)}
+	if spec.AutoScanImages != nil {
+		md.AutoScan = ptr.To(strconv.FormatBool(*spec.AutoScanImages))
+	}
+	if spec.EnableContentTrust != nil {
+		md.EnableContentTrust = ptr.To(strconv.FormatBool(*spec.EnableContentTrust))
+	}
+	if spec.EnableContentTrustCosign != nil {
+		md.EnableContentTrustCosign = ptr.To(strconv.FormatBool(*spec.EnableContentTrustCosign))
+	}
+	if spec.PreventVulnerableImages != nil {
+		md.PreventVul = ptr.To(strconv.FormatBool(*spec.PreventVulnerableImages))
+	}
+	if spec.Severity != nil {
+		md.Severity = spec.Severity
+	}
+	return md
+}
+
+// projectStatusFromModel converts a Harbor API project into our ProjectStatus.
+func projectStatusFromModel(p *harbormodels.Project) *ProjectStatus {
+	if p == nil {
+		return &ProjectStatus{}
+	}
+	st := &ProjectStatus{
+		ID:        strconv.Itoa(int(p.ProjectID)),
+		Name:      p.Name,
+		OwnerID:   int64(p.OwnerID),
+		OwnerName: p.OwnerName,
+		RepoCount: p.RepoCount,
+	}
+	if p.Metadata != nil {
+		st.Public = strings.EqualFold(p.Metadata.Public, "true")
+	}
+	if t := time.Time(p.CreationTime); !t.IsZero() {
+		st.CreatedAt = t
+	}
+	if t := time.Time(p.UpdateTime); !t.IsZero() {
+		st.UpdatedAt = t
+	}
+	return st
+}
+
 func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*ProjectStatus, error) {
 	if spec == nil {
 		return nil, errors.New("project spec is required")
@@ -346,24 +397,39 @@ func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*P
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Creating Harbor project",
-		"name", spec.Name,
-		"public", spec.Public,
-		"autoScanImages", spec.AutoScanImages,
-		"preventVulnerableImages", spec.PreventVulnerableImages,
-		"severity", spec.Severity,
-		"storageLimit", spec.StorageLimit,
-	)
+	c.logger.Info("Creating Harbor project", "name", spec.Name, "public", spec.Public)
 
-	status := &ProjectStatus{
-		ID:        "1",
-		Name:      spec.Name,
-		Public:    spec.Public,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	public := spec.Public
+	req := &harbormodels.ProjectReq{
+		ProjectName:  spec.Name,
+		Public:       &public,
+		Metadata:     projectMetadata(spec),
+		StorageLimit: spec.StorageLimit,
+		RegistryID:   spec.RegistryID,
+	}
+	if len(spec.CVEAllowlist) > 0 {
+		items := make([]*harbormodels.CVEAllowlistItem, 0, len(spec.CVEAllowlist))
+		for _, id := range spec.CVEAllowlist {
+			items = append(items, &harbormodels.CVEAllowlistItem{CVEID: id})
+		}
+		req.CVEAllowlist = &harbormodels.CVEAllowlist{Items: items}
 	}
 
-	return status, nil
+	params := harborproject.NewCreateProjectParams().WithContext(ctx)
+	params.Project = req
+	if _, err := v2Client.Project.CreateProject(ctx, params); err != nil {
+		return nil, errors.Wrap(err, "cannot create Harbor project")
+	}
+
+	// Re-read to capture the authoritative project ID and observed state.
+	st, err := c.GetProject(ctx, spec.Name)
+	if err != nil {
+		return nil, err
+	}
+	if st == nil {
+		return nil, errors.New("Harbor project created but not yet observable")
+	}
+	return st, nil
 }
 
 // GetProject retrieves a Harbor project by name or ID
@@ -377,16 +443,21 @@ func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*Pro
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Retrieving Harbor project", "name", projectName)
-
-	status := &ProjectStatus{
-		ID:        "1",
-		Name:      projectName,
-		Public:    false,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
+	params := harborproject.NewGetProjectParams().WithContext(ctx)
+	params.ProjectNameOrID = projectName
+	resp, err := v2Client.Project.GetProject(ctx, params)
+	if err != nil {
+		// A missing project is reported as (nil, nil), not an error: Harbor's
+		// GetProject has no typed 404 in its swagger, so a 404 surfaces as a
+		// generic *runtime.APIError. Anything else is a real failure.
+		var apiErr *runtime.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "cannot get Harbor project")
 	}
 
-	return status, nil
+	return projectStatusFromModel(resp.Payload), nil
 }
 
 // UpdateProject updates an existing Harbor project
@@ -403,25 +474,23 @@ func (c *HarborClient) UpdateProject(ctx context.Context, projectName string, sp
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Updating Harbor project",
-		"name", projectName,
-		"public", spec.Public,
-		"enableContentTrust", spec.EnableContentTrust,
-		"autoScanImages", spec.AutoScanImages,
-		"preventVulnerableImages", spec.PreventVulnerableImages,
-		"severity", spec.Severity,
-		"storageLimit", spec.StorageLimit,
-	)
+	c.logger.Info("Updating Harbor project", "name", projectName, "public", spec.Public)
 
-	status := &ProjectStatus{
-		ID:        "1",
-		Name:      projectName,
-		Public:    spec.Public,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
-		UpdatedAt: time.Now(),
+	public := spec.Public
+	req := &harbormodels.ProjectReq{
+		Public:       &public,
+		Metadata:     projectMetadata(spec),
+		StorageLimit: spec.StorageLimit,
 	}
 
-	return status, nil
+	params := harborproject.NewUpdateProjectParams().WithContext(ctx)
+	params.ProjectNameOrID = projectName
+	params.Project = req
+	if _, err := v2Client.Project.UpdateProject(ctx, params); err != nil {
+		return nil, errors.Wrap(err, "cannot update Harbor project")
+	}
+
+	return c.GetProject(ctx, projectName)
 }
 
 // DeleteProject deletes a Harbor project
@@ -435,11 +504,18 @@ func (c *HarborClient) DeleteProject(ctx context.Context, projectName string) er
 		return errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
 	c.logger.Info("Deleting Harbor project", "name", projectName)
 
-	// In production, this would make actual Harbor API delete calls
-	// For now, we acknowledge the operation was attempted
+	params := harborproject.NewDeleteProjectParams().WithContext(ctx)
+	params.ProjectNameOrID = projectName
+	if _, err := v2Client.Project.DeleteProject(ctx, params); err != nil {
+		// Already gone is success (idempotent delete).
+		var apiErr *runtime.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+			return nil
+		}
+		return errors.Wrap(err, "cannot delete Harbor project")
+	}
 	return nil
 }
 
@@ -450,25 +526,17 @@ func (c *HarborClient) ListProjects(ctx context.Context) ([]*ProjectStatus, erro
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
-	c.logger.Info("Listing Harbor projects")
-
-	// Mock response structure for demonstration
-	// In production, this would query Harbor API and parse the response
-	projects := []*ProjectStatus{
-		{
-			Name:      "library",
-			Public:    true,
-			CreatedAt: time.Now().Add(-7 * 24 * time.Hour),
-		},
-		{
-			Name:      "my-project",
-			Public:    false,
-			CreatedAt: time.Now().Add(-3 * 24 * time.Hour),
-		},
+	params := harborproject.NewListProjectsParams().WithContext(ctx)
+	resp, err := v2Client.Project.ListProjects(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot list Harbor projects")
 	}
 
-	return projects, nil
+	out := make([]*ProjectStatus, 0, len(resp.Payload))
+	for _, p := range resp.Payload {
+		out = append(out, projectStatusFromModel(p))
+	}
+	return out, nil
 }
 
 // GetVersion returns Harbor version information
