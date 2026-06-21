@@ -74,7 +74,14 @@ spec:
 
 ## Documentation
 
-- **CHANGELOG.md** - Version history and release notes
-- **PRODUCTION_SAFETY.md** - Secure configuration patterns
-- **PRODUCTION_READINESS.md** - Pre-deployment checklist
+Quick links to documentation:
+
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guide with security best practices, monitoring, RBAC, and troubleshooting
+- **[RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)** - Release versioning, timeline, and checklist
+- **[IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** - Implementation guide for features and resources
+- **[API_ANALYSIS.md](docs/API_ANALYSIS.md)** - Harbor API gaps and coverage analysis
+- **[MIGRATION_UPJET.md](docs/MIGRATION_UPJET.md)** - Migration guide from Upjet-based provider
+- **[MIGRATION_TERRAFORM.md](docs/MIGRATION_TERRAFORM.md)** - Migration guide from Terraform provider
+- **[ROBOTACCOUNT-DOCKER-CONFIG.md](docs/ROBOTACCOUNT-DOCKER-CONFIG.md)** - Docker config JSON support for RobotAccount
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
 
