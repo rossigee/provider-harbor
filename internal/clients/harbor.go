@@ -296,48 +296,12 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 
 	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credential data length: %d\n", len(credentialData))
 
-	// Try to parse as JSON first (standard Crossplane format)
+	// Parse credentials as JSON (standard Crossplane format)
 	credentialJSON := &HarborConfig{}
 	if err := json.Unmarshal(credentialData, credentialJSON); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: JSON unmarshal error: %v\n", err)
-	} else {
-		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: JSON unmarshal success, URL: %s\n", credentialJSON.URL)
+		return nil, errors.Wrapf(err, "failed to parse credentials JSON from key %q", credentialKey)
 	}
-
-	if err := json.Unmarshal(credentialData, credentialJSON); err == nil && credentialJSON.URL != "" {
-		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Using JSON credentials\n")
-		config = credentialJSON
-	} else {
-		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Falling back to individual keys\n")
-		// Fallback: treat the data as individual keys in the secret
-		// This supports both formats: JSON in single key or individual keys
-		if urlBytes, ok := secret.Data["url"]; ok {
-			config.URL = string(urlBytes)
-		} else {
-			return nil, errors.New("url is required in credentials secret")
-		}
-
-		if usernameBytes, ok := secret.Data["username"]; ok {
-			config.Username = string(usernameBytes)
-		} else {
-			return nil, errors.New("username is required in credentials secret")
-		}
-
-		if passwordBytes, ok := secret.Data["password"]; ok {
-			config.Password = string(passwordBytes)
-		} else {
-			return nil, errors.New("password is required in credentials secret")
-		}
-
-		// Optional: insecure flag
-		if insecureBytes, ok := secret.Data["insecure"]; ok {
-			insecure, err := strconv.ParseBool(string(insecureBytes))
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot parse insecure flag")
-			}
-			config.Insecure = insecure
-		}
-	}
+	config = credentialJSON
 
 	if config.URL == "" {
 		return nil, errors.Errorf("url is required in credentials (key=%s, json-parse-attempted=true, url-from-json=%q)", credentialKey, credentialJSON.URL)
