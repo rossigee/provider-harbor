@@ -24,17 +24,17 @@ import (
 	"github.com/rossigee/provider-harbor/apis"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
-	// replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
-	// repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
-	// retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
-	// robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
-	// scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
-	// scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
-	// artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
-	// membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
-	// usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
-	// usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
-	// webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
+	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
+	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
+	retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
+	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
+	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
+	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
+	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
+	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
+	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
+	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
+	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -85,6 +85,9 @@ func main() {
 		LeaderElectionID: "crossplane-leader-election-provider-harbor",
 		Cache: cache.Options{
 			SyncPeriod: syncPeriod,
+			DefaultNamespaces: map[string]cache.Config{
+				"crossplane-system": {},
+			},
 		},
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaseDuration:              func() *time.Duration { d := 60 * time.Second; return &d }(),
@@ -122,34 +125,42 @@ func main() {
 	}
 	os.Stderr.WriteString("DEBUG: Project controller setup completed\n")
 
-	// Setup Scanner controller - DISABLED (cache sync timeout)
-	// Setup User controller - DISABLED (cache sync timeout)
-	// Setup UserGroup controller - DISABLED (cache sync timeout)
-
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
 
-	// Setup Repository controller - DISABLED (cache sync timeout)
-	// Setup Artifact controller - DISABLED (cache sync timeout)
-	// Setup Member controller - DISABLED (cache sync timeout)
-	// Setup Scan controller - DISABLED (cache sync timeout)
+	// Setup Repository controller
+	kingpin.FatalIfError(repositorycontroller.Setup(mgr, o), "Cannot setup Repository controller")
 
-	// Setup Robot controller - DISABLED (cache sync timeout bugs)
-	// TODO: Fix Robot controller implementation - has issues with cache synchronization
-	// kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
-	// os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
+	// Setup Artifact controller
+	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
 
-	// Setup Webhook controller (Phase 3)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
+	// Setup Member controller
+	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
 
-	// Setup Replication controller (Phase 4 - Enterprise)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(replicationcontroller.Setup(mgr, o), "Cannot setup Replication controller")
+	// Setup Scan controller
+	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
 
-	// Setup Retention controller (Phase 4 - Enterprise)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(retentioncontroller.Setup(mgr, o), "Cannot setup Retention controller")
+	// Setup Robot controller
+	kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
+	os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
+
+	// Setup User controller
+	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
+
+	// Setup UserGroup controller
+	kingpin.FatalIfError(usergroupcontroller.Setup(mgr, o), "Cannot setup UserGroup controller")
+
+	// Setup Scanner controller
+	kingpin.FatalIfError(scannercontroller.Setup(mgr, o), "Cannot setup Scanner controller")
+
+	// Setup Webhook controller
+	kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
+
+	// Setup Replication controller
+	kingpin.FatalIfError(replicationcontroller.Setup(mgr, o), "Cannot setup Replication controller")
+
+	// Setup Retention controller
+	kingpin.FatalIfError(retentioncontroller.Setup(mgr, o), "Cannot setup Retention controller")
 
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")

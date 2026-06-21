@@ -6,6 +6,8 @@ package project
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,6 +42,7 @@ const (
 // Setup adds a controller that reconciles Project managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.ProjectGroupVersionKind.Kind)
+	os.Stderr.WriteString("DEBUG: Setup: Creating reconciler\n")
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1beta1.ProjectGroupVersionKind),
@@ -50,13 +53,39 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
 		managed.WithPollInterval(1*time.Minute),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+	os.Stderr.WriteString("DEBUG: Setup: Reconciler created\n")
 
-	return ctrl.NewControllerManagedBy(mgr).
+	os.Stderr.WriteString("DEBUG: Setup: Creating controller\n")
+	os.Stderr.WriteString("DEBUG: Setup: GVK = " + v1beta1.ProjectGroupVersionKind.String() + "\n")
+	
+	// Create the controller
+	var err error
+	rl := ratelimiter.NewGlobal(10)
+	_, err = ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Project{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Build(ratelimiter.NewReconciler(name, r, rl))
+	if err != nil {
+		os.Stderr.WriteString("DEBUG: Setup: Build error: " + err.Error() + "\n")
+		return err
+	}
+	os.Stderr.WriteString("DEBUG: Setup: Controller built successfully\n")
+	
+	// Check if the controller is actually running
+	os.Stderr.WriteString("DEBUG: Setup: Controller started, checking if it can see resources\n")
+	
+	// Try to list the resources manually to verify
+	ctx := context.Background()
+	projectList := &v1beta1.ProjectList{}
+	err = mgr.GetClient().List(ctx, projectList)
+	if err != nil {
+		os.Stderr.WriteString("DEBUG: Setup: Error listing projects: " + err.Error() + "\n")
+	} else {
+		os.Stderr.WriteString("DEBUG: Setup: Found " + fmt.Sprintf("%d", len(projectList.Items)) + " projects\n")
+	}
+	
+	return nil
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method
@@ -72,16 +101,21 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+	os.Stderr.WriteString("DEBUG: connector.Connect() called\n")
 	_, ok := mg.(*v1beta1.Project)
 	if !ok {
+		os.Stderr.WriteString("DEBUG: not a Project\n")
 		return nil, errors.New(errNotProject)
 	}
 
+	os.Stderr.WriteString("DEBUG: calling newServiceFn\n")
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
 	if err != nil {
+		os.Stderr.WriteString("DEBUG: newServiceFn error: " + err.Error() + "\n")
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
+	os.Stderr.WriteString("DEBUG: connector.Connect() returning external client\n")
 	return &external{service: svc, kube: c.kube}, nil
 }
 
@@ -93,8 +127,10 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+	os.Stderr.WriteString("DEBUG: external.Observe() called\n")
 	cr, ok := mg.(*v1beta1.Project)
 	if !ok {
+		os.Stderr.WriteString("DEBUG: Observe not a Project\n")
 		return managed.ExternalObservation{}, errors.New(errNotProject)
 	}
 

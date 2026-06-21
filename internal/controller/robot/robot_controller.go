@@ -6,6 +6,9 @@ package robot
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -20,8 +24,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	v1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 )
 
 const (
@@ -32,14 +36,16 @@ const (
 
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.RobotGroupVersionKind.Kind)
+	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1beta1.RobotGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
+			logger:       log,
 		}),
-		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
+		managed.WithLogger(log),
 		managed.WithPollInterval(1*time.Minute),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 
@@ -48,12 +54,13 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Robot{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
 }
 
 type connector struct {
 	kube         client.Client
 	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
+	logger       logging.Logger
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
@@ -66,12 +73,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
-
-	return &external{service: svc}, nil
+	
+	return &external{service: svc, logger: c.logger}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	logger  logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -80,14 +88,30 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotRobot)
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe called for %s, desiredName=%s\n", cr.Name, cr.Spec.ForProvider.Name))
+	
 	// Get robot by name (simplified - Harbor API would need the robot ID)
 	robots, err := c.service.ListRobots(ctx, cr.Spec.ForProvider.ProjectID)
 	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe error calling ListRobots: %v\n", err))
 		return managed.ExternalObservation{}, err
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe got %d robots\n", len(robots)))
+
+	// Harbor robot names have "robot$" prefix, so we need to handle that
+	searchName := cr.Spec.ForProvider.Name
+	if !strings.HasPrefix(searchName, "robot$") {
+		searchName = "robot$" + searchName
+	}
+
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe searching for %s\n", searchName))
+
 	for _, robot := range robots {
-		if robot.Name == cr.Spec.ForProvider.Name {
+		os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe checking %s\n", robot.Name))
+		// Also check without prefix in case the name was stored differently
+		if robot.Name == searchName || robot.Name == cr.Spec.ForProvider.Name {
+			os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe FOUND %s id=%s\n", robot.Name, robot.ID))
 			cr.Status.AtProvider.ID = &robot.ID
 			if robot.Secret != "" {
 				cr.Status.AtProvider.Secret = &robot.Secret
@@ -109,10 +133,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				upToDate = false
 			}
 
+			os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe returning exists=true, upToDate=%v\n", upToDate))
+			
+			// Set the Ready condition to True since we found the resource
+			cr.SetConditions(xpv2.Available())
+			
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe not found, will need to create\n"))
 	return managed.ExternalObservation{ResourceExists: false}, nil
 }
 
@@ -122,6 +152,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotRobot)
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create called for %s\n", cr.Name))
+	
 	spec := &harborclients.RobotSpec{
 		Name:        cr.Spec.ForProvider.Name,
 		Description: cr.Spec.ForProvider.Description,
@@ -130,11 +162,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		Permissions: convertPermissions(cr.Spec.ForProvider.Permissions),
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create calling Harbor API for %s\n", cr.Spec.ForProvider.Name))
 	_, err := c.service.CreateRobot(ctx, spec)
 	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create error: %v\n", err))
 		return managed.ExternalCreation{}, err
 	}
 
+	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create succeeded for %s\n", cr.Name))
 	return managed.ExternalCreation{}, nil
 }
 

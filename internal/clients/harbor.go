@@ -19,14 +19,17 @@ package clients
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/goharbor/go-client/pkg/harbor"
+	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,10 +37,13 @@ import (
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
+	
+	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 )
 
 const (
@@ -232,6 +238,8 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		configRef = registry.Spec.ProviderConfigReference
 	} else if usergroup, ok := mg.(*usergroupv1beta1.UserGroup); ok {
 		configRef = usergroup.Spec.ProviderConfigReference
+	} else if robot, ok := mg.(*robotv1beta1.Robot); ok {
+		configRef = robot.Spec.ProviderConfigReference
 	} else {
 		// Fallback: assume the managed resource has ProviderConfigReference
 		// This is a bit of a hack but works for most cases
@@ -1454,6 +1462,8 @@ type RobotStatus struct {
 
 // CreateRobot creates a new robot account
 func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error) {
+	c.logger.Info("CreateRobot: starting", "name", spec.Name, "projectId", spec.ProjectID)
+	
 	if spec == nil {
 		return nil, errors.New("spec is required")
 	}
@@ -1466,40 +1476,124 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Creating Harbor robot account", "name", spec.Name, "projectId", spec.ProjectID)
+	c.logger.Info("CreateRobot: calling Harbor API", "name", spec.Name)
 
-	robot := &RobotStatus{
-		ID:           "1",
-		Name:         spec.Name,
-		Description:  spec.Description,
-		ProjectID:    spec.ProjectID,
-		Secret:       "robot-secret-token",
-		CreationTime: time.Now(),
-		UpdateTime:   time.Now(),
+	// Build permissions for the robot
+	var permissions []*sdkmodels.RobotPermission
+	
+	// Determine robot level (system or project)
+	level := "project"
+	if spec.ProjectID == nil {
+		level = "system"
+		// For system-level robots, just add project permissions
+		// (no system "/" permission needed - that only causes errors)
+	}
+	
+	for _, p := range spec.Permissions {
+		var accessList []*sdkmodels.Access
+		for _, a := range p.Access {
+			accessList = append(accessList, &sdkmodels.Access{
+				Action:   a,
+				Resource: "repository",
+			})
+		}
+		permissions = append(permissions, &sdkmodels.RobotPermission{
+			Namespace: p.Namespace,
+			Kind:      "project",
+			Access:    accessList,
+		})
 	}
 
-	return robot, nil
+	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot creating robot with name=%s, level=%s, permissions=%d\n", spec.Name, level, len(permissions))
+	for i, p := range permissions {
+		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR:   permission[%d]: namespace=%s, kind=%s, access=%d\n", i, p.Namespace, p.Kind, len(p.Access))
+	}
+
+	// Calculate duration
+	duration := int64(-1) // -1 means never expires
+	if spec.ExpiresIn != nil {
+		duration = *spec.ExpiresIn
+	}
+
+	// Create robot account via Harbor API
+	robotCreate := &sdkmodels.RobotCreate{
+		Name:        spec.Name,
+		Description: getStringValue(spec.Description),
+		Level:       level,
+		Duration:    duration,
+		Permissions: permissions,
+	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot creating robot with name=%s, level=%s, permissions=%d\n", spec.Name, level, len(permissions))
+	for i, p := range permissions {
+		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR:   permission[%d]: namespace=%s, access=%d\n", i, p.Namespace, len(p.Access))
+	}
+
+	params := sdkrobot.NewCreateRobotParams()
+	params.Robot = robotCreate
+
+	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot calling Harbor API\n")
+	c.logger.Info("CreateRobot: calling Harbor API now", "name", spec.Name, "level", level)
+	resp, err := v2Client.Robot.CreateRobot(ctx, params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot API FAILED: %v\n", err)
+		c.logger.Info("CreateRobot: API call FAILED", "error", err.Error())
+		return nil, errors.Wrap(err, "failed to create robot account")
+	}
+
+	// Convert response to our status type
+	createdRobot := resp.Payload
+	c.logger.Info("CreateRobot: SUCCESS", "id", createdRobot.ID, "name", createdRobot.Name)
+	robotStatus := &RobotStatus{
+		ID:           strconv.FormatInt(createdRobot.ID, 10),
+		Name:         createdRobot.Name,
+		Secret:       createdRobot.Secret,
+		CreationTime: time.Time(createdRobot.CreationTime),
+	}
+
+	return robotStatus, nil
 }
 
 // ListRobots lists all robot accounts
 func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*RobotStatus, error) {
+	c.logger.Info("ListRobots: starting", "projectId", projectID)
+	
 	v2Client := c.clientSet.V2()
 	if v2Client == nil {
+		c.logger.Info("ListRobots: v2Client is nil!")
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Listing Harbor robot accounts", "projectId", projectID)
+	c.logger.Info("ListRobots: calling Harbor API")
 
-	robots := []*RobotStatus{
-		{
-			ID:           "1",
-			Name:         "ci-robot",
-			ProjectID:    projectID,
-			CreationTime: time.Now().Add(-24 * time.Hour),
-			UpdateTime:   time.Now(),
-		},
+	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: ListRobots calling API\n")
+	params := sdkrobot.NewListRobotParams()
+	pageSize := int64(100)
+	params.PageSize = &pageSize
+
+	resp, err := v2Client.Robot.ListRobot(ctx, params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: ListRobots API FAILED: %v\n", err)
+		c.logger.Info("ListRobots: API call failed", "error", err.Error())
+		return nil, errors.Wrap(err, "failed to list robot accounts")
 	}
 
+	c.logger.Info("ListRobots: API success", "count", len(resp.Payload))
+
+	var robots []*RobotStatus
+	for _, r := range resp.Payload {
+		robot := &RobotStatus{
+			ID:           strconv.FormatInt(r.ID, 10),
+			Name:         r.Name,
+			Description:  &r.Description,
+			CreationTime: time.Time(r.CreationTime),
+			UpdateTime:   time.Time(r.UpdateTime),
+		}
+		robots = append(robots, robot)
+		c.logger.Info("ListRobots: found robot", "id", robot.ID, "name", robot.Name)
+	}
+
+	c.logger.Info("ListRobots: END", "totalFound", len(robots))
 	return robots, nil
 }
 
@@ -2215,4 +2309,14 @@ func (c *HarborClient) DeleteUserGroup(ctx context.Context, groupID int64) error
 
 	// TODO: Implement actual Harbor API call
 	return nil
+}
+
+// Helper functions
+
+// getStringValue returns string value from pointer, empty string if nil
+func getStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

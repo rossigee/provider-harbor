@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
@@ -41,28 +42,26 @@ const (
 	errNewClient              = "cannot create new Service"
 )
 
-// Options contains options for controller setup
-type Options struct {
-	Logger       logging.Logger
-	PollInterval string
-}
-
 // Setup adds a controller that reconciles ScannerRegistration managed resources
-func Setup(mgr ctrl.Manager, opts Options) error {
+func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.ScannerRegistrationGroupVersionKind.Kind)
+	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
+		managed.WithExternalConnector(&connector{
+			kube:   mgr.GetClient(),
+			logger: log,
+		}),
+		managed.WithLogger(log),
+		managed.WithPollInterval(10*time.Minute),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
+		WithOptions(o).
 		For(&v1beta1.ScannerRegistration{}).
-		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
-			managed.WithExternalConnector(&connector{
-				kube:   mgr.GetClient(),
-				logger: opts.Logger,
-			}),
-			managed.WithLogger(opts.Logger.WithValues("controller", name)),
-			managed.WithPollInterval(10*time.Minute),
-			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name)))))
+		Complete(r)
 }
 
 // connector is responsible for producing ExternalClients.
