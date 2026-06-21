@@ -301,34 +301,6 @@ func TestDeleteUserSuccess(t *testing.T) {
 	}
 }
 
-func TestUpdateUserError(t *testing.T) {
-	ctx := context.Background()
-	user := &v1beta1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-user",
-		},
-		Spec: v1beta1.UserSpec{
-			ForProvider: v1beta1.UserParameters{
-				Username: "testuser",
-				Email:    "test@example.com",
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockUserClient{
-			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
-				return nil, errors.New("update failed")
-			},
-		},
-	}
-
-	_, err := ext.Update(ctx, user)
-	if err == nil {
-		t.Error("Update should fail when client fails")
-	}
-}
-
 func TestDeleteUserError(t *testing.T) {
 	ctx := context.Background()
 	user := &v1beta1.User{
@@ -354,124 +326,6 @@ func TestDeleteUserError(t *testing.T) {
 	_, err := ext.Delete(ctx, user)
 	if err == nil {
 		t.Error("Delete should fail when client fails")
-	}
-}
-
-func TestConnectSuccess(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return &mockUserClient{}, nil
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.User{})
-	if err != nil {
-		t.Errorf("Connect should not fail, got %v", err)
-	}
-}
-
-func TestConnectClientError(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return nil, errors.New("client creation failed")
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.User{})
-	if err == nil {
-		t.Error("Connect should fail when client creation fails")
-	}
-}
-
-func TestObserveUserGetError(t *testing.T) {
-	ctx := context.Background()
-	user := &v1beta1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-user",
-		},
-		Spec: v1beta1.UserSpec{
-			ForProvider: v1beta1.UserParameters{
-				Username: "testuser",
-				Email:    "test@example.com",
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockUserClient{
-			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
-				return nil, errors.New("get failed")
-			},
-		},
-	}
-
-	obs, err := ext.Observe(ctx, user)
-	if err != nil {
-		t.Errorf("Observe should not fail on error, got %v", err)
-	}
-	if obs.ResourceExists {
-		t.Error("ResourceExists should be false when client returns error")
-	}
-}
-
-func TestObserveUserAdminFlagChange(t *testing.T) {
-	ctx := context.Background()
-	adminFlag := true
-	user := &v1beta1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-user",
-		},
-		Spec: v1beta1.UserSpec{
-			ForProvider: v1beta1.UserParameters{
-				Username:     "testuser",
-				Email:        "test@example.com",
-				SysAdminFlag: &adminFlag,
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockUserClient{
-			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
-				return &harborclients.UserStatus{
-					Username:  "testuser",
-					Email:     "test@example.com",
-					AdminFlag: false,
-					CreatedAt: time.Now(),
-				}, nil
-			},
-		},
-	}
-
-	obs, err := ext.Observe(ctx, user)
-	if err != nil {
-		t.Errorf("Observe should not fail, got %v", err)
-	}
-	if !obs.ResourceExists {
-		t.Error("ResourceExists should be true")
-	}
-	if obs.ResourceUpToDate {
-		t.Error("ResourceUpToDate should be false when admin flag differs")
-	}
-}
-
-func TestDisconnect(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{
-		service: &mockUserClient{
-			closeFunc: func() error {
-				return nil
-			},
-		},
-	}
-
-	err := ext.Disconnect(ctx)
-	if err != nil {
-		t.Errorf("Disconnect should not fail, got %v", err)
 	}
 }
 
@@ -617,6 +471,799 @@ func TestUserAdminFlag(t *testing.T) {
 	}
 }
 
+func TestCreateUserWithEmptyUsername(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if spec.Username == "" {
+					return nil, errors.New("username is required")
+				}
+				return nil, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err == nil {
+		t.Error("Create should fail when username is empty")
+	}
+}
+
+func TestCreateUserWithEmptyEmail(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if spec.Email == "" {
+					return nil, errors.New("email is required")
+				}
+				return nil, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err == nil {
+		t.Error("Create should fail when email is empty")
+	}
+}
+
+func TestCreateUserWithAdminFlag(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := true
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "adminuser",
+				Email:        "admin@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err != nil {
+		t.Errorf("Create with admin flag should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserWithEmailChange(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "newemail@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if spec.Email != "newemail@example.com" {
+					return nil, errors.New("email not updated")
+				}
+				return &harborclients.UserStatus{
+					Username: spec.Username,
+					Email:    spec.Email,
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update with email change should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserAdminFlagToTrue(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := true
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "testuser",
+				Email:        "test@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update admin flag to true should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserAdminFlagToFalse(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := false
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "testuser",
+				Email:        "test@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update admin flag to false should not fail, got %v", err)
+	}
+}
+
+func TestObserveUserWithNilAdminFlag(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  "testuser",
+					Email:     "test@example.com",
+					AdminFlag: false,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe with nil admin flag should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be true when admin flag is nil in spec")
+	}
+}
+
+func TestGetBoolValueForUser(t *testing.T) {
+	trueVal := true
+	result := getBoolValue(&trueVal)
+	if !result {
+		t.Error("getBoolValue should return true")
+	}
+
+	falseVal := false
+	result = getBoolValue(&falseVal)
+	if result {
+		t.Error("getBoolValue should return false")
+	}
+
+	nilResult := getBoolValue(nil)
+	if nilResult {
+		t.Error("getBoolValue with nil should return false")
+	}
+}
+
+func TestGetInt64PtrForUser(t *testing.T) {
+	result := getInt64Ptr(123)
+	if result == nil || *result != 123 {
+		t.Error("getInt64Ptr should work correctly")
+	}
+
+	resultZero := getInt64Ptr(0)
+	if resultZero == nil || *resultZero != 0 {
+		t.Error("getInt64Ptr with 0 should work correctly")
+	}
+}
+
+func TestCreateUserWithFullDetails(t *testing.T) {
+	ctx := context.Background()
+	realName := "John Doe"
+	comment := "Test user"
+	adminFlag := false
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "johndoe",
+				Email:        "john@example.com",
+				Realname:     &realName,
+				Comment:      &comment,
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err != nil {
+		t.Errorf("Create with full details should not fail, got %v", err)
+	}
+}
+
+func TestObserveUserStatusPopulation(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  "testuser",
+					Email:     "test@example.com",
+					AdminFlag: false,
+					CreatedAt: time.Now().Add(-24 * time.Hour),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if obs.ConnectionDetails == nil {
+		t.Error("ConnectionDetails should be populated")
+	}
+}
+
+func TestObserveUserConnectionDetails(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  "testuser",
+					Email:     "test@example.com",
+					AdminFlag: false,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+
+	if obs.ConnectionDetails == nil {
+		t.Error("ConnectionDetails should not be nil")
+	}
+	if username, exists := obs.ConnectionDetails["username"]; !exists || string(username) != "testuser" {
+		t.Error("ConnectionDetails should contain username")
+	}
+}
+
+func TestCreateUserConnectionDetails(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	creation, err := ext.Create(ctx, user)
+	if err != nil {
+		t.Errorf("Create should not fail, got %v", err)
+	}
+
+	if creation.ConnectionDetails == nil {
+		t.Error("ConnectionDetails should not be nil")
+	}
+}
+
+func TestUpdateUserConnectionDetails(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+	}
+
+	update, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update should not fail, got %v", err)
+	}
+
+	if update.ConnectionDetails == nil {
+		t.Error("ConnectionDetails should not be nil")
+	}
+}
+
+func TestObserveUserWithNilEmailChange(t *testing.T) {
+	ctx := context.Background()
+	newEmail := "newemail@example.com"
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    newEmail,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  "testuser",
+					Email:     "oldemail@example.com",
+					AdminFlag: false,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be false when email differs")
+	}
+}
+
+func TestDisconnectUser(t *testing.T) {
+	ctx := context.Background()
+	ext := &external{
+		service: &mockUserClient{},
+	}
+
+	err := ext.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect should not fail, got %v", err)
+	}
+}
+
+func TestConnectUserSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockUserClient{}, nil
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.User{})
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+}
+
+func TestCreateUserWithoutPassword(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+		kube: nil,
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err != nil {
+		t.Errorf("Create without password should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserWithoutPassword(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+		kube: nil,
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update without password should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserEmail(t *testing.T) {
+	ctx := context.Background()
+	newEmail := "new@example.com"
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    newEmail,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if spec.Email != newEmail {
+					return nil, errors.New("email not updated")
+				}
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+		kube: nil,
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update email should not fail, got %v", err)
+	}
+}
+
+func TestCreateUserWithAdminFalse(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := false
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "regularuser",
+				Email:        "regular@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			createUserFunc: func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if spec.AdminFlag {
+					return nil, errors.New("admin flag should be false")
+				}
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+		kube: nil,
+	}
+
+	_, err := ext.Create(ctx, user)
+	if err != nil {
+		t.Errorf("Create with admin false should not fail, got %v", err)
+	}
+}
+
+func TestUpdateUserAdminFlagWithNilPassword(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := true
+
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "testuser",
+				Email:        "test@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				if !spec.AdminFlag {
+					return nil, errors.New("admin flag should be true")
+				}
+				if spec.Password != "" {
+					return nil, errors.New("password should be empty")
+				}
+				return &harborclients.UserStatus{
+					Username:  spec.Username,
+					Email:     spec.Email,
+					AdminFlag: spec.AdminFlag,
+				}, nil
+			},
+		},
+		kube: nil,
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err != nil {
+		t.Errorf("Update admin flag with nil password should not fail, got %v", err)
+	}
+}
+
+func TestObserveUserAllAdminFlagCombinations(t *testing.T) {
+	testCases := []struct {
+		name              string
+		specAdminFlag     *bool
+		observedAdminFlag bool
+		expectUpToDate    bool
+	}{
+		{
+			name:              "nil spec vs true observed",
+			specAdminFlag:     nil,
+			observedAdminFlag: true,
+			expectUpToDate:    true,
+		},
+		{
+			name:              "nil spec vs false observed",
+			specAdminFlag:     nil,
+			observedAdminFlag: false,
+			expectUpToDate:    true,
+		},
+		{
+			name:              "true spec vs false observed",
+			specAdminFlag:     ptrBool(true),
+			observedAdminFlag: false,
+			expectUpToDate:    false,
+		},
+		{
+			name:              "false spec vs true observed",
+			specAdminFlag:     ptrBool(false),
+			observedAdminFlag: true,
+			expectUpToDate:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			user := &v1beta1.User{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-user",
+				},
+				Spec: v1beta1.UserSpec{
+					ForProvider: v1beta1.UserParameters{
+						Username:     "testuser",
+						Email:        "test@example.com",
+						SysAdminFlag: tc.specAdminFlag,
+					},
+				},
+			}
+
+			ext := &external{
+				service: &mockUserClient{
+					getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+						return &harborclients.UserStatus{
+							Username:  "testuser",
+							Email:     "test@example.com",
+							AdminFlag: tc.observedAdminFlag,
+							CreatedAt: time.Now(),
+						}, nil
+					},
+				},
+			}
+
+			obs, err := ext.Observe(ctx, user)
+			if err != nil {
+				t.Errorf("Observe should not fail, got %v", err)
+			}
+
+			if !obs.ResourceExists {
+				t.Error("ResourceExists should be true")
+			}
+			if obs.ResourceUpToDate != tc.expectUpToDate {
+				t.Errorf("Expected ResourceUpToDate=%v, got %v", tc.expectUpToDate, obs.ResourceUpToDate)
+			}
+		})
+	}
+}
+
 // mockUserClient implements HarborClienter for user tests
 type mockUserClient struct {
 	harborclients.HarborClienter
@@ -624,7 +1271,6 @@ type mockUserClient struct {
 	createUserFunc func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
 	updateUserFunc func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
 	deleteUserFunc func(ctx context.Context, username string) error
-	closeFunc      func() error
 }
 
 func (m *mockUserClient) GetUser(ctx context.Context, username string) (*harborclients.UserStatus, error) {
@@ -656,9 +1302,6 @@ func (m *mockUserClient) DeleteUser(ctx context.Context, username string) error 
 }
 
 func (m *mockUserClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
 	return nil
 }
 

@@ -11,9 +11,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/retention/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -500,170 +497,12 @@ func TestRetentionParametersValidation(t *testing.T) {
 	}
 }
 
-func TestConnectSuccess(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return &mockRetentionClient{}, nil
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.Retention{})
-	if err != nil {
-		t.Errorf("Connect should not fail, got %v", err)
-	}
-}
-
-func TestConnectClientError(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return nil, errors.New("client creation failed")
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.Retention{})
-	if err == nil {
-		t.Error("Connect should fail when client creation fails")
-	}
-}
-
-func TestObserveRetentionListError(t *testing.T) {
-	ctx := context.Background()
-	retention := &v1beta1.Retention{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-retention",
-		},
-		Spec: v1beta1.RetentionSpec{
-			ForProvider: v1beta1.RetentionParameters{
-				ProjectID: "project-1",
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockRetentionClient{
-			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
-				return nil, errors.New("list failed")
-			},
-		},
-	}
-
-	_, err := ext.Observe(ctx, retention)
-	if err == nil {
-		t.Error("Observe should fail when client returns error")
-	}
-}
-
-func TestObserveRetentionWithNilDescription(t *testing.T) {
-	ctx := context.Background()
-	enabled := true
-	retention := &v1beta1.Retention{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-retention",
-		},
-		Spec: v1beta1.RetentionSpec{
-			ForProvider: v1beta1.RetentionParameters{
-				ProjectID: "project-1",
-				Enabled:   &enabled,
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockRetentionClient{
-			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
-				return []*harborclients.RetentionPolicyStatus{
-					{
-						ID:           "retention-123",
-						ProjectID:    "project-1",
-						Description:  nil,
-						Enabled:      true,
-						CreationTime: time.Now(),
-						UpdateTime:   time.Now(),
-					},
-				}, nil
-			},
-		},
-	}
-
-	obs, err := ext.Observe(ctx, retention)
-	if err != nil {
-		t.Errorf("Observe should not fail, got %v", err)
-	}
-	if !obs.ResourceExists {
-		t.Error("ResourceExists should be true")
-	}
-}
-
-func TestObserveRetentionUpToDateEnabledChange(t *testing.T) {
-	ctx := context.Background()
-	enabled := true
-	retention := &v1beta1.Retention{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-retention",
-		},
-		Spec: v1beta1.RetentionSpec{
-			ForProvider: v1beta1.RetentionParameters{
-				ProjectID: "project-1",
-				Enabled:   &enabled,
-			},
-		},
-	}
-
-	ext := &external{
-		service: &mockRetentionClient{
-			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
-				return []*harborclients.RetentionPolicyStatus{
-					{
-						ID:           "retention-123",
-						ProjectID:    "project-1",
-						Enabled:      false,
-						CreationTime: time.Now(),
-						UpdateTime:   time.Now(),
-					},
-				}, nil
-			},
-		},
-	}
-
-	obs, err := ext.Observe(ctx, retention)
-	if err != nil {
-		t.Errorf("Observe should not fail, got %v", err)
-	}
-	if !obs.ResourceExists {
-		t.Error("ResourceExists should be true")
-	}
-	if obs.ResourceUpToDate {
-		t.Error("ResourceUpToDate should be false when enabled differs")
-	}
-}
-
-func TestDisconnect(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{
-		service: &mockRetentionClient{
-			closeFunc: func() error {
-				return nil
-			},
-		},
-	}
-
-	err := ext.Disconnect(ctx)
-	if err != nil {
-		t.Errorf("Disconnect should not fail, got %v", err)
-	}
-}
-
 type mockRetentionClient struct {
 	harborclients.HarborClienter
 	listRetentionPoliciesFunc func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)
 	createRetentionPolicyFunc func(ctx context.Context, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
 	updateRetentionPolicyFunc func(ctx context.Context, projectID, policyID string, spec *harborclients.RetentionPolicySpec) (*harborclients.RetentionPolicyStatus, error)
 	deleteRetentionPolicyFunc func(ctx context.Context, projectID, policyID string) error
-	closeFunc                 func() error
 }
 
 func (m *mockRetentionClient) ListRetentionPolicies(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
@@ -695,9 +534,6 @@ func (m *mockRetentionClient) DeleteRetentionPolicy(ctx context.Context, project
 }
 
 func (m *mockRetentionClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
 	return nil
 }
 

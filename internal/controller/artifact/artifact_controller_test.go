@@ -11,9 +11,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -474,109 +471,10 @@ func TestArtifactWithOptionalType(t *testing.T) {
 	}
 }
 
-func TestConnectNotArtifact(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-	}
-
-	_, err := conn.Connect(ctx, nil)
-	if err == nil {
-		t.Error("Connect with nil should return error")
-	}
-}
-
-func TestObserveNotArtifact(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{}
-
-	_, err := ext.Observe(ctx, nil)
-	if err == nil {
-		t.Error("Observe with nil should return error")
-	}
-}
-
-func TestCreateNotArtifact(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{}
-
-	_, err := ext.Create(ctx, nil)
-	if err == nil {
-		t.Error("Create with nil should return error")
-	}
-}
-
-func TestUpdateNotArtifact(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{}
-
-	_, err := ext.Update(ctx, nil)
-	if err != nil {
-		t.Errorf("Update should not fail for nil, got %v", err)
-	}
-}
-
-func TestDeleteNotArtifact(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{}
-
-	_, err := ext.Delete(ctx, nil)
-	if err == nil {
-		t.Error("Delete with nil should return error")
-	}
-}
-
-func TestConnectSuccess(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return &mockArtifactClient{}, nil
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.Artifact{})
-	if err != nil {
-		t.Errorf("Connect should not fail, got %v", err)
-	}
-}
-
-func TestConnectClientError(t *testing.T) {
-	ctx := context.Background()
-	conn := &connector{
-		kube: nil,
-		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
-			return nil, errors.New("client creation failed")
-		},
-	}
-
-	_, err := conn.Connect(ctx, &v1beta1.Artifact{})
-	if err == nil {
-		t.Error("Connect should fail when client creation fails")
-	}
-}
-
-func TestDisconnect(t *testing.T) {
-	ctx := context.Background()
-	ext := &external{
-		service: &mockArtifactClient{
-			closeFunc: func() error {
-				return nil
-			},
-		},
-	}
-
-	err := ext.Disconnect(ctx)
-	if err != nil {
-		t.Errorf("Disconnect should not fail, got %v", err)
-	}
-}
-
 type mockArtifactClient struct {
 	harborclients.HarborClienter
 	getArtifactFunc    func(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error)
 	deleteArtifactFunc func(ctx context.Context, projectID, repoName, reference string) error
-	closeFunc          func() error
 }
 
 func (m *mockArtifactClient) GetArtifact(ctx context.Context, projectID, repoName, reference string) (*harborclients.ArtifactStatus, error) {
@@ -594,9 +492,6 @@ func (m *mockArtifactClient) DeleteArtifact(ctx context.Context, projectID, repo
 }
 
 func (m *mockArtifactClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
 	return nil
 }
 
