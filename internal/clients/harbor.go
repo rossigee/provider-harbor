@@ -19,6 +19,7 @@ package clients
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -277,31 +278,61 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 
 	config := &HarborConfig{}
 
-	if urlBytes, ok := secret.Data["url"]; ok {
-		config.URL = string(urlBytes)
-	} else {
-		return nil, errors.New("url is required in credentials secret")
+	// Determine which key contains the credentials
+	credentialKey := pc.Spec.Credentials.SecretRef.Key
+	if credentialKey == "" {
+		credentialKey = "credentials"
 	}
 
-	if usernameBytes, ok := secret.Data["username"]; ok {
-		config.Username = string(usernameBytes)
-	} else {
-		return nil, errors.New("username is required in credentials secret")
+	// Get the credential data from the secret
+	credentialData, ok := secret.Data[credentialKey]
+	if !ok {
+		return nil, errors.Errorf("key %q not found in credentials secret", credentialKey)
 	}
 
-	if passwordBytes, ok := secret.Data["password"]; ok {
-		config.Password = string(passwordBytes)
+	// Try to parse as JSON first (standard Crossplane format)
+	credentialJSON := &HarborConfig{}
+	if err := json.Unmarshal(credentialData, credentialJSON); err == nil && credentialJSON.URL != "" {
+		config = credentialJSON
 	} else {
-		return nil, errors.New("password is required in credentials secret")
-	}
-
-	// Optional: insecure flag
-	if insecureBytes, ok := secret.Data["insecure"]; ok {
-		insecure, err := strconv.ParseBool(string(insecureBytes))
-		if err != nil {
-			return nil, errors.Wrapf(err, "cannot parse insecure flag")
+		// Fallback: treat the data as individual keys in the secret
+		// This supports both formats: JSON in single key or individual keys
+		if urlBytes, ok := secret.Data["url"]; ok {
+			config.URL = string(urlBytes)
+		} else {
+			return nil, errors.New("url is required in credentials secret")
 		}
-		config.Insecure = insecure
+
+		if usernameBytes, ok := secret.Data["username"]; ok {
+			config.Username = string(usernameBytes)
+		} else {
+			return nil, errors.New("username is required in credentials secret")
+		}
+
+		if passwordBytes, ok := secret.Data["password"]; ok {
+			config.Password = string(passwordBytes)
+		} else {
+			return nil, errors.New("password is required in credentials secret")
+		}
+
+		// Optional: insecure flag
+		if insecureBytes, ok := secret.Data["insecure"]; ok {
+			insecure, err := strconv.ParseBool(string(insecureBytes))
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot parse insecure flag")
+			}
+			config.Insecure = insecure
+		}
+	}
+
+	if config.URL == "" {
+		return nil, errors.New("url is required in credentials")
+	}
+	if config.Username == "" {
+		return nil, errors.New("username is required in credentials")
+	}
+	if config.Password == "" {
+		return nil, errors.New("password is required in credentials")
 	}
 
 	return NewHarborClient(config)
