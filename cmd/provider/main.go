@@ -94,21 +94,21 @@ func main() {
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
-	os.Stderr.WriteString("DEBUG: Controller manager created successfully\n")
+	_, _ = os.Stderr.WriteString("DEBUG: Controller manager created successfully\n")
 
 	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
-	os.Stderr.WriteString("DEBUG: APIs added to scheme\n")
+	_, _ = os.Stderr.WriteString("DEBUG: APIs added to scheme\n")
 
 	// Check if Project type is registered
 	scheme := mgr.GetScheme()
 	if scheme != nil {
-		os.Stderr.WriteString("DEBUG: Scheme has types: ")
+		_, _ = os.Stderr.WriteString("DEBUG: Scheme has types: ")
 		types := scheme.AllKnownTypes()
-		os.Stderr.WriteString(fmt.Sprintf("Found %d types\n", len(types)))
+		fmt.Fprintf(os.Stderr, "Found %d types\n", len(types))
 		for k := range types {
 			if strings.Contains(k.Kind, "Project") {
-				os.Stderr.WriteString("DEBUG: Found Project type: " + k.String() + "\n")
+				_, _ = os.Stderr.WriteString("DEBUG: Found Project type: " + k.String() + "\n")
 			}
 		}
 	}
@@ -120,10 +120,10 @@ func main() {
 
 	// Setup Project controller
 	if err := projectcontroller.Setup(mgr, o); err != nil {
-		os.Stderr.WriteString("ERROR: Failed to setup Project controller: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("ERROR: Failed to setup Project controller: " + err.Error() + "\n")
 		kingpin.FatalIfError(err, "Cannot setup Project controller")
 	}
-	os.Stderr.WriteString("DEBUG: Project controller setup completed\n")
+	_, _ = os.Stderr.WriteString("DEBUG: Project controller setup completed\n")
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
@@ -142,7 +142,7 @@ func main() {
 
 	// Setup Robot controller
 	kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
-	os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
+	_, _ = os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
 
 	// Setup User controller
 	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
