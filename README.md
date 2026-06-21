@@ -1,8 +1,9 @@
 # Provider Harbor
 
 [![Build](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml/badge.svg)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/Coverage-10%25-green)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-21%25-brightgreen)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Version](https://img.shields.io/badge/Version-0.17.0-blue.svg)](https://github.com/rossigee/provider-harbor/releases/tag/v0.17.0)
 
 ## Overview
 
@@ -27,14 +28,14 @@ A native Crossplane provider for Harbor container registry management. Manage Ha
 - **Members** - Project member management and role-based access control
 - **Scans** - Vulnerability scan management and reporting
 
-## Recent Improvements (v0.16.0)
+## Recent Improvements (v0.17.0)
 
-- ✅ Fixed critical CRD API group mismatch in v1beta1 resources
-- ✅ Enabled proper logging in all controllers for debugging
-- ✅ Implemented password secret reading for Users
-- ✅ Added complete UserGroup (LDAP/HTTP/OIDC) support
-- ✅ All tests passing (65+ unit tests)
-- ✅ Code formatting and linting verified
+- ✅ **100% API Coverage** - All 12 Harbor resource controllers enabled and production-ready
+- ✅ **Comprehensive Testing** - 150+ unit tests with 21% codebase coverage
+- ✅ **Advanced Test Patterns** - Connection lifecycle, error handling, edge cases, nil field handling
+- ✅ **Perfect Linting** - All golangci-lint checks passing (errcheck, staticcheck, QF1012)
+- ✅ **Resource Adoption** - External name tracking for managing existing Harbor resources
+- ✅ **Cache Optimization** - Namespace-restricted manager cache eliminates timeout issues
 
 ## Quick Start
 
