@@ -104,7 +104,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			}
 
 			// Set external name for adoption tracking
-			ctrlutil.SetExternalName(cr, "") // TODO: set appropriate identifier
+			ctrlutil.SetExternalName(cr, policy.Name)
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
