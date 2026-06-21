@@ -1462,11 +1462,10 @@ type RobotStatus struct {
 
 // CreateRobot creates a new robot account
 func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error) {
-	c.logger.Info("CreateRobot: starting", "name", spec.Name, "projectId", spec.ProjectID)
-
 	if spec == nil {
 		return nil, errors.New("spec is required")
 	}
+	c.logger.Info("CreateRobot: starting", "name", spec.Name, "projectId", spec.ProjectID)
 	if spec.Name == "" {
 		return nil, errors.New("robot name is required")
 	}

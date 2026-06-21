@@ -39,11 +39,11 @@ import (
 )
 
 func main() {
-	os.Stderr.WriteString("DEBUG: Provider main() started\n")
+	_, _ = os.Stderr.WriteString("DEBUG: Provider main() started\n")
 
 	// Enable controller-runtime debug logging
-	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("CATTLE_DEVELOPER_LOGGING", "true")
+	_ = os.Setenv("LOG_LEVEL", "debug")
+	_ = os.Setenv("CATTLE_DEVELOPER_LOGGING", "true")
 	var (
 		app              = kingpin.New(filepath.Base(os.Args[0]), "Native Crossplane provider for Harbor").DefaultEnvars()
 		debug            = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
