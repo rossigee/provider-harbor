@@ -11,6 +11,9 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -497,6 +500,148 @@ func TestRegistryCredential(t *testing.T) {
 	}
 }
 
+func TestConnectSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockRegistryClient{}, nil
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Registry{})
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+}
+
+func TestConnectClientError(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return nil, errors.New("client creation failed")
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Registry{})
+	if err == nil {
+		t.Error("Connect should fail when client creation fails")
+	}
+}
+
+func TestObserveRegistryGetError(t *testing.T) {
+	ctx := context.Background()
+	registry := &v1beta1.Registry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-registry",
+		},
+		Spec: v1beta1.RegistrySpec{
+			ForProvider: v1beta1.RegistryParameters{
+				Name: "docker-hub",
+				Type: "docker-hub",
+				URL:  "https://docker.io",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRegistryClient{
+			getRegistryFunc: func(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
+				return nil, errors.New("get failed")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, registry)
+	if err != nil {
+		t.Errorf("Observe should not fail on error, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when client returns error")
+	}
+}
+
+func TestCreateRegistryWithNilDescription(t *testing.T) {
+	ctx := context.Background()
+	registry := &v1beta1.Registry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-registry",
+		},
+		Spec: v1beta1.RegistrySpec{
+			ForProvider: v1beta1.RegistryParameters{
+				Name: "docker-hub",
+				Type: "docker-hub",
+				URL:  "https://docker.io",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRegistryClient{
+			createRegistryFunc: func(ctx context.Context, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error) {
+				return &harborclients.RegistryStatus{
+					Name:        spec.Name,
+					Type:        spec.Type,
+					URL:         spec.URL,
+					Description: nil,
+					CreatedAt:   time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, registry)
+	if err != nil {
+		t.Errorf("Create should not fail, got %v", err)
+	}
+}
+
+func TestUpdateRegistryError(t *testing.T) {
+	ctx := context.Background()
+	registry := &v1beta1.Registry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-registry",
+		},
+		Spec: v1beta1.RegistrySpec{
+			ForProvider: v1beta1.RegistryParameters{
+				Name: "docker-hub",
+				Type: "docker-hub",
+				URL:  "https://docker.io",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRegistryClient{
+			updateRegistryFunc: func(ctx context.Context, registryName string, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error) {
+				return nil, errors.New("update failed")
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, registry)
+	if err == nil {
+		t.Error("Update should fail when client fails")
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	ctx := context.Background()
+	ext := &external{
+		service: &mockRegistryClient{
+			closeFunc: func() error {
+				return nil
+			},
+		},
+	}
+
+	err := ext.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect should not fail, got %v", err)
+	}
+}
+
 // mockRegistryClient implements HarborClienter for registry tests
 type mockRegistryClient struct {
 	harborclients.HarborClienter
@@ -504,6 +649,7 @@ type mockRegistryClient struct {
 	createRegistryFunc func(ctx context.Context, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error)
 	updateRegistryFunc func(ctx context.Context, registryName string, spec *harborclients.RegistrySpec) (*harborclients.RegistryStatus, error)
 	deleteRegistryFunc func(ctx context.Context, registryName string) error
+	closeFunc          func() error
 }
 
 func (m *mockRegistryClient) GetRegistry(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
@@ -532,6 +678,17 @@ func (m *mockRegistryClient) DeleteRegistry(ctx context.Context, registryName st
 		return m.deleteRegistryFunc(ctx, registryName)
 	}
 	return nil
+}
+
+func (m *mockRegistryClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *mockRegistryClient) GetBaseURL() string {
+	return "https://harbor.example.com"
 }
 
 func ptrInt64(i int64) *int64 {

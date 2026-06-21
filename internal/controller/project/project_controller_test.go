@@ -649,6 +649,66 @@ func TestObserveProjectNilPublic(t *testing.T) {
 	}
 }
 
+func TestConnectSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockProjectClient{}, nil
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Project{})
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+}
+
+func TestConnectClientError(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return nil, errors.New("client creation failed")
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.Project{})
+	if err == nil {
+		t.Error("Connect should fail when client creation fails")
+	}
+}
+
+func TestObserveProjectGetError(t *testing.T) {
+	ctx := context.Background()
+	project := &v1beta1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-project",
+		},
+		Spec: v1beta1.ProjectSpec{
+			ForProvider: v1beta1.ProjectParameters{
+				Name: "my-project",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockProjectClient{
+			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
+				return nil, errors.New("get failed")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, project)
+	if err != nil {
+		t.Errorf("Observe should not fail on error, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when client returns error")
+	}
+}
+
 // mockProjectClient implements HarborClienter for project tests
 type mockProjectClient struct {
 	harborclients.HarborClienter
@@ -656,6 +716,7 @@ type mockProjectClient struct {
 	createProjectFunc func(ctx context.Context, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
 	updateProjectFunc func(ctx context.Context, projectID string, spec *harborclients.ProjectSpec) (*harborclients.ProjectStatus, error)
 	deleteProjectFunc func(ctx context.Context, projectID string) error
+	closeFunc         func() error
 }
 
 func (m *mockProjectClient) GetProject(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
@@ -687,6 +748,9 @@ func (m *mockProjectClient) DeleteProject(ctx context.Context, projectID string)
 }
 
 func (m *mockProjectClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
 	return nil
 }
 

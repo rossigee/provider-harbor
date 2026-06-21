@@ -11,6 +11,9 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -298,6 +301,34 @@ func TestDeleteUserSuccess(t *testing.T) {
 	}
 }
 
+func TestUpdateUserError(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			updateUserFunc: func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error) {
+				return nil, errors.New("update failed")
+			},
+		},
+	}
+
+	_, err := ext.Update(ctx, user)
+	if err == nil {
+		t.Error("Update should fail when client fails")
+	}
+}
+
 func TestDeleteUserError(t *testing.T) {
 	ctx := context.Background()
 	user := &v1beta1.User{
@@ -323,6 +354,124 @@ func TestDeleteUserError(t *testing.T) {
 	_, err := ext.Delete(ctx, user)
 	if err == nil {
 		t.Error("Delete should fail when client fails")
+	}
+}
+
+func TestConnectSuccess(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return &mockUserClient{}, nil
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.User{})
+	if err != nil {
+		t.Errorf("Connect should not fail, got %v", err)
+	}
+}
+
+func TestConnectClientError(t *testing.T) {
+	ctx := context.Background()
+	conn := &connector{
+		kube: nil,
+		newServiceFn: func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error) {
+			return nil, errors.New("client creation failed")
+		},
+	}
+
+	_, err := conn.Connect(ctx, &v1beta1.User{})
+	if err == nil {
+		t.Error("Connect should fail when client creation fails")
+	}
+}
+
+func TestObserveUserGetError(t *testing.T) {
+	ctx := context.Background()
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username: "testuser",
+				Email:    "test@example.com",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return nil, errors.New("get failed")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe should not fail on error, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when client returns error")
+	}
+}
+
+func TestObserveUserAdminFlagChange(t *testing.T) {
+	ctx := context.Background()
+	adminFlag := true
+	user := &v1beta1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-user",
+		},
+		Spec: v1beta1.UserSpec{
+			ForProvider: v1beta1.UserParameters{
+				Username:     "testuser",
+				Email:        "test@example.com",
+				SysAdminFlag: &adminFlag,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockUserClient{
+			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
+				return &harborclients.UserStatus{
+					Username:  "testuser",
+					Email:     "test@example.com",
+					AdminFlag: false,
+					CreatedAt: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, user)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be false when admin flag differs")
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	ctx := context.Background()
+	ext := &external{
+		service: &mockUserClient{
+			closeFunc: func() error {
+				return nil
+			},
+		},
+	}
+
+	err := ext.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect should not fail, got %v", err)
 	}
 }
 
@@ -475,6 +624,7 @@ type mockUserClient struct {
 	createUserFunc func(ctx context.Context, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
 	updateUserFunc func(ctx context.Context, username string, spec *harborclients.UserSpec) (*harborclients.UserStatus, error)
 	deleteUserFunc func(ctx context.Context, username string) error
+	closeFunc      func() error
 }
 
 func (m *mockUserClient) GetUser(ctx context.Context, username string) (*harborclients.UserStatus, error) {
@@ -506,6 +656,9 @@ func (m *mockUserClient) DeleteUser(ctx context.Context, username string) error 
 }
 
 func (m *mockUserClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
 	return nil
 }
 
