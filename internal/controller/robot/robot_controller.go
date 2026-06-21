@@ -16,17 +16,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	v1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
-	v1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 )
 
 const (
@@ -74,7 +74,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
-	
+
 	return &external{service: svc, logger: c.logger}, nil
 }
 
@@ -90,7 +90,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe called for %s, desiredName=%s\n", cr.Name, cr.Spec.ForProvider.Name))
-	
+
 	// Get robot by name (simplified - Harbor API would need the robot ID)
 	robots, err := c.service.ListRobots(ctx, cr.Spec.ForProvider.ProjectID)
 	if err != nil {
@@ -145,10 +145,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			}
 
 			os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe returning exists=true, upToDate=%v\n", upToDate))
-			
+
 			// Set the Ready condition to True since we found the resource
 			cr.SetConditions(xpv2.Available())
-			
+
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
@@ -164,7 +164,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create called for %s\n", cr.Name))
-	
+
 	spec := &harborclients.RobotSpec{
 		Name:        cr.Spec.ForProvider.Name,
 		Description: cr.Spec.ForProvider.Description,

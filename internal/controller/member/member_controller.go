@@ -96,7 +96,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	upToDate := cr.Spec.ForProvider.Role == "" || status.Role == "" || cr.Spec.ForProvider.Role == status.Role
 
 	// Set external name for adoption tracking
-	ctrlutil.SetExternalName(cr, "")  // TODO: set appropriate identifier
+	ctrlutil.SetExternalName(cr, "") // TODO: set appropriate identifier
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
 

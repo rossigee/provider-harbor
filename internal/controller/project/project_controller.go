@@ -24,8 +24,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
-	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -58,7 +58,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	os.Stderr.WriteString("DEBUG: Setup: Creating controller\n")
 	os.Stderr.WriteString("DEBUG: Setup: GVK = " + v1beta1.ProjectGroupVersionKind.String() + "\n")
-	
+
 	// Create the controller
 	var err error
 	rl := ratelimiter.NewGlobal(10)
@@ -72,10 +72,10 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		return err
 	}
 	os.Stderr.WriteString("DEBUG: Setup: Controller built successfully\n")
-	
+
 	// Check if the controller is actually running
 	os.Stderr.WriteString("DEBUG: Setup: Controller started, checking if it can see resources\n")
-	
+
 	// Try to list the resources manually to verify
 	ctx := context.Background()
 	projectList := &v1beta1.ProjectList{}
@@ -85,7 +85,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	} else {
 		os.Stderr.WriteString("DEBUG: Setup: Found " + fmt.Sprintf("%d", len(projectList.Items)) + " projects\n")
 	}
-	
+
 	return nil
 }
 

@@ -42,7 +42,7 @@ import (
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
-	
+
 	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 )
 
@@ -1463,7 +1463,7 @@ type RobotStatus struct {
 // CreateRobot creates a new robot account
 func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error) {
 	c.logger.Info("CreateRobot: starting", "name", spec.Name, "projectId", spec.ProjectID)
-	
+
 	if spec == nil {
 		return nil, errors.New("spec is required")
 	}
@@ -1480,7 +1480,7 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 
 	// Build permissions for the robot
 	var permissions []*sdkmodels.RobotPermission
-	
+
 	// Determine robot level (system or project)
 	level := "project"
 	if spec.ProjectID == nil {
@@ -1488,7 +1488,7 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 		// For system-level robots, just add project permissions
 		// (no system "/" permission needed - that only causes errors)
 	}
-	
+
 	for _, p := range spec.Permissions {
 		var accessList []*sdkmodels.Access
 		for _, a := range p.Access {
@@ -1557,7 +1557,7 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 // ListRobots lists all robot accounts
 func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*RobotStatus, error) {
 	c.logger.Info("ListRobots: starting", "projectId", projectID)
-	
+
 	v2Client := c.clientSet.V2()
 	if v2Client == nil {
 		c.logger.Info("ListRobots: v2Client is nil!")

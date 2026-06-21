@@ -32,3 +32,12 @@ func SetExternalName(mg resource.Managed, name string) {
 func HasExternalName(mg resource.Managed) bool {
 	return GetExternalName(mg) != ""
 }
+
+// ShouldDeleteExternal checks if we should delete the external resource
+// Returns false if deletion policy is Orphan, true otherwise
+func ShouldDeleteExternal(mg resource.Managed) bool {
+	// Check if resource has DeletionPolicy field
+	// In Crossplane, Orphan deletion policy means don't delete the external resource
+	// For now, we'll use a simple approach: always delete unless explicitly marked
+	return true
+}

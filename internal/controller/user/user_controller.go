@@ -23,8 +23,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
-	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (

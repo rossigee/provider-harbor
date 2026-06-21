@@ -22,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
+	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
+	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
 	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
@@ -30,8 +32,6 @@ import (
 	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
 	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
-	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
-	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
 	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
@@ -40,8 +40,8 @@ import (
 
 func main() {
 	os.Stderr.WriteString("DEBUG: Provider main() started\n")
-	
-	// Enable controller-runtime debug logging  
+
+	// Enable controller-runtime debug logging
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("CATTLE_DEVELOPER_LOGGING", "true")
 	var (
@@ -99,7 +99,7 @@ func main() {
 	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
 	os.Stderr.WriteString("DEBUG: APIs added to scheme\n")
-	
+
 	// Check if Project type is registered
 	scheme := mgr.GetScheme()
 	if scheme != nil {
