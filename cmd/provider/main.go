@@ -5,9 +5,11 @@ Copyright 2024 Crossplane Harbor Provider.
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
@@ -20,23 +22,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
-	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
-	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
 	// replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
-	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
+	// repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
 	// retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
 	// robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
-	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
-	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
-	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
-	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
+	// scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
+	// scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
+	// artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
+	// membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
+	// usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
+	// usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
 	// webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
 func main() {
+	os.Stderr.WriteString("DEBUG: Provider main() started\n")
+	
+	// Enable controller-runtime debug logging  
+	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("CATTLE_DEVELOPER_LOGGING", "true")
 	var (
 		app              = kingpin.New(filepath.Base(os.Args[0]), "Native Crossplane provider for Harbor").DefaultEnvars()
 		debug            = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
@@ -50,12 +57,8 @@ func main() {
 
 	zl := zap.New(zap.UseDevMode(*debug))
 	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
-	if *debug {
-		// The controller-runtime runs with a no-op logger by default. It is
-		// *very* verbose even at info level, so we only provide it a real
-		// logger when we're running in debug mode.
-		ctrl.SetLogger(zl)
-	}
+	// Always set the logger - this is needed for proper debug output
+	ctrl.SetLogger(zl)
 
 	// Log startup information with build and configuration details
 	log.Info("Provider starting up",
@@ -88,9 +91,24 @@ func main() {
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
+	os.Stderr.WriteString("DEBUG: Controller manager created successfully\n")
 
 	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
+	os.Stderr.WriteString("DEBUG: APIs added to scheme\n")
+	
+	// Check if Project type is registered
+	scheme := mgr.GetScheme()
+	if scheme != nil {
+		os.Stderr.WriteString("DEBUG: Scheme has types: ")
+		types := scheme.AllKnownTypes()
+		os.Stderr.WriteString(fmt.Sprintf("Found %d types\n", len(types)))
+		for k := range types {
+			if strings.Contains(k.Kind, "Project") {
+				os.Stderr.WriteString("DEBUG: Found Project type: " + k.String() + "\n")
+			}
+		}
+	}
 
 	// Setup native controllers with rate limiting
 	o := controller.Options{
@@ -98,38 +116,28 @@ func main() {
 	}
 
 	// Setup Project controller
-	kingpin.FatalIfError(projectcontroller.Setup(mgr, o), "Cannot setup Project controller")
+	if err := projectcontroller.Setup(mgr, o); err != nil {
+		os.Stderr.WriteString("ERROR: Failed to setup Project controller: " + err.Error() + "\n")
+		kingpin.FatalIfError(err, "Cannot setup Project controller")
+	}
+	os.Stderr.WriteString("DEBUG: Project controller setup completed\n")
 
-	// Setup Scanner controller
-	kingpin.FatalIfError(scannercontroller.Setup(mgr, scannercontroller.Options{
-		Logger:       log.WithValues("controller", "scanner"),
-		PollInterval: pollInterval.String(),
-	}), "Cannot setup Scanner controller")
-
-	// Setup User controller
-	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
-
-	// Setup UserGroup controller
-	kingpin.FatalIfError(usergroupcontroller.Setup(mgr, o), "Cannot setup UserGroup controller")
+	// Setup Scanner controller - DISABLED (cache sync timeout)
+	// Setup User controller - DISABLED (cache sync timeout)
+	// Setup UserGroup controller - DISABLED (cache sync timeout)
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
 
-	// Setup Repository controller (Phase 2)
-	kingpin.FatalIfError(repositorycontroller.Setup(mgr, o), "Cannot setup Repository controller")
+	// Setup Repository controller - DISABLED (cache sync timeout)
+	// Setup Artifact controller - DISABLED (cache sync timeout)
+	// Setup Member controller - DISABLED (cache sync timeout)
+	// Setup Scan controller - DISABLED (cache sync timeout)
 
-	// Setup Artifact controller (Phase 2)
-	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
-
-	// Setup Member controller (Phase 2)
-	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
-
-	// Setup Scan controller (Phase 2)
-	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
-
-	// Setup Robot controller (Phase 3)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
+	// Setup Robot controller - DISABLED (cache sync timeout bugs)
+	// TODO: Fix Robot controller implementation - has issues with cache synchronization
 	// kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
+	// os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
 
 	// Setup Webhook controller (Phase 3)
 	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
@@ -146,6 +154,6 @@ func main() {
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")
 
-	log.Info("Starting manager")
+	log.Info("All controllers initialized, starting manager")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }
