@@ -23,6 +23,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -98,8 +99,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotRegistry)
 	}
 
-	// Check if the registry exists in Harbor
+	// Check if the registry exists in Harbor using external name if set
+	externalName := ctrlutil.GetExternalName(cr)
 	registryName := cr.Spec.ForProvider.Name
+	if externalName != "" {
+		// Adoption scenario: use external name to find existing resource
+		registryName = externalName
+	}
+
 	registry, err := c.service.GetRegistry(ctx, registryName)
 	if err != nil {
 		// If registry doesn't exist, we need to create it
@@ -107,6 +114,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			ResourceExists: false,
 		}, nil
 	}
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, registry.Name)
 
 	// Update status with observed state
 	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
@@ -180,6 +190,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errRegistryCreate)
 	}
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, status.Name)
 
 	// Update status with created resource info
 	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID

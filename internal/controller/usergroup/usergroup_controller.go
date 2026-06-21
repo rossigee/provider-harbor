@@ -22,6 +22,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -120,6 +121,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Update status with observed state
 	cr.Status.AtProvider.ID = &group.ID
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, group.GroupName)
 
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.GroupType == group.GroupType

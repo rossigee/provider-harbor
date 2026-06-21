@@ -22,6 +22,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -113,6 +114,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				}
 			}
 
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, "")  // TODO: set appropriate identifier
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}

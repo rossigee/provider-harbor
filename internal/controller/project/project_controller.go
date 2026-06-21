@@ -24,6 +24,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
@@ -134,8 +135,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotProject)
 	}
 
-	// Check if the project exists in Harbor
+	// Check if the project exists in Harbor using external name if set, otherwise use desired name
+	externalName := ctrlutil.GetExternalName(cr)
 	projectName := cr.Spec.ForProvider.Name
+	if externalName != "" {
+		// Adoption scenario: use external name to find existing resource
+		projectName = externalName
+	}
+
 	project, err := c.service.GetProject(ctx, projectName)
 	if err != nil {
 		// If project doesn't exist, we need to create it
@@ -143,6 +150,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			ResourceExists: false,
 		}, nil
 	}
+
+	// Set external name for future reference and adoption tracking
+	ctrlutil.SetExternalName(cr, project.Name)
 
 	// Update status with observed state
 	cr.Status.AtProvider.ID = getStringPtr(project.ID)
@@ -199,6 +209,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errProjectCreate)
 	}
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, status.Name)
 
 	// Update status with created resource info
 	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID

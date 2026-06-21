@@ -22,6 +22,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -94,6 +95,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	ut := metav1.NewTime(status.UpdateTime)
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, status.Digest)
 
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }

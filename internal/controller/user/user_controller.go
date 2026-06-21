@@ -23,6 +23,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
@@ -99,8 +100,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotUser)
 	}
 
-	// Check if the user exists in Harbor
+	// Check if the user exists in Harbor using external name if set, otherwise use desired name
+	externalName := ctrlutil.GetExternalName(cr)
 	username := cr.Spec.ForProvider.Username
+	if externalName != "" {
+		// Adoption scenario: use external name to find existing resource
+		username = externalName
+	}
+
 	user, err := c.service.GetUser(ctx, username)
 	if err != nil {
 		// If user doesn't exist, we need to create it
@@ -108,6 +115,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			ResourceExists: false,
 		}, nil
 	}
+
+	// Set external name for future reference and adoption tracking
+	ctrlutil.SetExternalName(cr, user.Username)
 
 	// Update status with observed state
 	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
@@ -159,6 +169,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUserCreate)
 	}
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, status.Username)
 
 	// Update status with created resource info
 	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID

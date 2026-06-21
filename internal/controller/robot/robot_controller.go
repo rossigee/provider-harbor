@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	v1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
 )
 
@@ -100,7 +101,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe got %d robots\n", len(robots)))
 
 	// Harbor robot names have "robot$" prefix, so we need to handle that
+	// Use external name if set for adoption scenarios
+	externalName := ctrlutil.GetExternalName(cr)
 	searchName := cr.Spec.ForProvider.Name
+	if externalName != "" {
+		// Adoption scenario: use external name to find existing resource
+		searchName = externalName
+	}
 	if !strings.HasPrefix(searchName, "robot$") {
 		searchName = "robot$" + searchName
 	}
@@ -112,6 +119,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		// Also check without prefix in case the name was stored differently
 		if robot.Name == searchName || robot.Name == cr.Spec.ForProvider.Name {
 			os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Observe FOUND %s id=%s\n", robot.Name, robot.ID))
+
+			// Set external name for adoption tracking
+			ctrlutil.SetExternalName(cr, robot.Name)
+
 			cr.Status.AtProvider.ID = &robot.ID
 			if robot.Secret != "" {
 				cr.Status.AtProvider.Secret = &robot.Secret
@@ -163,11 +174,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create calling Harbor API for %s\n", cr.Spec.ForProvider.Name))
-	_, err := c.service.CreateRobot(ctx, spec)
+	robot, err := c.service.CreateRobot(ctx, spec)
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create error: %v\n", err))
 		return managed.ExternalCreation{}, err
 	}
+
+	// Set external name for adoption tracking
+	ctrlutil.SetExternalName(cr, robot.Name)
 
 	os.Stderr.WriteString(fmt.Sprintf("DEBUG_ROBOT: Create succeeded for %s\n", cr.Name))
 	return managed.ExternalCreation{}, nil
