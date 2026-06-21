@@ -284,17 +284,31 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		credentialKey = "credentials"
 	}
 
+	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credentials key: %s\n", credentialKey)
+	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Secret data keys: %v\n", func() []string { keys := []string{}; for k := range secret.Data { keys = append(keys, k) }; return keys }())
+
 	// Get the credential data from the secret
 	credentialData, ok := secret.Data[credentialKey]
 	if !ok {
+		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Key %s not found\n", credentialKey)
 		return nil, errors.Errorf("key %q not found in credentials secret", credentialKey)
 	}
 
+	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credential data length: %d\n", len(credentialData))
+
 	// Try to parse as JSON first (standard Crossplane format)
 	credentialJSON := &HarborConfig{}
+	if err := json.Unmarshal(credentialData, credentialJSON); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: JSON unmarshal error: %v\n", err)
+	} else {
+		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: JSON unmarshal success, URL: %s\n", credentialJSON.URL)
+	}
+
 	if err := json.Unmarshal(credentialData, credentialJSON); err == nil && credentialJSON.URL != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Using JSON credentials\n")
 		config = credentialJSON
 	} else {
+		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Falling back to individual keys\n")
 		// Fallback: treat the data as individual keys in the secret
 		// This supports both formats: JSON in single key or individual keys
 		if urlBytes, ok := secret.Data["url"]; ok {
