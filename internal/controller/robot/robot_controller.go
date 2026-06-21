@@ -39,6 +39,8 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.RobotGroupVersionKind.Kind)
 	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
+	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup called\n")
+
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1beta1.RobotGroupVersionKind),
 		managed.WithExternalConnector(&connector{
@@ -47,15 +49,22 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			logger:       log,
 		}),
 		managed.WithLogger(log),
-		managed.WithPollInterval(1*time.Minute),
+		managed.WithPollInterval(10*time.Second),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
 
-	return ctrl.NewControllerManagedBy(mgr).
+	fmt.Fprintf(os.Stderr, "DEBUG: Robot reconciler created, building controller\n")
+
+	builder := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1beta1.Robot{}).
-		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
+		For(&v1beta1.Robot{})
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller builder ready, completing with ratelimiter\n")
+
+	err := builder.Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup completed with error: %v\n", err)
+	return err
 }
 
 type connector struct {
