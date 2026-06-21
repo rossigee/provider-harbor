@@ -340,13 +340,13 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 	}
 
 	if config.URL == "" {
-		return nil, errors.New("url is required in credentials")
+		return nil, errors.Errorf("url is required in credentials (key=%s, json-parse-attempted=true, url-from-json=%q)", credentialKey, credentialJSON.URL)
 	}
 	if config.Username == "" {
-		return nil, errors.New("username is required in credentials")
+		return nil, errors.Errorf("username is required in credentials (key=%s, username=%q)", credentialKey, config.Username)
 	}
 	if config.Password == "" {
-		return nil, errors.New("password is required in credentials")
+		return nil, errors.Errorf("password is required in credentials (key=%s)", credentialKey)
 	}
 
 	return NewHarborClient(config)
