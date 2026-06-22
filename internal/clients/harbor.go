@@ -25,12 +25,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/goharbor/go-client/pkg/harbor"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
+	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1717,16 +1719,74 @@ func (c *HarborClient) CreateWebhook(ctx context.Context, spec *WebhookSpec) (*W
 
 	c.logger.Info("Creating Harbor webhook", "projectId", spec.ProjectID, "name", spec.Name, "url", spec.URL)
 
-	webhook := &WebhookStatus{
-		ID:           "1",
-		ProjectID:    spec.ProjectID,
-		Name:         spec.Name,
-		Description:  spec.Description,
-		URL:          spec.URL,
-		EventTypes:   spec.EventTypes,
-		CreationTime: time.Now(),
-		UpdateTime:   time.Now(),
+	target := &sdkmodels.WebhookTargetObject{
+		Address:         spec.URL,
+		Type:            "http",
+		SkipCertVerify:  spec.SkipCertVerify,
 	}
+	if spec.AuthHeader != nil {
+		target.AuthHeader = *spec.AuthHeader
+	}
+
+	policy := &sdkmodels.WebhookPolicy{
+		Name:        spec.Name,
+		Description: "",
+		EventTypes:  spec.EventTypes,
+		Enabled:     true,
+		Targets:     []*sdkmodels.WebhookTargetObject{target},
+	}
+	if spec.Description != nil {
+		policy.Description = *spec.Description
+	}
+
+	params := &sdkwebhook.CreateWebhookPolicyOfProjectParams{
+		ProjectNameOrID: spec.ProjectID,
+		Policy:          policy,
+		Context:         ctx,
+	}
+
+	createResp, err := v2Client.Webhook.CreateWebhookPolicyOfProject(ctx, params)
+	if err != nil {
+		c.logger.Info("CreateWebhook: API call failed", "error", err.Error(), "projectId", spec.ProjectID, "name", spec.Name)
+		return nil, errors.Wrap(err, "failed to create webhook")
+	}
+
+	webhookIDStr := createResp.Location
+	var webhookID int64
+	if webhookIDStr != "" {
+		parts := strings.Split(webhookIDStr, "/")
+		if len(parts) > 0 {
+			webhookID, _ = strconv.ParseInt(parts[len(parts)-1], 10, 64)
+		}
+	}
+
+	getParams := &sdkwebhook.GetWebhookPolicyOfProjectParams{
+		ProjectNameOrID:  spec.ProjectID,
+		WebhookPolicyID: webhookID,
+		Context:         ctx,
+	}
+
+	getResp, err := v2Client.Webhook.GetWebhookPolicyOfProject(ctx, getParams)
+	if err != nil {
+		c.logger.Info("CreateWebhook: failed to get created webhook", "error", err.Error())
+		return nil, errors.Wrap(err, "failed to get created webhook")
+	}
+
+	p := getResp.Payload
+	webhook := &WebhookStatus{
+		ID:        strconv.FormatInt(p.ID, 10),
+		ProjectID: strconv.FormatInt(p.ProjectID, 10),
+		Name:      p.Name,
+	}
+	if p.Description != "" {
+		webhook.Description = &p.Description
+	}
+	if len(p.Targets) > 0 {
+		webhook.URL = p.Targets[0].Address
+	}
+	webhook.EventTypes = p.EventTypes
+	webhook.CreationTime = time.Time(p.CreationTime)
+	webhook.UpdateTime = time.Time(p.UpdateTime)
 
 	return webhook, nil
 }
@@ -1744,15 +1804,34 @@ func (c *HarborClient) ListWebhooks(ctx context.Context, projectID string) ([]*W
 
 	c.logger.Info("Listing Harbor webhooks", "projectId", projectID)
 
-	webhooks := []*WebhookStatus{
-		{
-			ID:           "1",
-			ProjectID:    projectID,
-			Name:         "push-notifier",
-			URL:          "https://example.com/webhook",
-			CreationTime: time.Now().Add(-7 * 24 * time.Hour),
-			UpdateTime:   time.Now(),
-		},
+	params := &sdkwebhook.ListWebhookPoliciesOfProjectParams{
+		ProjectNameOrID: projectID,
+		Context:         ctx,
+	}
+
+	resp, err := v2Client.Webhook.ListWebhookPoliciesOfProject(ctx, params)
+	if err != nil {
+		c.logger.Info("ListWebhooks: API call failed", "error", err.Error(), "projectId", projectID)
+		return nil, errors.Wrap(err, "failed to list webhooks")
+	}
+
+	webhooks := make([]*WebhookStatus, 0, len(resp.Payload))
+	for _, p := range resp.Payload {
+		webhook := &WebhookStatus{
+			ID:        strconv.FormatInt(p.ID, 10),
+			ProjectID: strconv.FormatInt(p.ProjectID, 10),
+			Name:      p.Name,
+		}
+		if p.Description != "" {
+			webhook.Description = &p.Description
+		}
+		if len(p.Targets) > 0 {
+			webhook.URL = p.Targets[0].Address
+		}
+		webhook.EventTypes = p.EventTypes
+		webhook.CreationTime = time.Time(p.CreationTime)
+		webhook.UpdateTime = time.Time(p.UpdateTime)
+		webhooks = append(webhooks, webhook)
 	}
 
 	return webhooks, nil
@@ -1772,16 +1851,40 @@ func (c *HarborClient) GetWebhook(ctx context.Context, projectID, webhookID stri
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
+	webhookIDInt, err := strconv.ParseInt(webhookID, 10, 64)
+	if err != nil {
+		return nil, errors.New("invalid webhook ID")
+	}
+
 	c.logger.Info("Retrieving Harbor webhook", "projectId", projectID, "webhookId", webhookID)
 
-	webhook := &WebhookStatus{
-		ID:           webhookID,
-		ProjectID:    projectID,
-		Name:         "push-notifier",
-		URL:          "https://example.com/webhook",
-		CreationTime: time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:   time.Now(),
+	params := &sdkwebhook.GetWebhookPolicyOfProjectParams{
+		ProjectNameOrID:  projectID,
+		WebhookPolicyID: webhookIDInt,
+		Context:         ctx,
 	}
+
+	resp, err := v2Client.Webhook.GetWebhookPolicyOfProject(ctx, params)
+	if err != nil {
+		c.logger.Info("GetWebhook: API call failed", "error", err.Error(), "projectId", projectID, "webhookId", webhookID)
+		return nil, errors.Wrap(err, "failed to get webhook")
+	}
+
+	p := resp.Payload
+	webhook := &WebhookStatus{
+		ID:        strconv.FormatInt(p.ID, 10),
+		ProjectID: strconv.FormatInt(p.ProjectID, 10),
+		Name:      p.Name,
+	}
+	if p.Description != "" {
+		webhook.Description = &p.Description
+	}
+	if len(p.Targets) > 0 {
+		webhook.URL = p.Targets[0].Address
+	}
+	webhook.EventTypes = p.EventTypes
+	webhook.CreationTime = time.Time(p.CreationTime)
+	webhook.UpdateTime = time.Time(p.UpdateTime)
 
 	return webhook, nil
 }
@@ -1803,7 +1906,45 @@ func (c *HarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID s
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
+	webhookIDInt, err := strconv.ParseInt(webhookID, 10, 64)
+	if err != nil {
+		return nil, errors.New("invalid webhook ID")
+	}
+
 	c.logger.Info("Updating Harbor webhook", "projectId", projectID, "webhookId", webhookID, "name", spec.Name)
+
+	target := &sdkmodels.WebhookTargetObject{
+		Address:         spec.URL,
+		Type:            "http",
+		SkipCertVerify:  spec.SkipCertVerify,
+	}
+	if spec.AuthHeader != nil {
+		target.AuthHeader = *spec.AuthHeader
+	}
+
+	policy := &sdkmodels.WebhookPolicy{
+		Name:        spec.Name,
+		Description: "",
+		EventTypes:  spec.EventTypes,
+		Enabled:     true,
+		Targets:     []*sdkmodels.WebhookTargetObject{target},
+	}
+	if spec.Description != nil {
+		policy.Description = *spec.Description
+	}
+
+	params := &sdkwebhook.UpdateWebhookPolicyOfProjectParams{
+		ProjectNameOrID:  projectID,
+		WebhookPolicyID: webhookIDInt,
+		Policy:          policy,
+		Context:         ctx,
+	}
+
+	_, err = v2Client.Webhook.UpdateWebhookPolicyOfProject(ctx, params)
+	if err != nil {
+		c.logger.Info("UpdateWebhook: API call failed", "error", err.Error(), "projectId", projectID, "webhookId", webhookID)
+		return nil, errors.Wrap(err, "failed to update webhook")
+	}
 
 	webhook := &WebhookStatus{
 		ID:           webhookID,
@@ -1833,7 +1974,24 @@ func (c *HarborClient) DeleteWebhook(ctx context.Context, projectID, webhookID s
 		return errors.New("failed to get Harbor v2 client")
 	}
 
+	webhookIDInt, err := strconv.ParseInt(webhookID, 10, 64)
+	if err != nil {
+		return errors.New("invalid webhook ID")
+	}
+
 	c.logger.Info("Deleting Harbor webhook", "projectId", projectID, "webhookId", webhookID)
+
+	params := &sdkwebhook.DeleteWebhookPolicyOfProjectParams{
+		ProjectNameOrID:  projectID,
+		WebhookPolicyID: webhookIDInt,
+		Context:         ctx,
+	}
+
+	_, err = v2Client.Webhook.DeleteWebhookPolicyOfProject(ctx, params)
+	if err != nil {
+		c.logger.Info("DeleteWebhook: API call failed", "error", err.Error(), "projectId", projectID, "webhookId", webhookID)
+		return errors.Wrap(err, "failed to delete webhook")
+	}
 
 	return nil
 }
