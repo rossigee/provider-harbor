@@ -121,8 +121,15 @@ func main() {
 	// Setup Artifact controller (Phase 2)
 	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
 
-	// Setup Member controller (Phase 2)
+	// Setup Member controller (Phase 2) — deprecated catch-all; superseded by
+	// UserMember and GroupMember below. Kept registered for backward compat.
 	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
+
+	// Setup UserMember controller (single-responsibility user members)
+	kingpin.FatalIfError(membercontroller.SetupUserMember(mgr, o), "Cannot setup UserMember controller")
+
+	// Setup GroupMember controller (single-responsibility group members)
+	kingpin.FatalIfError(membercontroller.SetupGroupMember(mgr, o), "Cannot setup GroupMember controller")
 
 	// Setup Scan controller (Phase 2)
 	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")

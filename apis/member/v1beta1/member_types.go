@@ -33,9 +33,18 @@ type MemberStatus struct {
 	AtProvider             MemberObservation `json:"atProvider,omitempty"`
 }
 
+// Member is the deprecated catch-all Harbor project-member kind. It manages user
+// members only (member_user).
+//
+// Deprecated: Member is replaced by the single-responsibility kinds UserMember
+// (user members) and GroupMember (group members). It remains functional for
+// backward compatibility but should not be used for new resources. Migrate user
+// members to UserMember and use GroupMember for group members.
+//
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
+// +kubebuilder:deprecatedversion:warning="member.harbor.m.crossplane.io/v1beta1 Member is deprecated; use UserMember (user members) or GroupMember (group members)"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="USERNAME",type="string",JSONPath=".spec.forProvider.username"
 // +kubebuilder:printcolumn:name="ROLE",type="string",JSONPath=".spec.forProvider.role"

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Features
+
+**Split project membership into single-responsibility `UserMember` and `GroupMember` kinds; deprecate catch-all `Member`**
+Harbor project members are either a user (`member_user`) or a group (`member_group`). The catch-all `Member` kind (user-only) is replaced by two focused kinds under the same group/version `member.harbor.m.crossplane.io/v1beta1`:
+- **`UserMember`** (`usermembers.member.harbor.m.crossplane.io`): `forProvider` = `projectId`, `username`, `role`. Creates a user member (`member_user.username`).
+- **`GroupMember`** (`groupmembers.member.harbor.m.crossplane.io`): `forProvider` = `projectId`, `groupName`, `role`, `groupType` (optional, default `3` = OIDC; `1` LDAP, `2` HTTP). Creates a group member (`member_group.group_name`+`group_type`).
+- Both have full Create/Observe/Update/Delete, key the external resource on the **Harbor member id** (external-name, parsed from the create `Location` header) used by Observe/Update/Delete, adopt a pre-existing member by entity type+name when the id is unknown, and set `Available()` in `Observe`.
+- **`Member` is deprecated** (still functional): the CRD's served version carries `deprecated: true` + a `deprecationWarning`, the Go type is marked `Deprecated:`, and its client `AddProjectMember` now delegates to the shared user-member path. Migrate user members to `UserMember`; use `GroupMember` for group members.
+- New httptest client proof tests for both kinds (assert `member_user.username` vs `member_group.group_name`+`group_type` in the create body and that the real member id is parsed) plus mock-based controller tests; existing `Member` test retained. New `examples/e2e/usermember.yaml` and `examples/e2e/groupmember.yaml`.
+
 ### Fixes
 
 **Whole-provider: real CRUD + readiness for every managed resource (replace stubs)**

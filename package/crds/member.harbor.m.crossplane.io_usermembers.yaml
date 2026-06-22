@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: members.member.harbor.m.crossplane.io
+  name: usermembers.member.harbor.m.crossplane.io
 spec:
   group: member.harbor.m.crossplane.io
   names:
@@ -12,10 +12,10 @@ spec:
     - crossplane
     - managed
     - harbor
-    kind: Member
-    listKind: MemberList
-    plural: members
-    singular: member
+    kind: UserMember
+    listKind: UserMemberList
+    plural: usermembers
+    singular: usermember
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -28,15 +28,19 @@ spec:
     - jsonPath: .spec.forProvider.role
       name: ROLE
       type: string
+    - jsonPath: .metadata.annotations.crossplane\.io/external-name
+      name: EXTERNAL-NAME
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
-    deprecated: true
-    deprecationWarning: member.harbor.m.crossplane.io/v1beta1 Member is deprecated;
-      use UserMember (user members) or GroupMember (group members)
     name: v1beta1
     schema:
       openAPIV3Schema:
+        description: |-
+          A UserMember is a managed resource that represents a Harbor project user
+          member (member_user). It is one half of the split that replaces the deprecated
+          catch-all Member kind; GroupMember covers group members.
         properties:
           apiVersion:
             description: |-
@@ -56,14 +60,22 @@ spec:
           metadata:
             type: object
           spec:
+            description: A UserMemberSpec defines the desired state of a UserMember.
             properties:
               forProvider:
+                description: UserMemberParameters are the configurable fields of a
+                  UserMember.
                 properties:
                   projectId:
+                    description: ProjectID is the project name or numeric id the member
+                      belongs to.
                     type: string
                   role:
+                    description: 'Role is the project role: projectAdmin, developer,
+                      guest or maintainer.'
                     type: string
                   username:
+                    description: Username is the Harbor user added as a project member.
                     type: string
                 required:
                 - projectId
@@ -129,8 +141,11 @@ spec:
             - forProvider
             type: object
           status:
+            description: A UserMemberStatus represents the observed state of a UserMember.
             properties:
               atProvider:
+                description: UserMemberObservation are the observable fields of a
+                  UserMember.
                 properties:
                   creationTime:
                     format: date-time
