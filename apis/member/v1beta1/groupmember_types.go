@@ -17,10 +17,13 @@ type GroupMemberParameters struct {
 	GroupName string `json:"groupName"`
 	// Role is the project role: projectAdmin, developer, guest or maintainer.
 	Role string `json:"role"`
-	// GroupType selects the Harbor group source: 1 LDAP, 2 HTTP, 3 OIDC.
-	// Defaults to 3 (OIDC).
+	// GroupType selects the Harbor group source:
+	//   1 = LDAP — the group is an LDAP group, matched by its LDAP group DN.
+	//   2 = HTTP — the group is supplied by an HTTP auth proxy via request headers.
+	//   3 = OIDC — the group comes from the OIDC provider's groups claim.
+	// Defaults to 2 (HTTP).
 	// +optional
-	// +kubebuilder:default=3
+	// +kubebuilder:default=2
 	GroupType *int64 `json:"groupType,omitempty"`
 }
 
