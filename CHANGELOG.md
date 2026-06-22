@@ -4,6 +4,12 @@
 
 ### Features
 
+**`Robot`: level-aware (`project`/`system`); remove import/adoption (robots are not adoptable)**
+- New `forProvider.level` field — `project` (default; scoped to `projectId`) or `system` (cluster-wide). System robots may carry per-permission scope via the new optional `permissions[].kind` (`project`/`system`) and `permissions[].scope` (project name, or `/` for system). Project robots are unchanged (collapsed into a single project-scoped permission whose namespace is the resolved project name).
+- **Import/adoption removed.** Harbor discloses a robot's secret only at creation, so a pre-existing robot can never be meaningfully adopted. `Observe` is now external-name-only: get-by-id when the Harbor robot id is known, otherwise not-exists (→ Create) — no name-match/`ListRobots` fallback. The `ListRobots` client method (and its only caller) are deleted.
+- **Create conflict is actionable, never auto-recreated.** A 409 from Harbor on create returns a wrapped error instructing an operator to delete the existing robot; the controller does not delete, recreate, or refresh secrets.
+- New `examples/e2e/robot-system.yaml` (system level with mixed system/project permissions); `examples/e2e/robot.yaml` shows the explicit default `level: project`. New client httptest proof (system-level create, 409→actionable error) and controller tests; old name-match adoption tests replaced with external-name tests.
+
 **Split project membership into single-responsibility `UserMember` and `GroupMember` kinds; deprecate catch-all `Member`**
 Harbor project members are either a user (`member_user`) or a group (`member_group`). The catch-all `Member` kind (user-only) is replaced by two focused kinds under the same group/version `member.harbor.m.crossplane.io/v1beta1`:
 - **`UserMember`** (`usermembers.member.harbor.m.crossplane.io`): `forProvider` = `projectId`, `username`, `role`. Creates a user member (`member_user.username`).

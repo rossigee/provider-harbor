@@ -116,17 +116,20 @@ func TestClientMockRobotWorkflow(t *testing.T) {
 		t.Errorf("Expected secret %s, got %s", secret, status.Secret)
 	}
 
-	// Test list
-	mock.ListRobotsFunc = func(ctx context.Context, projectID *string) ([]*clients.RobotStatus, error) {
-		return []*clients.RobotStatus{status}, nil
+	// Test get-by-id (robots are managed by external-name only; no list/adoption).
+	mock.GetRobotFunc = func(ctx context.Context, id string) (*clients.RobotStatus, error) {
+		if id == robotID {
+			return status, nil
+		}
+		return nil, nil
 	}
 
-	robots, err := mock.ListRobots(ctx, nil)
+	got, err := mock.GetRobot(ctx, robotID)
 	if err != nil {
-		t.Fatalf("ListRobots failed: %v", err)
+		t.Fatalf("GetRobot failed: %v", err)
 	}
-	if len(robots) != 1 || robots[0].Name != robotName {
-		t.Errorf("Expected to find robot %s", robotName)
+	if got == nil || got.Name != robotName {
+		t.Errorf("Expected to find robot %s by id", robotName)
 	}
 
 	// Test delete

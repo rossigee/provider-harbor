@@ -11,13 +11,28 @@ import (
 
 // RobotPermission defines permissions for a robot account
 type RobotPermission struct {
-	// Namespace is the resource namespace (e.g., "project", "repository")
+	// Namespace is the resource type the access applies to (e.g., "repository",
+	// "artifact"). It is mapped to Harbor's per-action access resource.
 	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace"`
 
 	// Access is a list of access types (e.g., "pull", "push", "delete")
 	// +kubebuilder:validation:Required
 	Access []string `json:"access"`
+
+	// Kind is the scope kind of this permission, only meaningful for `system`
+	// level robots: `project` (this permission is scoped to a single project named
+	// by Scope) or `system` (cluster-wide). Ignored for `project` level robots,
+	// which are always scoped to the robot's own projectId.
+	// +kubebuilder:validation:Enum=project;system
+	// +kubebuilder:validation:Optional
+	Kind *string `json:"kind,omitempty"`
+
+	// Scope is the namespace the permission is scoped to, only meaningful for
+	// `system` level robots: the project name when Kind is `project`, or `/` when
+	// Kind is `system`. Ignored for `project` level robots.
+	// +kubebuilder:validation:Optional
+	Scope *string `json:"scope,omitempty"`
 }
 
 // RobotParameters defines the desired state of a Robot account
@@ -29,6 +44,13 @@ type RobotParameters struct {
 	// Description of the robot account
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty"`
+
+	// Level is the robot level: `project` (default; scoped to `projectId`) or
+	// `system` (cluster-wide; permissions may span projects/system).
+	// +kubebuilder:validation:Enum=project;system
+	// +kubebuilder:default=project
+	// +kubebuilder:validation:Optional
+	Level string `json:"level,omitempty"`
 
 	// ProjectID is the numeric Harbor project id the robot is scoped to (optional
 	// for system-level robots). A project name is also accepted for backward compat.

@@ -73,7 +73,6 @@ type MockHarborClient struct {
 
 	// Robot operations
 	CreateRobotFunc func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
-	ListRobotsFunc  func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error)
 	GetRobotFunc    func(ctx context.Context, robotID string) (*harborclients.RobotStatus, error)
 	UpdateRobotFunc func(ctx context.Context, robotID string, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error)
 	DeleteRobotFunc func(ctx context.Context, robotID string) error
@@ -482,14 +481,6 @@ func (m *MockHarborClient) CreateRobot(ctx context.Context, spec *harborclients.
 		CreationTime: time.Now(),
 		UpdateTime:   time.Now(),
 	}, nil
-}
-
-// ListRobots calls ListRobotsFunc
-func (m *MockHarborClient) ListRobots(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
-	if m.ListRobotsFunc != nil {
-		return m.ListRobotsFunc(ctx, projectID)
-	}
-	return nil, nil
 }
 
 // GetRobot calls GetRobotFunc

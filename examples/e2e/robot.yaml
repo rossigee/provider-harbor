@@ -23,6 +23,8 @@ metadata:
 spec:
   forProvider:
     name: uptest-robot
+    # level defaults to "project" (scoped to projectId). Shown explicitly here.
+    level: project
     # projectId is the numeric Harbor project id (the field contract). A project
     # name is also accepted via the provider's id->name fallback, which is what
     # this static example relies on (the numeric id is unknown until the Project

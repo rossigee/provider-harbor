@@ -73,6 +73,15 @@ spec:
                     format: int64
                     minimum: 1
                     type: integer
+                  level:
+                    default: project
+                    description: |-
+                      Level is the robot level: `project` (default; scoped to `projectId`) or
+                      `system` (cluster-wide; permissions may span projects/system).
+                    enum:
+                    - project
+                    - system
+                    type: string
                   name:
                     description: Name is the name of the robot account
                     type: string
@@ -88,9 +97,26 @@ spec:
                           items:
                             type: string
                           type: array
+                        kind:
+                          description: |-
+                            Kind is the scope kind of this permission, only meaningful for `system`
+                            level robots: `project` (this permission is scoped to a single project named
+                            by Scope) or `system` (cluster-wide). Ignored for `project` level robots,
+                            which are always scoped to the robot's own projectId.
+                          enum:
+                          - project
+                          - system
+                          type: string
                         namespace:
-                          description: Namespace is the resource namespace (e.g.,
-                            "project", "repository")
+                          description: |-
+                            Namespace is the resource type the access applies to (e.g., "repository",
+                            "artifact"). It is mapped to Harbor's per-action access resource.
+                          type: string
+                        scope:
+                          description: |-
+                            Scope is the namespace the permission is scoped to, only meaningful for
+                            `system` level robots: the project name when Kind is `project`, or `/` when
+                            Kind is `system`. Ignored for `project` level robots.
                           type: string
                       required:
                       - access

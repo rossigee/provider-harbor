@@ -19,9 +19,15 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"k8s.io/utils/ptr"
 )
 
-func fakeHarborRobots(t *testing.T) *httptest.Server {
+// robotInspector reports the recorded level and per-permission kinds of a created
+// robot by id, so tests can assert what the client actually sent to Harbor.
+type robotInspector func(id int) (level string, kinds []string, ok bool)
+
+func fakeHarborRobots(t *testing.T) (*httptest.Server, robotInspector) {
 	t.Helper()
 	var mu sync.Mutex
 	type robot struct {
@@ -29,6 +35,8 @@ func fakeHarborRobots(t *testing.T) *httptest.Server {
 		name        string
 		description string
 		namespace   string // project name carried on the permission
+		level       string
+		permKinds   []string // the kind of each created permission, in order
 	}
 	robots := map[int]*robot{}
 	nextID := 67
@@ -47,7 +55,9 @@ func fakeHarborRobots(t *testing.T) *httptest.Server {
 			var body struct {
 				Name        string `json:"name"`
 				Description string `json:"description"`
+				Level       string `json:"level"`
 				Permissions []struct {
+					Kind      string `json:"kind"`
 					Namespace string `json:"namespace"`
 				} `json:"permissions"`
 			}
@@ -57,8 +67,12 @@ func fakeHarborRobots(t *testing.T) *httptest.Server {
 			if len(body.Permissions) > 0 {
 				ns = body.Permissions[0].Namespace
 			}
+			kinds := make([]string, 0, len(body.Permissions))
+			for _, p := range body.Permissions {
+				kinds = append(kinds, p.Kind)
+			}
 			full := fmt.Sprintf("robot$%s+%s", ns, body.Name)
-			robots[nextID] = &robot{id: nextID, name: full, description: body.Description, namespace: ns}
+			robots[nextID] = &robot{id: nextID, name: full, description: body.Description, namespace: ns, level: body.Level, permKinds: kinds}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_, _ = fmt.Fprintf(w, `{"id":%d,"name":%q,"secret":"generated-secret-xyz","creation_time":"2026-01-01T00:00:00Z"}`, nextID, full)
@@ -127,11 +141,20 @@ func fakeHarborRobots(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
-	return httptest.NewServer(mux)
+	inspect := func(id int) (string, []string, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		rb, ok := robots[id]
+		if !ok {
+			return "", nil, false
+		}
+		return rb.level, rb.permKinds, true
+	}
+	return httptest.NewServer(mux), inspect
 }
 
 func TestRobotClient_RealCRUD(t *testing.T) {
-	srv := fakeHarborRobots(t)
+	srv, inspect := fakeHarborRobots(t)
 	defer srv.Close()
 	c := newTestClient(t, srv.URL)
 	ctx := context.Background()
@@ -167,13 +190,10 @@ func TestRobotClient_RealCRUD(t *testing.T) {
 		t.Errorf("expected project %q parsed from permission, got %v", proj, got.ProjectID)
 	}
 
-	// List scoped to the project finds it by suffix-able full name.
-	robots, err := c.ListRobots(ctx, &proj)
-	if err != nil {
-		t.Fatalf("ListRobots: %v", err)
-	}
-	if len(robots) != 1 || !strings.HasSuffix(robots[0].Name, "+ci") {
-		t.Errorf("expected one robot with name suffix +ci, got %+v", robots)
+	// The client created a project-level robot with a project-kind permission.
+	id, _ := strconv.Atoi(st.ID)
+	if level, kinds, ok := inspect(id); !ok || level != "project" || len(kinds) != 1 || kinds[0] != "project" {
+		t.Errorf("expected level=project with one project-kind permission, got level=%q kinds=%v ok=%v", level, kinds, ok)
 	}
 
 	// Delete -> gone.
@@ -194,7 +214,7 @@ func TestRobotClient_RealCRUD(t *testing.T) {
 // NAME via GET /projects/{id} and that name is what lands in the robot permission
 // namespace — not the literal "16" (which would 404 createRobotNotFound).
 func TestRobotClient_NumericProjectIDResolvedToName(t *testing.T) {
-	srv := fakeHarborRobots(t)
+	srv, _ := fakeHarborRobots(t)
 	defer srv.Close()
 	c := newTestClient(t, srv.URL)
 	ctx := context.Background()
@@ -222,14 +242,79 @@ func TestRobotClient_NumericProjectIDResolvedToName(t *testing.T) {
 	if !strings.Contains(got.Name, "robot$tenant-acme+") {
 		t.Errorf("expected robot full name to carry resolved project name, got %q", got.Name)
 	}
+}
 
-	// List scoped by the numeric id resolves to the name and still finds it.
-	robots, err := c.ListRobots(ctx, &numericID)
+// TestRobotClient_SystemLevel proves a system-level robot is created with
+// Level=system and that each permission honours its own scope kind: a system-kind
+// permission (namespace "/") and a project-kind permission (a specific project).
+func TestRobotClient_SystemLevel(t *testing.T) {
+	srv, inspect := fakeHarborRobots(t)
+	defer srv.Close()
+	c := newTestClient(t, srv.URL)
+	ctx := context.Background()
+
+	st, err := c.CreateRobot(ctx, &RobotSpec{
+		Name:  "platform-ci",
+		Level: "system",
+		// No projectId: system robots are not scoped to a single project.
+		Permissions: []RobotPermission{
+			{Kind: ptr.To("system"), Namespace: "robot", Access: []string{"create"}},
+			{Kind: ptr.To("project"), Scope: ptr.To("tenant-acme"), Namespace: "repository", Access: []string{"pull", "push"}},
+		},
+	})
 	if err != nil {
-		t.Fatalf("ListRobots with numeric projectId: %v", err)
+		t.Fatalf("CreateRobot system: %v", err)
 	}
-	if len(robots) != 1 {
-		t.Errorf("expected one robot when listing by numeric projectId, got %d", len(robots))
+
+	id, _ := strconv.Atoi(st.ID)
+	level, kinds, ok := inspect(id)
+	if !ok {
+		t.Fatalf("robot %d not recorded", id)
+	}
+	if level != "system" {
+		t.Errorf("expected level=system, got %q", level)
+	}
+	if len(kinds) != 2 || kinds[0] != "system" || kinds[1] != "project" {
+		t.Errorf("expected permission kinds [system project], got %v", kinds)
+	}
+
+	// Get by id works the same way for a system robot.
+	if got, err := c.GetRobot(ctx, st.ID); err != nil || got == nil {
+		t.Fatalf("GetRobot system: st=%v err=%v", got, err)
+	}
+}
+
+// TestRobotClient_CreateConflict proves a 409 from Harbor on create is mapped to
+// an actionable "cannot be imported / delete the existing robot" error — robots
+// are never adopted or recreated by the controller.
+func TestRobotClient_CreateConflict(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v2.0/robots", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"CONFLICT","message":"robot already exists"}]}`))
+	})
+	// resolveProjectName -> GET /projects/{name}; return a project so resolution
+	// succeeds and we reach the create call.
+	mux.HandleFunc("/api/v2.0/projects/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"project_id":1,"name":"tenant-acme"}`)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c := newTestClient(t, srv.URL)
+
+	proj := "tenant-acme"
+	_, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:        "ci",
+		ProjectID:   &proj,
+		Permissions: []RobotPermission{{Namespace: "repository", Access: []string{"pull"}}},
+	})
+	if err == nil {
+		t.Fatal("expected an error on 409 create conflict")
+	}
+	if !strings.Contains(err.Error(), "cannot be imported") || !strings.Contains(err.Error(), "delete the existing robot") {
+		t.Errorf("expected actionable import-conflict error, got %q", err.Error())
 	}
 }
 

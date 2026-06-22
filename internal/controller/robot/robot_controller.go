@@ -7,7 +7,6 @@ package robot
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -86,38 +85,26 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotRobot)
 	}
 
-	// Prefer the authoritative get-by-id once the robot's Harbor id is known
-	// (stored as the external name). Harbor's system robot list (GET /robots)
-	// does NOT return project-scoped robots, so a name/list lookup cannot
-	// reliably re-match a project robot after creation — the id path is what
-	// keeps Observe stable and avoids a create→409 loop.
-	if id := robotExternalID(cr); id != "" {
-		robot, err := c.service.GetRobot(ctx, id)
-		if err != nil {
-			return managed.ExternalObservation{}, err
-		}
-		if robot == nil {
-			// Deleted out of band — let Crossplane recreate it.
-			return managed.ExternalObservation{ResourceExists: false}, nil
-		}
-		return robotObservation(cr, robot), nil
+	// Observe is external-name-only. A robot CANNOT be imported/adopted: Harbor
+	// discloses the secret only at creation, so there is no way to meaningfully
+	// manage a pre-existing robot found by name. We therefore key purely on the
+	// Harbor robot id stored as the external name.
+	id := robotExternalID(cr)
+	if id == "" {
+		// No id yet -> not created. Crossplane will call Create. (A name clash with
+		// a pre-existing robot surfaces as an actionable 409 there, not here.)
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// No id yet: fall back to a name match over the list to adopt a pre-existing
-	// robot. Harbor names a project robot robot$<project>+<shortname>.
-	robots, err := c.service.ListRobots(ctx, cr.Spec.ForProvider.ProjectID)
+	robot, err := c.service.GetRobot(ctx, id)
 	if err != nil {
 		return managed.ExternalObservation{}, err
 	}
-	for _, robot := range robots {
-		if !matchesRobotName(robot.Name, cr.Spec.ForProvider.Name) {
-			continue
-		}
-		meta.SetExternalName(cr, robot.ID)
-		return robotObservation(cr, robot), nil
+	if robot == nil {
+		// Deleted out of band — let Crossplane recreate it.
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
-
-	return managed.ExternalObservation{ResourceExists: false}, nil
+	return robotObservation(cr, robot), nil
 }
 
 // robotExternalID returns the Harbor robot id stored as the external name, or ""
@@ -166,12 +153,6 @@ func robotObservation(cr *v1beta1.Robot, robot *harborclients.RobotStatus) manag
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}
 }
 
-// matchesRobotName reports whether a Harbor robot's full name corresponds to the
-// CR's short name: either an exact match or the robot$<project>+<short> form.
-func matchesRobotName(full, short string) bool {
-	return full == short || strings.HasSuffix(full, "+"+short)
-}
-
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	cr, ok := mg.(*v1beta1.Robot)
 	if !ok {
@@ -180,13 +161,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	cr.SetConditions(xpv1.Creating())
 
-	spec := &harborclients.RobotSpec{
-		Name:        cr.Spec.ForProvider.Name,
-		Description: cr.Spec.ForProvider.Description,
-		ProjectID:   cr.Spec.ForProvider.ProjectID,
-		ExpiresIn:   cr.Spec.ForProvider.ExpiresIn,
-		Permissions: convertPermissions(cr.Spec.ForProvider.Permissions),
-	}
+	spec := robotClientSpec(cr)
 
 	status, err := c.service.CreateRobot(ctx, spec)
 	if err != nil {
@@ -222,13 +197,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New("robot ID not set")
 	}
 
-	spec := &harborclients.RobotSpec{
-		Name:        cr.Spec.ForProvider.Name,
-		Description: cr.Spec.ForProvider.Description,
-		ProjectID:   cr.Spec.ForProvider.ProjectID,
-		ExpiresIn:   cr.Spec.ForProvider.ExpiresIn,
-		Permissions: convertPermissions(cr.Spec.ForProvider.Permissions),
-	}
+	spec := robotClientSpec(cr)
 
 	_, err := c.service.UpdateRobot(ctx, *cr.Status.AtProvider.ID, spec)
 	if err != nil {
@@ -262,6 +231,19 @@ func (c *external) Disconnect(ctx context.Context) error {
 	return c.service.Close()
 }
 
+// robotClientSpec builds the client-layer RobotSpec from the CR, carrying the
+// robot level so the client can build level-appropriate permissions.
+func robotClientSpec(cr *v1beta1.Robot) *harborclients.RobotSpec {
+	return &harborclients.RobotSpec{
+		Name:        cr.Spec.ForProvider.Name,
+		Level:       cr.Spec.ForProvider.Level,
+		Description: cr.Spec.ForProvider.Description,
+		ProjectID:   cr.Spec.ForProvider.ProjectID,
+		ExpiresIn:   cr.Spec.ForProvider.ExpiresIn,
+		Permissions: convertPermissions(cr.Spec.ForProvider.Permissions),
+	}
+}
+
 func convertPermissions(perms []v1beta1.RobotPermission) []harborclients.RobotPermission {
 	if len(perms) == 0 {
 		return nil
@@ -271,6 +253,8 @@ func convertPermissions(perms []v1beta1.RobotPermission) []harborclients.RobotPe
 		result[i] = harborclients.RobotPermission{
 			Namespace: p.Namespace,
 			Access:    p.Access,
+			Kind:      p.Kind,
+			Scope:     p.Scope,
 		}
 	}
 	return result
