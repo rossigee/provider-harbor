@@ -1,0 +1,19 @@
+apiVersion: user.harbor.m.crossplane.io/v1beta1
+kind: User
+metadata:
+  name: uptest-user
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/user
+spec:
+  forProvider:
+    username: uptest-user
+    email: uptest-user@example.com
+    realname: Uptest User
+    passwordSecretRef:
+      namespace: uptest
+      name: user-password
+      key: password
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

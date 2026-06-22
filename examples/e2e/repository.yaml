@@ -1,0 +1,14 @@
+apiVersion: repository.harbor.m.crossplane.io/v1beta1
+kind: Repository
+metadata:
+  name: uptest-repository
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/repository
+spec:
+  forProvider:
+    projectId: uptest-images
+    name: busybox
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e
