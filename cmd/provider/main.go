@@ -85,6 +85,10 @@ func main() {
 		LeaderElectionID: "crossplane-leader-election-provider-harbor",
 		Cache: cache.Options{
 			SyncPeriod: syncPeriod,
+			DefaultNamespaces: map[string]cache.Config{
+				"crossplane-system": {},
+				"harbor-projects":   {},
+			},
 		},
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaseDuration:              func() *time.Duration { d := 60 * time.Second; return &d }(),
