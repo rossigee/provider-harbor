@@ -1,12 +1,80 @@
-name: End to End Testing
+name: E2E (kind + Harbor)
 
+# Runs only on PRs and on merge to the default branch — not on every branch push.
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.26.4'
+  CROSSPLANE_CLI_VERSION: 'v2.3.2'
+  CHAINSAW_VERSION: 'v0.2.15'
+  KIND_VERSION: 'v0.31.0'
+  IMAGE: ghcr.io/${{ github.repository_owner }}/provider-harbor
 
 jobs:
   e2e:
-    uses: upbound/official-providers-ci/.github/workflows/pr-comment-trigger.yml@standard-runners
-    secrets:
-      UPTEST_CLOUD_CREDENTIALS: ${{ secrets.UPTEST_CLOUD_CREDENTIALS }}
-      UPTEST_DATASOURCE: ${{ secrets.UPTEST_DATASOURCE }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Resolve tag + lowercase image
+        id: meta
+        run: |
+          echo "image=$(echo '${{ env.IMAGE }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "version=e2e-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Install tooling (crossplane CLI, kind, helm, chainsaw)
+        run: |
+          set -euo pipefail
+          BIN="$HOME/.local/bin"; mkdir -p "$BIN"
+          curl -fsSL "https://releases.crossplane.io/stable/${CROSSPLANE_CLI_VERSION}/bin/linux_amd64/crank" -o "$BIN/crossplane"
+          curl -fsSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -o "$BIN/kind"
+          curl -fsSL "https://github.com/kyverno/chainsaw/releases/download/${CHAINSAW_VERSION}/chainsaw_linux_amd64.tar.gz" | tar -xz -C "$BIN" chainsaw
+          chmod +x "$BIN/crossplane" "$BIN/kind" "$BIN/chainsaw"
+          HELM_INSTALL_DIR="$BIN" USE_SUDO=false bash <(curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3)
+          echo "$BIN" >> "$GITHUB_PATH"
+          "$BIN/crossplane" version --client; "$BIN/kind" --version; "$BIN/helm" version --short; "$BIN/chainsaw" version
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push provider package (amd64) for this commit
+        run: |
+          set -euo pipefail
+          IMG="${{ steps.meta.outputs.image }}"; VER="${{ steps.meta.outputs.version }}"
+          mkdir -p bin/linux_amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux_amd64/provider ./cmd/provider
+          docker build --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 \
+            -t provider-harbor-runtime:${VER} -f cluster/images/provider-harbor/Dockerfile .
+          crossplane xpkg build --package-root=package \
+            --embed-runtime-image="provider-harbor-runtime:${VER}" \
+            --package-file=provider-harbor.xpkg
+          EXPECTED=$(ls package/crds/*.yaml | wc -l | tr -d ' ')
+          crossplane xpkg push -f provider-harbor.xpkg "${IMG}:${VER}"
+          echo "pushed ${IMG}:${VER} (package carries ${EXPECTED} CRDs)"
+
+      - name: Run e2e on kind (real Harbor + uptest)
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/e2e.sh

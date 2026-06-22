@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
@@ -501,4 +503,87 @@ func (m *mockArtifactClient) GetBaseURL() string {
 
 func ptrString(s string) *string {
 	return &s
+}
+
+// TestObserveArtifactSetsAvailable verifies that Observe sets xpv1.Available()
+// on the managed resource when the artifact exists in Harbor (up-to-date path).
+func TestObserveArtifactSetsAvailable(t *testing.T) {
+	ctx := context.Background()
+	art := &v1beta1.Artifact{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-artifact"},
+		Spec: v1beta1.ArtifactSpec{
+			ForProvider: v1beta1.ArtifactParameters{
+				ProjectID:      "library",
+				RepositoryName: "alpine",
+				Reference:      "latest",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockArtifactClient{
+			getArtifactFunc: func(_ context.Context, _, _, _ string) (*harborclients.ArtifactStatus, error) {
+				return &harborclients.ArtifactStatus{
+					ID:     "99",
+					Digest: "sha256:deadbeef",
+					Size:   4096,
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, art)
+	if err != nil {
+		t.Fatalf("Observe: %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("expected ResourceExists=true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("expected ResourceUpToDate=true")
+	}
+
+	// xpv1.Available() must be set.
+	cond := art.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		t.Errorf("expected Ready=True (Available), got %v / %v", cond.Status, cond.Reason)
+	}
+}
+
+// TestObserveArtifactNilStatusNotFound verifies that Observe returns
+// ResourceExists=false and does NOT set Available when GetArtifact returns nil.
+func TestObserveArtifactNilStatusNotFound(t *testing.T) {
+	ctx := context.Background()
+	art := &v1beta1.Artifact{
+		ObjectMeta: metav1.ObjectMeta{Name: "missing"},
+		Spec: v1beta1.ArtifactSpec{
+			ForProvider: v1beta1.ArtifactParameters{
+				ProjectID:      "library",
+				RepositoryName: "alpine",
+				Reference:      "nonexistent",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockArtifactClient{
+			getArtifactFunc: func(_ context.Context, _, _, _ string) (*harborclients.ArtifactStatus, error) {
+				return nil, nil // (nil, nil) = not found
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, art)
+	if err != nil {
+		t.Fatalf("Observe: %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("expected ResourceExists=false for nil status")
+	}
+
+	// Available must NOT be set when the artifact doesn't exist.
+	cond := art.GetCondition(xpv1.TypeReady)
+	if cond.Status == corev1.ConditionTrue {
+		t.Errorf("expected Ready!=True for not-found artifact, got %v", cond.Status)
+	}
 }

@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
@@ -84,7 +86,8 @@ func TestObserveRegistryNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockRegistryClient{
 			getRegistryFunc: func(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
-				return nil, errors.New("not found")
+				// (nil, nil) is the not-found contract; errors are real failures.
+				return nil, nil
 			},
 		},
 	}
@@ -139,6 +142,11 @@ func TestObserveRegistryExists(t *testing.T) {
 	}
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true")
+	}
+	// Available() must be set when up-to-date (crossplane-runtime v2 does not set it).
+	cond := registry.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		t.Errorf("expected Available condition, got %v", cond)
 	}
 }
 

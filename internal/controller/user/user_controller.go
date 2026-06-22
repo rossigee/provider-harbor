@@ -57,7 +57,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.User{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method
@@ -103,14 +103,15 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	username := cr.Spec.ForProvider.Username
 	user, err := c.service.GetUser(ctx, username)
 	if err != nil {
-		// If user doesn't exist, we need to create it
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+		// A real failure (auth/network/5xx) must surface, not be treated as absent.
+		return managed.ExternalObservation{}, errors.Wrap(err, errUserGet)
+	}
+	if user == nil {
+		// Not found -> let Crossplane create it.
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
 	if user.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: user.CreatedAt}
 	}
@@ -119,12 +120,15 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	upToDate := cr.Spec.ForProvider.Email == user.Email &&
 		(cr.Spec.ForProvider.SysAdminFlag == nil || *cr.Spec.ForProvider.SysAdminFlag == user.AdminFlag)
 
+	// Mark Available: the resource exists and is usable. Drift is signalled via
+	// ResourceUpToDate (-> Update)/Synced, not by withholding Ready.
+	cr.SetConditions(xpv1.Available())
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(user.Username),
-			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }
@@ -160,8 +164,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(err, errUserCreate)
 	}
 
-	// Update status with created resource info
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
@@ -169,7 +171,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(status.Username),
-			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }
@@ -202,15 +203,11 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUserUpdate)
 	}
 
-	// Update status
-	if status.CreatedAt != (time.Time{}) {
-		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: time.Now()}
-	}
+	cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: time.Now()}
 
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(status.Username),
-			"user_id":  []byte("1"), // Mock ID
 		},
 	}, nil
 }

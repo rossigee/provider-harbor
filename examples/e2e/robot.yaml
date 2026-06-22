@@ -1,0 +1,34 @@
+apiVersion: project.harbor.m.crossplane.io/v1beta1
+kind: Project
+metadata:
+  name: uptest-robot-proj
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/project
+spec:
+  forProvider:
+    name: uptest-robot-proj
+    public: false
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e
+---
+apiVersion: robot.harbor.m.crossplane.io/v1beta1
+kind: Robot
+metadata:
+  name: uptest-robot
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/robot
+spec:
+  forProvider:
+    name: uptest-robot
+    projectId: uptest-robot-proj
+    permissions:
+      - namespace: repository
+        access: ["pull", "push"]
+  writeConnectionSecretToRef:
+    name: uptest-robot-creds
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

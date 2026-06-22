@@ -1,0 +1,25 @@
+# DISABLED — not included in the e2e run.
+#
+# Retention create/observe/update work, but DELETE /retentions/{id} currently
+# panics server-side in Harbor (HTTP 500), so the uptest delete step hangs.
+# We hit this via this provider; tracked upstream:
+#   https://github.com/goharbor/harbor/issues/23345  (fix: PR #23407)
+# Re-enable (rename to retention.yaml) once a Harbor release with the fix is used.
+apiVersion: retention.harbor.m.crossplane.io/v1beta1
+kind: Retention
+metadata:
+  name: uptest-retention
+  namespace: uptest
+spec:
+  forProvider:
+    projectId: uptest-project
+    trigger: manual
+    enabled: true
+    rules:
+      - ruleType: latestPushedK
+        parameters:
+          latestPushedK: "10"
+        tagSelectors: ["**"]
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/member/v1beta1"
@@ -80,20 +82,45 @@ func TestObserveMemberNotFound(t *testing.T) {
 		},
 	}
 
+	// Not-found is the (nil, nil) contract — not an error. Observe must report the
+	// member absent so Crossplane creates it, without surfacing a failure.
 	ext := &external{
 		service: &mockMemberClient{
 			getProjectMemberFunc: func(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error) {
-				return nil, errors.New("not found")
+				return nil, nil
 			},
 		},
 	}
 
 	obs, err := ext.Observe(ctx, member)
-	if err == nil {
-		t.Error("Observe should fail when client returns error")
+	if err != nil {
+		t.Errorf("Observe should not fail on not-found, got %v", err)
 	}
 	if obs.ResourceExists {
 		t.Error("ResourceExists should be false when member not found")
+	}
+}
+
+func TestObserveMemberError(t *testing.T) {
+	ctx := context.Background()
+	member := &v1beta1.Member{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-member"},
+		Spec: v1beta1.MemberSpec{
+			ForProvider: v1beta1.MemberParameters{ProjectID: "project-1", Username: "testuser"},
+		},
+	}
+
+	// A real failure (auth/network/5xx) must surface, not be treated as absent.
+	ext := &external{
+		service: &mockMemberClient{
+			getProjectMemberFunc: func(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error) {
+				return nil, errors.New("boom")
+			},
+		},
+	}
+
+	if _, err := ext.Observe(ctx, member); err == nil {
+		t.Error("Observe should surface a real client error")
 	}
 }
 
@@ -135,6 +162,10 @@ func TestObserveMemberExists(t *testing.T) {
 	}
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true when role matches")
+	}
+	// crossplane-runtime v2 no longer sets Available() for us; the controller must.
+	if member.GetCondition(xpv1.TypeReady).Status != corev1.ConditionTrue {
+		t.Error("Ready condition should be True (Available) for an up-to-date member")
 	}
 }
 

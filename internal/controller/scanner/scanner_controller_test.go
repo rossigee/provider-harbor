@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
@@ -177,6 +178,7 @@ func TestObserveScannerRegistrationCredentialMismatch(t *testing.T) {
 
 func TestObserveScannerRegistrationNameMismatch(t *testing.T) {
 	ctx := context.Background()
+	existingUUID := "scanner-uuid-123"
 	scanner := &v1beta1.ScannerRegistration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-scanner",
@@ -185,6 +187,11 @@ func TestObserveScannerRegistrationNameMismatch(t *testing.T) {
 			ForProvider: v1beta1.ScannerRegistrationParameters{
 				Name: "new-scanner",
 				URL:  "https://scanner.example.com",
+			},
+		},
+		Status: v1beta1.ScannerRegistrationStatus{
+			AtProvider: v1beta1.ScannerRegistrationObservation{
+				UUID: &existingUUID,
 			},
 		},
 	}
@@ -233,7 +240,8 @@ func TestObserveScannerRegistrationNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockScannerClient{
 			getScannerRegistrationFunc: func(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error) {
-				return nil, errors.New("not found")
+				// Real GetScannerRegistration returns (nil, nil) for absent registrations.
+				return nil, nil
 			},
 		},
 		logger: logging.NewNopLogger(),
@@ -286,6 +294,12 @@ func TestObserveScannerRegistrationExists(t *testing.T) {
 	}
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true when values match")
+	}
+	// Observe must set Available() when up-to-date.
+	// crossplane-runtime v2 does not set this for us.
+	cond := scanner.GetCondition(xpv1.TypeReady)
+	if cond.Status != "True" {
+		t.Errorf("expected condition Ready=True (Available), got %v", cond)
 	}
 }
 
@@ -410,6 +424,11 @@ func TestCreateScannerRegistrationSuccess(t *testing.T) {
 	_, err := ext.Create(ctx, scanner)
 	if err != nil {
 		t.Errorf("Create should not fail, got %v", err)
+	}
+	// Create must set Creating() condition.
+	cond := scanner.GetCondition(xpv1.TypeReady)
+	if cond.Reason != xpv1.ReasonCreating {
+		t.Errorf("expected condition reason Creating, got %v", cond.Reason)
 	}
 }
 
@@ -769,6 +788,7 @@ func TestScannerRegistrationParametersValidation(t *testing.T) {
 type mockScannerClient struct {
 	harborclients.HarborClienter
 	getScannerRegistrationFunc    func(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error)
+	listScannerRegistrationsFunc  func(ctx context.Context) ([]*harborclients.ScannerStatus, error)
 	createScannerRegistrationFunc func(ctx context.Context, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error)
 	updateScannerRegistrationFunc func(ctx context.Context, scannerID string, spec *harborclients.ScannerSpec) (*harborclients.ScannerStatus, error)
 	deleteScannerRegistrationFunc func(ctx context.Context, scannerID string) error
@@ -778,6 +798,23 @@ type mockScannerClient struct {
 func (m *mockScannerClient) GetScannerRegistration(ctx context.Context, scannerID string) (*harborclients.ScannerStatus, error) {
 	if m.getScannerRegistrationFunc != nil {
 		return m.getScannerRegistrationFunc(ctx, scannerID)
+	}
+	return nil, nil
+}
+
+func (m *mockScannerClient) ListScannerRegistrations(ctx context.Context) ([]*harborclients.ScannerStatus, error) {
+	if m.listScannerRegistrationsFunc != nil {
+		return m.listScannerRegistrationsFunc(ctx)
+	}
+	// Default: if getScannerRegistrationFunc is set, use it to simulate a single-item list.
+	// This lets existing tests that use getScannerRegistrationFunc continue to work
+	// when Observe falls back to findByName (i.e. when no UUID is in status).
+	if m.getScannerRegistrationFunc != nil {
+		st, err := m.getScannerRegistrationFunc(ctx, "_mock_")
+		if err != nil || st == nil {
+			return nil, err
+		}
+		return []*harborclients.ScannerStatus{st}, nil
 	}
 	return nil, nil
 }

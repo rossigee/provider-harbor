@@ -789,6 +789,106 @@ func TestReplicationParametersValidation(t *testing.T) {
 	}
 }
 
+// TestObserveReplicationSetsAvailableWhenUpToDate verifies that Observe sets
+// xpv1.Available() on the managed resource when the resource exists and is up-to-date.
+// This ensures the controller fulfils the crossplane-runtime v2 contract (the reconciler
+// no longer sets Available for us — it is the provider's responsibility).
+func TestObserveReplicationSetsAvailableWhenUpToDate(t *testing.T) {
+	ctx := context.Background()
+	enabled := true
+	cr := &v1beta1.Replication{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-replication"},
+		Spec: v1beta1.ReplicationSpec{
+			ForProvider: v1beta1.ReplicationParameters{
+				Name:    "my-replication",
+				Enabled: &enabled,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockReplicationClient{
+			listReplicationPoliciesFunc: func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
+				return []*harborclients.ReplicationPolicyStatus{
+					{
+						ID:      "policy-123",
+						Name:    "my-replication",
+						Enabled: true,
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, cr)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Fatal("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Fatal("ResourceUpToDate should be true")
+	}
+
+	// Check Ready condition is Available.
+	cond := cr.GetCondition("Ready")
+	if cond.Reason != "Available" {
+		t.Errorf("expected Ready reason Available, got %q", cond.Reason)
+	}
+}
+
+// TestObserveReplicationDoesNotSetAvailableWhenNotUpToDate verifies that Observe
+// does NOT set xpv1.Available() when the resource is out-of-date (description differs).
+func TestObserveReplicationDoesNotSetAvailableWhenNotUpToDate(t *testing.T) {
+	ctx := context.Background()
+	desc := "want this"
+	enabled := true
+	cr := &v1beta1.Replication{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-replication"},
+		Spec: v1beta1.ReplicationSpec{
+			ForProvider: v1beta1.ReplicationParameters{
+				Name:        "my-replication",
+				Enabled:     &enabled,
+				Description: &desc,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockReplicationClient{
+			listReplicationPoliciesFunc: func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error) {
+				other := "different description"
+				return []*harborclients.ReplicationPolicyStatus{
+					{
+						ID:          "policy-123",
+						Name:        "my-replication",
+						Enabled:     true,
+						Description: &other,
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, cr)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Fatal("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Fatal("ResourceUpToDate should be false when description differs")
+	}
+	// A drifted-but-existing resource stays Available — drift is signalled only by
+	// ResourceUpToDate=false (which drives Update), not by withholding Ready.
+	cond := cr.GetCondition("Ready")
+	if cond.Reason != "Available" {
+		t.Errorf("Ready should be Available for an existing policy, got %q", cond.Reason)
+	}
+}
+
 type mockReplicationClient struct {
 	harborclients.HarborClienter
 	listReplicationPoliciesFunc func(ctx context.Context) ([]*harborclients.ReplicationPolicyStatus, error)

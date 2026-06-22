@@ -18,6 +18,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/retention/v1beta1"
@@ -48,7 +49,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Retention{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 type connector struct {
@@ -102,6 +103,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				upToDate = false
 			}
 
+			cr.SetConditions(xpv1.Available())
+
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
@@ -114,6 +117,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotRetention)
 	}
+
+	cr.SetConditions(xpv1.Creating())
 
 	spec := &harborclients.RetentionPolicySpec{
 		ProjectID:   cr.Spec.ForProvider.ProjectID,
@@ -175,6 +180,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	if cr.Status.AtProvider.ID == nil {
 		return managed.ExternalDelete{}, nil
 	}
+
+	cr.SetConditions(xpv1.Deleting())
 
 	err := c.service.DeleteRetentionPolicy(ctx, cr.Spec.ForProvider.ProjectID, *cr.Status.AtProvider.ID)
 	if err != nil {

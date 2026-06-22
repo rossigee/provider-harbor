@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -721,4 +723,128 @@ func (m *mockScanClient) GetBaseURL() string {
 // Helper functions
 func ptrString(s string) *string {
 	return &s
+}
+
+// TestObserveScanSetsAvailableOnSuccess verifies that Observe sets
+// xpv1.Available() when the scan status is "Success" (case-insensitive).
+func TestObserveScanSetsAvailableOnSuccess(t *testing.T) {
+	ctx := context.Background()
+	sc := &v1beta1.Scan{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-scan"},
+		Spec: v1beta1.ScanSpec{
+			ForProvider: v1beta1.ScanParameters{
+				ProjectID:      "library",
+				RepositoryName: "alpine",
+				Reference:      "latest",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockScanClient{
+			getScanFunc: func(_ context.Context, _, _, _ string) (*harborclients.ScanStatus, error) {
+				return &harborclients.ScanStatus{
+					ID:     "rpt-001",
+					Status: "Success",
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, sc)
+	if err != nil {
+		t.Fatalf("Observe: %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("expected ResourceExists=true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Error("expected ResourceUpToDate=true when status is Success")
+	}
+
+	cond := sc.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		t.Errorf("expected Ready=True (Available) when scan succeeds, got %v / %v", cond.Status, cond.Reason)
+	}
+}
+
+// TestObserveScanNotAvailableWhileScanning verifies that Observe does NOT set
+// Available when the scan is still running (ResourceUpToDate=false).
+func TestObserveScanNotAvailableWhileScanning(t *testing.T) {
+	ctx := context.Background()
+	sc := &v1beta1.Scan{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-scan"},
+		Spec: v1beta1.ScanSpec{
+			ForProvider: v1beta1.ScanParameters{
+				ProjectID:      "library",
+				RepositoryName: "alpine",
+				Reference:      "latest",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockScanClient{
+			getScanFunc: func(_ context.Context, _, _, _ string) (*harborclients.ScanStatus, error) {
+				return &harborclients.ScanStatus{
+					ID:     "rpt-001",
+					Status: "Scanning",
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, sc)
+	if err != nil {
+		t.Fatalf("Observe: %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("expected ResourceExists=true while scan in progress")
+	}
+	if obs.ResourceUpToDate {
+		t.Error("expected ResourceUpToDate=false while scan in progress")
+	}
+
+	// Available must NOT be set while still scanning.
+	cond := sc.GetCondition(xpv1.TypeReady)
+	if cond.Status == corev1.ConditionTrue {
+		t.Errorf("expected Ready!=True while scan is in progress, got %v", cond.Status)
+	}
+}
+
+// TestObserveScanNilStatusNotFound verifies that Observe returns
+// ResourceExists=false when GetScan returns (nil, nil).
+func TestObserveScanNilStatusNotFound(t *testing.T) {
+	ctx := context.Background()
+	sc := &v1beta1.Scan{
+		ObjectMeta: metav1.ObjectMeta{Name: "missing-artifact"},
+		Spec: v1beta1.ScanSpec{
+			ForProvider: v1beta1.ScanParameters{
+				ProjectID:      "library",
+				RepositoryName: "alpine",
+				Reference:      "nonexistent",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockScanClient{
+			getScanFunc: func(_ context.Context, _, _, _ string) (*harborclients.ScanStatus, error) {
+				return nil, nil // (nil, nil) = artifact not found
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, sc)
+	if err != nil {
+		t.Fatalf("Observe: %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("expected ResourceExists=false for nil status")
+	}
+
+	cond := sc.GetCondition(xpv1.TypeReady)
+	if cond.Status == corev1.ConditionTrue {
+		t.Errorf("expected Ready!=True for not-found artifact, got %v", cond.Status)
+	}
 }

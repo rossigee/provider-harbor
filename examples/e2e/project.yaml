@@ -1,0 +1,14 @@
+apiVersion: project.harbor.m.crossplane.io/v1beta1
+kind: Project
+metadata:
+  name: uptest-project
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/project
+spec:
+  forProvider:
+    name: uptest-project
+    public: false
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

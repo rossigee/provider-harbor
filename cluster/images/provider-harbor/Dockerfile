@@ -12,8 +12,10 @@ LABEL org.opencontainers.image.documentation="https://github.com/rossigee/provid
 ARG TARGETOS
 ARG TARGETARCH
 
-# Copy the native provider binary
-COPY --chmod=0755 bin/${TARGETOS}_${TARGETARCH}/provider /usr/local/bin/provider
+# Copy the native provider binary. It is already mode 0755 from `go build` and
+# COPY preserves the source mode, so we avoid --chmod (which requires BuildKit/
+# buildx — keeps the build working with the plain docker builder too).
+COPY bin/${TARGETOS}_${TARGETARCH}/provider /usr/local/bin/provider
 
 # Copy the Crossplane package
 COPY package/ /package/

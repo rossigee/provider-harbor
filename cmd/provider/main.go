@@ -24,15 +24,15 @@ import (
 	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
-	// replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
+	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
 	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
-	// retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
-	// robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
+	retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
+	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
 	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
-	// webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
+	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -128,20 +128,20 @@ func main() {
 	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
 
 	// Setup Robot controller (Phase 3)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
+	// The v1beta1 Robot CRD now ships in package/crds and registers in-cluster
+	// (since the packaging fix), so the prior "v1beta1 not available" disable no
+	// longer holds.
+	kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
 
-	// Setup Webhook controller (Phase 3)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
+	// Setup Webhook controller (Phase 3) — v1beta1 CRD ships and the client now
+	// does real CRUD, so enable it (the prior "v1beta1 not available" note is stale).
+	kingpin.FatalIfError(webhookcontroller.Setup(mgr, o), "Cannot setup Webhook controller")
 
 	// Setup Replication controller (Phase 4 - Enterprise)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(replicationcontroller.Setup(mgr, o), "Cannot setup Replication controller")
+	kingpin.FatalIfError(replicationcontroller.Setup(mgr, o), "Cannot setup Replication controller")
 
 	// Setup Retention controller (Phase 4 - Enterprise)
-	// DISABLED: CRD v1beta1 not available in cluster (only v1alpha1 exists)
-	// kingpin.FatalIfError(retentioncontroller.Setup(mgr, o), "Cannot setup Retention controller")
+	kingpin.FatalIfError(retentioncontroller.Setup(mgr, o), "Cannot setup Retention controller")
 
 	kingpin.FatalIfError(mgr.AddHealthzCheck("healthz", healthz.Ping), "Cannot add health check")
 	kingpin.FatalIfError(mgr.AddReadyzCheck("readyz", healthz.Ping), "Cannot add ready check")

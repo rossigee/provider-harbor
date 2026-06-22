@@ -497,6 +497,104 @@ func TestRetentionParametersValidation(t *testing.T) {
 	}
 }
 
+// TestObserveRetentionSetsAvailableWhenUpToDate verifies that Observe sets
+// xpv1.Available() when the resource exists and matches desired state.
+// crossplane-runtime v2 no longer sets Available for us — providers must do it.
+func TestObserveRetentionSetsAvailableWhenUpToDate(t *testing.T) {
+	ctx := context.Background()
+	enabled := true
+	cr := &v1beta1.Retention{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-retention"},
+		Spec: v1beta1.RetentionSpec{
+			ForProvider: v1beta1.RetentionParameters{
+				ProjectID: "5",
+				Enabled:   &enabled,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRetentionClient{
+			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
+				return []*harborclients.RetentionPolicyStatus{
+					{
+						ID:        "42",
+						ProjectID: "5",
+						Enabled:   true,
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, cr)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Fatal("ResourceExists should be true")
+	}
+	if !obs.ResourceUpToDate {
+		t.Fatal("ResourceUpToDate should be true")
+	}
+	// Check Ready condition is Available.
+	cond := cr.GetCondition("Ready")
+	if cond.Reason != "Available" {
+		t.Errorf("expected Ready reason Available when up-to-date, got %q", cond.Reason)
+	}
+}
+
+// TestObserveRetentionDoesNotSetAvailableWhenNotUpToDate verifies that Observe
+// does NOT set xpv1.Available() when the resource description has drifted.
+func TestObserveRetentionDoesNotSetAvailableWhenNotUpToDate(t *testing.T) {
+	ctx := context.Background()
+	desc := "desired"
+	enabled := true
+	cr := &v1beta1.Retention{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-retention"},
+		Spec: v1beta1.RetentionSpec{
+			ForProvider: v1beta1.RetentionParameters{
+				ProjectID:   "5",
+				Enabled:     &enabled,
+				Description: &desc,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRetentionClient{
+			listRetentionPoliciesFunc: func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error) {
+				other := "different"
+				return []*harborclients.RetentionPolicyStatus{
+					{
+						ID:          "42",
+						ProjectID:   "5",
+						Enabled:     true,
+						Description: &other,
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, cr)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Fatal("ResourceExists should be true")
+	}
+	if obs.ResourceUpToDate {
+		t.Fatal("ResourceUpToDate should be false when description differs")
+	}
+	// A drifted-but-existing resource stays Available — drift is signalled only by
+	// ResourceUpToDate=false (which drives Update), not by withholding Ready.
+	cond := cr.GetCondition("Ready")
+	if cond.Reason != "Available" {
+		t.Errorf("Ready should be Available for an existing policy, got %q", cond.Reason)
+	}
+}
+
 type mockRetentionClient struct {
 	harborclients.HarborClienter
 	listRetentionPoliciesFunc func(ctx context.Context, projectID string) ([]*harborclients.RetentionPolicyStatus, error)

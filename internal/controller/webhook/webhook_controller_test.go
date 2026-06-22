@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -155,6 +157,52 @@ func TestObserveWebhookExists(t *testing.T) {
 	}
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true when values match")
+	}
+}
+
+func TestObserveWebhookSetsAvailableWhenUpToDate(t *testing.T) {
+	ctx := context.Background()
+	wh := &v1beta1.Webhook{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-webhook"},
+		Spec: v1beta1.WebhookSpec{
+			ForProvider: v1beta1.WebhookParameters{
+				ProjectID:  "project-1",
+				Name:       "test-webhook",
+				URL:        "https://webhook.example.com",
+				EventTypes: []string{"PUSH_ARTIFACT"},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockWebhookClient{
+			listWebhooksFunc: func(ctx context.Context, projectID string) ([]*harborclients.WebhookStatus, error) {
+				return []*harborclients.WebhookStatus{
+					{
+						ID:           "99",
+						ProjectID:    "project-1",
+						Name:         "test-webhook",
+						URL:          "https://webhook.example.com",
+						EventTypes:   []string{"PUSH_ARTIFACT"},
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, wh)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists || !obs.ResourceUpToDate {
+		t.Fatalf("expected ResourceExists=true ResourceUpToDate=true, got %+v", obs)
+	}
+	// Condition Ready=True (Available) must be set by Observe when up-to-date.
+	cond := wh.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		t.Errorf("expected condition Ready=True after up-to-date Observe, got %+v", cond)
 	}
 }
 

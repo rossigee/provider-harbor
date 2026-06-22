@@ -6,6 +6,7 @@ package usergroup
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -55,7 +57,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.UserGroup{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method
@@ -97,40 +99,82 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotUserGroup)
 	}
 
-	// Check if the user group exists in Harbor
-	groupName := cr.Spec.ForProvider.GroupName
-	groups, err := c.service.ListUserGroups(ctx)
+	// Prefer the authoritative get-by-id once the group's Harbor id is known
+	// (stored as the external name). A list+name match cannot reliably re-match a
+	// just-created group, which causes a create→409 loop; the id path fixes that.
+	if id := userGroupExternalID(cr); id != "" {
+		gid, _ := strconv.ParseInt(id, 10, 64)
+		group, err := c.service.GetUserGroup(ctx, gid)
+		if err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, errUserGroupGet)
+		}
+		if group == nil {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+		return userGroupObservation(cr, group), nil
+	}
+
+	// No id yet: adopt a pre-existing group by name. Use the server-side
+	// group_name filter (not an unfiltered list) — in OIDC mode Harbor accrues
+	// many auto-created groups, so a paged unfiltered list may not contain ours.
+	group, err := c.service.GetUserGroupByName(ctx, cr.Spec.ForProvider.GroupName)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errUserGroupGet)
 	}
+	if group == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	meta.SetExternalName(cr, strconv.FormatInt(group.ID, 10))
+	return userGroupObservation(cr, group), nil
+}
 
-	var group *harborclients.UserGroupStatus
-	for _, g := range groups {
-		if g.GroupName == groupName {
-			group = g
-			break
+// userGroupExternalID returns the Harbor group id stored as the external name,
+// or "" if not set yet (external name defaults to metadata.name, non-numeric).
+func userGroupExternalID(cr *v1beta1.UserGroup) string {
+	en := meta.GetExternalName(cr)
+	if en == "" || en == cr.GetName() {
+		return ""
+	}
+	// Treat a non-positive id as "not set" — Harbor group ids are positive, and a
+	// stray "0" would otherwise poison Observe (GetUserGroup(0) always errors).
+	if id, err := strconv.ParseInt(en, 10, 64); err != nil || id <= 0 {
+		return ""
+	}
+	return en
+}
+
+// userGroupID returns the Harbor group id for Update/Delete. The external name is
+// authoritative (crossplane-runtime persists it reliably after Create); the
+// status subresource is a best-effort fallback (it does not always persist, which
+// is exactly why Delete must not rely on it).
+func userGroupID(cr *v1beta1.UserGroup) int64 {
+	if s := userGroupExternalID(cr); s != "" {
+		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return v
 		}
 	}
-
-	if group == nil {
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+	if cr.Status.AtProvider.ID != nil {
+		return *cr.Status.AtProvider.ID
 	}
+	return 0
+}
 
-	// Update status with observed state
+func userGroupObservation(cr *v1beta1.UserGroup, group *harborclients.UserGroupStatus) managed.ExternalObservation {
 	cr.Status.AtProvider.ID = &group.ID
 
-	// Check if resource is up to date
-	upToDate := cr.Spec.ForProvider.GroupType == group.GroupType
+	upToDate := cr.Spec.ForProvider.GroupType == group.GroupType &&
+		cr.Spec.ForProvider.GroupName == group.GroupName
+
+	cr.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"group_name": []byte(group.GroupName),
+			"group_id":   []byte(strconv.FormatInt(group.ID, 10)),
 		},
-	}, nil
+	}
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
@@ -153,7 +197,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(err, errUserGroupCreate)
 	}
 
-	// Update status with created resource info
+	// Persist the id as the external name so the next Observe can get-by-id.
+	meta.SetExternalName(cr, strconv.FormatInt(result.ID, 10))
 	cr.Status.AtProvider.ID = &result.ID
 
 	return managed.ExternalCreation{
@@ -169,7 +214,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotUserGroup)
 	}
 
-	if cr.Status.AtProvider.ID == nil {
+	id := userGroupID(cr)
+	if id <= 0 {
 		return managed.ExternalUpdate{}, errors.New("user group ID not found")
 	}
 
@@ -180,7 +226,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		LdapGroupDn: cr.Spec.ForProvider.LdapGroupDn,
 	}
 
-	_, err := c.service.UpdateUserGroup(ctx, *cr.Status.AtProvider.ID, spec)
+	_, err := c.service.UpdateUserGroup(ctx, id, spec)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUserGroupUpdate)
 	}
@@ -198,13 +244,15 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, errors.New(errNotUserGroup)
 	}
 
-	if cr.Status.AtProvider.ID == nil {
-		return managed.ExternalDelete{}, errors.New("user group ID not found")
-	}
-
 	cr.SetConditions(xpv1.Deleting())
 
-	err := c.service.DeleteUserGroup(ctx, *cr.Status.AtProvider.ID)
+	id := userGroupID(cr)
+	if id <= 0 {
+		// Never observed/created — nothing to delete.
+		return managed.ExternalDelete{}, nil
+	}
+
+	err := c.service.DeleteUserGroup(ctx, id)
 	if err != nil {
 		return managed.ExternalDelete{}, errors.Wrap(err, errUserGroupDelete)
 	}

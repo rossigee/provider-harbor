@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
@@ -137,6 +139,11 @@ func TestObserveRepositoryExists(t *testing.T) {
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true")
 	}
+	// Available() must be set when up-to-date.
+	cond := repo.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		t.Errorf("expected Available condition, got %v", cond)
+	}
 }
 
 func TestObserveRepositoryNotUpToDate(t *testing.T) {
@@ -199,16 +206,9 @@ func TestCreateRepositorySuccess(t *testing.T) {
 
 	ext := &external{
 		service: &mockRepositoryClient{
+			// (nil, nil) is the not-found contract — Harbor creates repos lazily on push.
 			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
-				return nil, errors.New("not found")
-			},
-			updateRepositoryFunc: func(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error) {
-				return &harborclients.RepositoryStatus{
-					ID:         "repo-123",
-					ProjectID:  projectID,
-					FullName:   projectID + "/" + repoName,
-					UpdateTime: time.Now(),
-				}, nil
+				return nil, nil
 			},
 		},
 	}

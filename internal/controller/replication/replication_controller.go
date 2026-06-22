@@ -18,6 +18,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/replication/v1beta1"
@@ -48,7 +49,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Replication{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 type connector struct {
@@ -102,6 +103,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				upToDate = false
 			}
 
+			cr.SetConditions(xpv1.Available())
+
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
@@ -115,6 +118,20 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotReplication)
 	}
 
+	cr.SetConditions(xpv1.Creating())
+
+	_, err := c.service.CreateReplicationPolicy(ctx, replicationSpecFromCR(cr))
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+
+	return managed.ExternalCreation{}, nil
+}
+
+// replicationSpecFromCR builds the full client spec from the CR. Used by both
+// Create and Update so an update carries the complete desired state (destination
+// registry, filters, source) rather than a partial patch.
+func replicationSpecFromCR(cr *v1beta1.Replication) *harborclients.ReplicationPolicySpec {
 	spec := &harborclients.ReplicationPolicySpec{
 		Name:            cr.Spec.ForProvider.Name,
 		Description:     cr.Spec.ForProvider.Description,
@@ -124,29 +141,18 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		Override:        cr.Spec.ForProvider.Override,
 		Enabled:         cr.Spec.ForProvider.Enabled,
 	}
-
 	if len(cr.Spec.ForProvider.Filters) > 0 {
 		spec.Filters = make([]harborclients.ReplicationPolicyFilter, len(cr.Spec.ForProvider.Filters))
 		for i, f := range cr.Spec.ForProvider.Filters {
-			spec.Filters[i] = harborclients.ReplicationPolicyFilter{
-				Type:  f.Type,
-				Value: f.Value,
-			}
+			spec.Filters[i] = harborclients.ReplicationPolicyFilter{Type: f.Type, Value: f.Value}
 		}
 	}
-
 	spec.DestinationReg = &harborclients.ReplicationPolicyDestination{
 		Name:      cr.Spec.ForProvider.DestinationReg.Name,
 		Namespace: cr.Spec.ForProvider.DestinationReg.Namespace,
 		URL:       cr.Spec.ForProvider.DestinationReg.URL,
 	}
-
-	_, err := c.service.CreateReplicationPolicy(ctx, spec)
-	if err != nil {
-		return managed.ExternalCreation{}, err
-	}
-
-	return managed.ExternalCreation{}, nil
+	return spec
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -159,16 +165,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New("policy ID not set")
 	}
 
-	spec := &harborclients.ReplicationPolicySpec{
-		Name:            cr.Spec.ForProvider.Name,
-		Description:     cr.Spec.ForProvider.Description,
-		Trigger:         cr.Spec.ForProvider.Trigger,
-		DeleteSourceTag: cr.Spec.ForProvider.DeleteSourceTag,
-		Override:        cr.Spec.ForProvider.Override,
-		Enabled:         cr.Spec.ForProvider.Enabled,
-	}
-
-	_, err := c.service.UpdateReplicationPolicy(ctx, *cr.Status.AtProvider.ID, spec)
+	_, err := c.service.UpdateReplicationPolicy(ctx, *cr.Status.AtProvider.ID, replicationSpecFromCR(cr))
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
@@ -185,6 +182,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	if cr.Status.AtProvider.ID == nil {
 		return managed.ExternalDelete{}, nil
 	}
+
+	cr.SetConditions(xpv1.Deleting())
 
 	err := c.service.DeleteReplicationPolicy(ctx, *cr.Status.AtProvider.ID)
 	if err != nil {

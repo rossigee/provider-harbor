@@ -208,10 +208,11 @@ func TestObserveProjectNotUpToDate(t *testing.T) {
 	if obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be false when public flag differs")
 	}
-	// Drift must NOT report Available — the resource keeps its prior Ready
-	// while the reconciler issues an Update.
-	if c := project.GetCondition(xpv1.TypeReady); c.Reason == xpv1.ReasonAvailable {
-		t.Error("Ready should not be Available while the project is not up to date")
+	// A drifted-but-existing resource stays Available — drift is signalled only by
+	// ResourceUpToDate=false (which drives Update). Ready reflects existence, not
+	// spec-match (that is Synced's job).
+	if c := project.GetCondition(xpv1.TypeReady); c.Reason != xpv1.ReasonAvailable {
+		t.Errorf("Ready should be Available for an existing project, got %q", c.Reason)
 	}
 }
 

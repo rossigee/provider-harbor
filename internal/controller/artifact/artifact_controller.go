@@ -18,6 +18,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
@@ -48,7 +49,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Artifact{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 type connector struct {
@@ -84,6 +85,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, err
 	}
+	// GetArtifact returns (nil, nil) when the artifact is not found in Harbor.
+	if status == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
 
 	cr.Status.AtProvider.ID = &status.ID
 	cr.Status.AtProvider.Digest = &status.Digest
@@ -95,6 +100,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
+	// Artifacts are read-only from Crossplane's perspective: mark Available
+	// once the artifact exists and is up-to-date.
+	cr.SetConditions(xpv1.Available())
+
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
@@ -104,6 +113,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
+	// Artifacts are pushed to Harbor externally; Create is a no-op.
 	return managed.ExternalCreation{}, nil
 }
 

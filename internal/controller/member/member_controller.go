@@ -18,6 +18,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rossigee/provider-harbor/apis/member/v1beta1"
@@ -48,7 +49,9 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Member{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		// A non-nil rate limiter is required: ratelimiter.Reconciler.When()
+		// dereferences it on every reconcile (nil -> panic).
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 type connector struct {
@@ -82,7 +85,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	status, err := c.service.GetProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
 	if err != nil {
+		// A real failure must surface, not be treated as "absent" (which would
+		// spuriously re-add the member).
 		return managed.ExternalObservation{}, err
+	}
+	if status == nil {
+		// Not found -> let Crossplane create it.
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	cr.Status.AtProvider.ID = &status.ID
@@ -94,6 +103,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	upToDate := cr.Spec.ForProvider.Role == "" || status.Role == "" || cr.Spec.ForProvider.Role == status.Role
 
+	// Mark Available: the resource exists and is usable. Drift is signalled via
+	// ResourceUpToDate (-> Update)/Synced, not by withholding Ready.
+	cr.SetConditions(xpv1.Available())
+
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
 
@@ -102,6 +115,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotMember)
 	}
+
+	cr.SetConditions(xpv1.Creating())
 
 	err := c.service.AddProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username, cr.Spec.ForProvider.Role)
 	if err != nil {
@@ -130,6 +145,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotMember)
 	}
+
+	cr.SetConditions(xpv1.Deleting())
 
 	err := c.service.DeleteProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
 	if err != nil {

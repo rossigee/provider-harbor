@@ -1,0 +1,36 @@
+apiVersion: registry.harbor.m.crossplane.io/v1beta1
+kind: Registry
+metadata:
+  name: uptest-repl-registry
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/registry
+spec:
+  forProvider:
+    name: uptest-repl-registry
+    type: docker-hub
+    url: https://hub.docker.com
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e
+---
+apiVersion: replication.harbor.m.crossplane.io/v1beta1
+kind: Replication
+metadata:
+  name: uptest-replication
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/replication
+spec:
+  forProvider:
+    name: uptest-replication
+    destinationReg:
+      name: uptest-repl-registry
+    trigger: manual
+    enabled: true
+    filters:
+      - type: repository
+        value: "**"
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

@@ -12,6 +12,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
@@ -83,7 +85,8 @@ func TestObserveUserNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockUserClient{
 			getUserFunc: func(ctx context.Context, username string) (*harborclients.UserStatus, error) {
-				return nil, errors.New("not found")
+				// Real GetUser returns (nil, nil) for absent users (not an error).
+				return nil, nil
 			},
 		},
 	}
@@ -134,6 +137,12 @@ func TestObserveUserExists(t *testing.T) {
 	}
 	if !obs.ResourceUpToDate {
 		t.Error("ResourceUpToDate should be true")
+	}
+	// Observe must set Available() when up-to-date.
+	// crossplane-runtime v2 does not set this for us.
+	cond := user.GetCondition(xpv1.TypeReady)
+	if cond.Status != "True" {
+		t.Errorf("expected condition Ready=True (Available), got %v", cond)
 	}
 }
 

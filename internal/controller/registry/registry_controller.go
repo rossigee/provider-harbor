@@ -6,6 +6,7 @@ package registry
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -56,7 +57,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Registry{}).
-		Complete(ratelimiter.NewReconciler(name, r, nil))
+		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method
@@ -102,33 +103,40 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	registryName := cr.Spec.ForProvider.Name
 	registry, err := c.service.GetRegistry(ctx, registryName)
 	if err != nil {
-		// If registry doesn't exist, we need to create it
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+		// A real failure (auth/network/5xx) must surface, not be treated as absent.
+		return managed.ExternalObservation{}, errors.Wrap(err, errRegistryGet)
+	}
+	if registry == nil {
+		// Not found -> let Crossplane create it.
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
+	cr.Status.AtProvider.ID = getInt64Ptr(registry.ID)
 	if registry.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: registry.CreatedAt}
 	}
 	if registry.UpdatedAt != (time.Time{}) {
 		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: registry.UpdatedAt}
 	}
-	cr.Status.AtProvider.Status = getStringPtr("healthy") // Mock status
+	cr.Status.AtProvider.Status = getStringPtr("healthy")
 
 	// Check if resource is up to date
 	upToDate := (cr.Spec.ForProvider.Description == nil || registry.Description == nil || *cr.Spec.ForProvider.Description == *registry.Description) &&
 		cr.Spec.ForProvider.URL == registry.URL &&
 		cr.Spec.ForProvider.Type == registry.Type
 
+	// Mark Available: the resource exists and is usable. Drift is signalled via
+	// ResourceUpToDate (-> Update)/Synced, not by withholding Ready.
+	cr.SetConditions(xpv1.Available())
+
+	registryID := strconv.FormatInt(registry.ID, 10)
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"registry_name": []byte(registry.Name),
-			"registry_id":   []byte("1"), // Mock ID
+			"registry_id":   []byte(registryID),
 		},
 	}, nil
 }
@@ -181,16 +189,17 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(err, errRegistryCreate)
 	}
 
-	// Update status with created resource info
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID
+	// Update status with created resource info (real Harbor registry ID)
+	cr.Status.AtProvider.ID = getInt64Ptr(status.ID)
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
 
+	registryID := strconv.FormatInt(status.ID, 10)
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
 			"registry_name": []byte(status.Name),
-			"registry_id":   []byte("1"), // Mock ID
+			"registry_id":   []byte(registryID),
 		},
 	}, nil
 }
@@ -245,10 +254,11 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: time.Now()}
 	}
 
+	registryID := strconv.FormatInt(status.ID, 10)
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
 			"registry_name": []byte(status.Name),
-			"registry_id":   []byte("1"), // Mock ID
+			"registry_id":   []byte(registryID),
 		},
 	}, nil
 }

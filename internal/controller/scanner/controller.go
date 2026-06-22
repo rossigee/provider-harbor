@@ -24,6 +24,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -105,15 +106,21 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New("scanner name is required")
 	}
 
-	scannerName := cr.Spec.ForProvider.Name
-
-	// Check if scanner exists in Harbor
-	status, err := c.service.GetScannerRegistration(ctx, scannerName)
+	// Use the UUID from status when available (set after creation); fall back to
+	// a name-based list search for the initial observation before UUID is known.
+	var status *clients.ScannerStatus
+	var err error
+	if cr.Status.AtProvider.UUID != nil && *cr.Status.AtProvider.UUID != "" {
+		status, err = c.service.GetScannerRegistration(ctx, *cr.Status.AtProvider.UUID)
+	} else {
+		status, err = c.findByName(ctx, cr.Spec.ForProvider.Name)
+	}
 	if err != nil {
-		// Scanner doesn't exist yet
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+		// A real failure (auth/network/5xx) must surface, not be treated as absent.
+		return managed.ExternalObservation{}, errors.Wrap(err, "cannot observe Harbor scanner registration")
+	}
+	if status == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	// Update status with observed values
@@ -125,11 +132,31 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: status.UpdateTime}
 	}
 
+	upToDate := c.isUpToDate(cr, status)
+	// Mark Available: the resource exists and is usable. Drift is signalled via
+	// ResourceUpToDate (-> Update)/Synced, not by withholding Ready.
+	cr.SetConditions(xpv1.Available())
+
 	return managed.ExternalObservation{
 		ResourceExists:    true,
-		ResourceUpToDate:  c.isUpToDate(cr, status),
+		ResourceUpToDate:  upToDate,
 		ConnectionDetails: managed.ConnectionDetails{},
 	}, nil
+}
+
+// findByName searches all scanner registrations for one matching name.
+// Returns (nil, nil) when absent.
+func (c *external) findByName(ctx context.Context, name string) (*clients.ScannerStatus, error) {
+	all, err := c.service.ListScannerRegistrations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range all {
+		if s != nil && s.Name == name {
+			return s, nil
+		}
+	}
+	return nil, nil
 }
 
 func (c *external) isUpToDate(cr *v1beta1.ScannerRegistration, status *clients.ScannerStatus) bool {
@@ -159,6 +186,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.logger.Debug("Creating Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
 
+	cr.SetConditions(xpv1.Creating())
+
 	spec := &clients.ScannerSpec{
 		Name: cr.Spec.ForProvider.Name,
 		URL:  cr.Spec.ForProvider.URL,
@@ -178,6 +207,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, "cannot create Harbor scanner registration")
 	}
+
+	// Store UUID in status so subsequent Observe calls use the stable ID.
+	cr.Status.AtProvider.UUID = &status.UUID
 
 	c.logger.Info("Successfully created Harbor scanner registration", "name", status.Name, "uuid", status.UUID)
 
@@ -234,6 +266,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	c.logger.Debug("Deleting Harbor ScannerRegistration", "name", cr.Spec.ForProvider.Name)
+
+	cr.SetConditions(xpv1.Deleting())
 
 	// Use the UUID from the status for deletion
 	scannerID := cr.Spec.ForProvider.Name // Fallback to name if UUID not available

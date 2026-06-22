@@ -104,6 +104,7 @@ type HarborClienter interface {
 	CreateUserGroup(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)
 	ListUserGroups(ctx context.Context) ([]*UserGroupStatus, error)
 	GetUserGroup(ctx context.Context, groupID int64) (*UserGroupStatus, error)
+	GetUserGroupByName(ctx context.Context, name string) (*UserGroupStatus, error)
 	UpdateUserGroup(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
 	DeleteUserGroup(ctx context.Context, groupID int64) error
 }
@@ -202,11 +203,12 @@ type MockHarborClient struct {
 	DeleteRetentionPolicyFunc func(ctx context.Context, projectID, policyID string) error
 
 	// UserGroup operations
-	CreateUserGroupFunc func(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)
-	ListUserGroupsFunc  func(ctx context.Context) ([]*UserGroupStatus, error)
-	GetUserGroupFunc    func(ctx context.Context, groupID int64) (*UserGroupStatus, error)
-	UpdateUserGroupFunc func(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
-	DeleteUserGroupFunc func(ctx context.Context, groupID int64) error
+	CreateUserGroupFunc    func(ctx context.Context, spec *UserGroupSpec) (*UserGroupStatus, error)
+	ListUserGroupsFunc     func(ctx context.Context) ([]*UserGroupStatus, error)
+	GetUserGroupFunc       func(ctx context.Context, groupID int64) (*UserGroupStatus, error)
+	GetUserGroupByNameFunc func(ctx context.Context, name string) (*UserGroupStatus, error)
+	UpdateUserGroupFunc    func(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
+	DeleteUserGroupFunc    func(ctx context.Context, groupID int64) error
 }
 
 // GetBaseURL calls GetBaseURLFunc
@@ -834,6 +836,14 @@ func (m *MockHarborClient) CreateUserGroup(ctx context.Context, spec *UserGroupS
 func (m *MockHarborClient) ListUserGroups(ctx context.Context) ([]*UserGroupStatus, error) {
 	if m.ListUserGroupsFunc != nil {
 		return m.ListUserGroupsFunc(ctx)
+	}
+	return nil, nil
+}
+
+// GetUserGroupByName calls GetUserGroupByNameFunc
+func (m *MockHarborClient) GetUserGroupByName(ctx context.Context, name string) (*UserGroupStatus, error) {
+	if m.GetUserGroupByNameFunc != nil {
+		return m.GetUserGroupByNameFunc(ctx, name)
 	}
 	return nil, nil
 }

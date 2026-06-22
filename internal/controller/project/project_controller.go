@@ -131,18 +131,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
 
-	// Mark the managed resource Available once it exists AND matches desired
-	// state. crossplane-runtime v2's reconciler no longer sets Available() for
-	// us (it only marks ReconcileSuccess on the up-to-date path), so readiness
-	// is the provider's responsibility — without this, Ready stays stuck on
-	// whatever Create() set (Creating) forever. We gate on upToDate (not mere
-	// existence) to mirror the reconciler's historical behaviour: a project
-	// that exists but has drifted keeps its prior Ready while the reconciler
-	// issues an Update, rather than being reported Available before it matches
-	// spec. Drift is signalled via ResourceUpToDate, not a Ready downgrade.
-	if upToDate {
-		cr.SetConditions(xpv1.Available())
-	}
+	// Mark the resource Available: it exists and is usable. crossplane-runtime v2
+	// no longer sets this for us, so readiness is the provider's responsibility.
+	// Available reflects existence, NOT spec-match — drift is signalled via
+	// ResourceUpToDate (which drives Update) and surfaced on the Synced condition;
+	// withholding Ready on drift would conflate Ready with Synced.
+	cr.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
