@@ -49,8 +49,27 @@ func fakeHarborRepository(t *testing.T) *httptest.Server {
 		defer mu.Unlock()
 
 		path := strings.TrimPrefix(r.URL.Path, "/api/v2.0/projects/")
-		// Expect path like "myproject/repositories" or "myproject/repositories/myrepo"
+		// Expect path like "myproject/repositories" or "myproject/repositories/myrepo".
 		parts := strings.SplitN(path, "/", 3)
+
+		// GET /projects/{id} (no sub-resource) resolves a numeric id to its name so
+		// the client can turn a numeric projectId into the project-name path segment.
+		// Project 16 -> "myproject".
+		if len(parts) == 1 {
+			if r.Method != http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if parts[0] == "16" {
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{"project_id": 16, "name": "myproject"})
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"errors":[{"code":"NOT_FOUND","message":"project not found"}]}`))
+			return
+		}
+
 		if len(parts) < 2 || parts[1] != "repositories" {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -208,5 +227,50 @@ func TestRepositoryClient_RealCRUD(t *testing.T) {
 	// Idempotent delete: deleting absent repository must be a no-op.
 	if err := c.DeleteRepository(ctx, project, repo); err != nil {
 		t.Fatalf("DeleteRepository (idempotent): %v", err)
+	}
+}
+
+// TestRepositoryClient_NumericProjectIDResolvedToName proves the field contract:
+// a numeric projectId ("16") is resolved to the project NAME ("myproject") via
+// GET /projects/{id} before being used as the project_name path segment — the
+// repository under "myproject/myrepo" is reachable by passing the numeric id.
+func TestRepositoryClient_NumericProjectIDResolvedToName(t *testing.T) {
+	srv := fakeHarborRepository(t)
+	defer srv.Close()
+	c := newTestClient(t, srv.URL)
+	ctx := context.Background()
+
+	const numericID = "16" // resolves to "myproject" in the fake
+	const repo = "myrepo"
+
+	// Create via update under the numeric id; the fake stores it under "myproject/myrepo".
+	desc := "via numeric id"
+	if _, err := c.UpdateRepository(ctx, numericID, repo, &RepositorySpec{ProjectID: numericID, Name: repo, Description: &desc}); err != nil {
+		t.Fatalf("UpdateRepository with numeric projectId: %v", err)
+	}
+
+	// Get by numeric id resolves to the name and finds the repo.
+	st, err := c.GetRepository(ctx, numericID, repo)
+	if err != nil {
+		t.Fatalf("GetRepository with numeric projectId: %v", err)
+	}
+	if st == nil {
+		t.Fatal("expected repo to be reachable via numeric projectId (would 404 if id used verbatim as name)")
+	}
+	if st.Description != desc {
+		t.Errorf("expected description %q, got %q", desc, st.Description)
+	}
+
+	// List by numeric id likewise resolves and returns the repo.
+	repos, err := c.ListRepositories(ctx, numericID)
+	if err != nil {
+		t.Fatalf("ListRepositories with numeric projectId: %v", err)
+	}
+	if len(repos) != 1 {
+		t.Errorf("expected one repo when listing by numeric projectId, got %d", len(repos))
+	}
+
+	if err := c.DeleteRepository(ctx, numericID, repo); err != nil {
+		t.Fatalf("DeleteRepository with numeric projectId: %v", err)
 	}
 }

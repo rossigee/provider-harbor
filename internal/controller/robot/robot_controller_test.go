@@ -139,9 +139,14 @@ func TestObserveRobotWithNilValues(t *testing.T) {
 	}
 }
 
-func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
+// TestObserveRobotProjectIsNotDrift asserts the corrected projectId contract: the
+// spec projectId is the numeric Harbor project id, while the observed ProjectID is
+// the project NAME carried on the robot's permission namespace. They are not
+// directly comparable, and a robot's project is immutable in Harbor (fixed at
+// creation), so a differing observed value must NOT be reported as drift.
+func TestObserveRobotProjectIsNotDrift(t *testing.T) {
 	ctx := context.Background()
-	projectID := "project-1"
+	projectID := "16" // numeric id (the contract)
 	robot := &v1beta1.Robot{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-robot",
@@ -155,7 +160,7 @@ func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
 		},
 	}
 
-	otherProjectID := "project-2"
+	observedProjectName := "tenant-acme" // permission namespace = project name
 	ext := &external{
 		service: &mockRobotClient{
 			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
@@ -163,7 +168,7 @@ func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
 					{
 						ID:           "robot-123",
 						Name:         "my-robot",
-						ProjectID:    &otherProjectID,
+						ProjectID:    &observedProjectName,
 						CreationTime: time.Now(),
 						UpdateTime:   time.Now(),
 					},
@@ -179,8 +184,8 @@ func TestObserveRobotUpToDateProjectIDChange(t *testing.T) {
 	if !obs.ResourceExists {
 		t.Error("ResourceExists should be true")
 	}
-	if obs.ResourceUpToDate {
-		t.Error("ResourceUpToDate should be false when project ID differs")
+	if !obs.ResourceUpToDate {
+		t.Error("ResourceUpToDate should be true: project (name vs numeric id) is not a drift signal")
 	}
 }
 

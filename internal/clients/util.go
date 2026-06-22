@@ -71,15 +71,6 @@ func projectRef(projectID string) (string, *bool) {
 	return projectID, ptr.To(true)
 }
 
-// retentionPolicyModel converts a RetentionPolicySpec to the Harbor SDK RetentionPolicy.
-// Harbor retention policies are scoped to a project via scope.ref = numeric project ID.
-// Rule mapping:
-//   - RuleType maps to Template (Harbor algorithm name e.g. latestPushedK).
-//   - TagSelectors map to TagSelectors as RetentionSelector with Decoration="matches".
-//   - Parameters map to rule Params.
-//
-// Trigger: "manual" -> Kind="Schedule" with no settings; "scheduled" -> same (cron configurable).
-// Harbor's RetentionPolicy model has no Description, Enabled, or timestamp fields.
 // resolveProjectID returns the numeric Harbor project id for a project reference
 // that may be either a numeric id or a project name.
 func (c *HarborClient) resolveProjectID(ctx context.Context, ref string) (int64, error) {
@@ -98,4 +89,25 @@ func (c *HarborClient) resolveProjectID(ctx context.Context, ref string) (int64,
 		return 0, errors.Wrapf(err, "project %q has non-numeric id %q", ref, st.ID)
 	}
 	return id, nil
+}
+
+// resolveProjectName returns the Harbor project NAME for a project reference that
+// may be either a numeric id or a name. Harbor endpoints addressed by the bare
+// project_name path segment (repositories, artifacts, scans) and the robot
+// permission namespace need the name, not the id; callers pass the contractual
+// numeric projectId and this resolves it via GET /projects/{id}. A non-numeric
+// ref is treated as already being a name and returned verbatim (backward compat
+// for name-based callers).
+func (c *HarborClient) resolveProjectName(ctx context.Context, ref string) (string, error) {
+	if _, err := strconv.ParseInt(ref, 10, 64); err != nil {
+		return ref, nil
+	}
+	st, err := c.GetProject(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	if st == nil {
+		return "", errors.Errorf("project %q not found", ref)
+	}
+	return st.Name, nil
 }

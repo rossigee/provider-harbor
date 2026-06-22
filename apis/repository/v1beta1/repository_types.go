@@ -12,7 +12,8 @@ import (
 
 // RepositoryParameters defines the desired state of a Repository
 type RepositoryParameters struct {
-	// ProjectID is the ID or name of the project this repository belongs to
+	// ProjectID is the numeric Harbor project id this repository belongs to
+	// (a project name is also accepted for backward compat).
 	// +kubebuilder:validation:Required
 	ProjectID string `json:"projectId"`
 

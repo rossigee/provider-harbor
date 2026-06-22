@@ -28,6 +28,9 @@ import (
 
 // RepositorySpec defines the desired state of a Harbor repository
 type RepositorySpec struct {
+	// ProjectID is the numeric Harbor project id (a project name is also accepted
+	// for backward compat). Harbor's repository endpoints address the project by
+	// name in the path, so it is resolved id -> name at the API boundary.
 	ProjectID   string  `json:"projectId"`
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
@@ -78,7 +81,12 @@ func (c *HarborClient) ListRepositories(ctx context.Context, projectID string) (
 
 	c.logger.Info("Listing Harbor repositories", "projectId", projectID)
 
-	params := harborrepository.NewListRepositoriesParams().WithContext(ctx).WithProjectName(projectID)
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for repository listing")
+	}
+
+	params := harborrepository.NewListRepositoriesParams().WithContext(ctx).WithProjectName(projectName)
 	resp, err := v2Client.Repository.ListRepositories(ctx, params)
 	if err != nil {
 		if isHarborNotFound(err) {
@@ -115,8 +123,13 @@ func (c *HarborClient) GetRepository(ctx context.Context, projectID, repoName st
 
 	c.logger.Info("Retrieving Harbor repository", "projectId", projectID, "name", repoName)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for repository")
+	}
+
 	params := harborrepository.NewGetRepositoryParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName)
 	resp, err := v2Client.Repository.GetRepository(ctx, params)
 	if err != nil {
@@ -148,13 +161,18 @@ func (c *HarborClient) UpdateRepository(ctx context.Context, projectID, repoName
 
 	c.logger.Info("Updating Harbor repository", "projectId", projectID, "name", repoName)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for repository")
+	}
+
 	repo := &harbormodels.Repository{}
 	if spec.Description != nil {
 		repo.Description = *spec.Description
 	}
 
 	params := harborrepository.NewUpdateRepositoryParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithRepository(repo)
 	if _, err := v2Client.Repository.UpdateRepository(ctx, params); err != nil {
@@ -180,8 +198,13 @@ func (c *HarborClient) DeleteRepository(ctx context.Context, projectID, repoName
 
 	c.logger.Info("Deleting Harbor repository", "projectId", projectID, "name", repoName)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return errors.Wrap(err, "cannot resolve project for repository")
+	}
+
 	params := harborrepository.NewDeleteRepositoryParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName)
 	if _, err := v2Client.Repository.DeleteRepository(ctx, params); err != nil {
 		if isHarborNotFound(err) {

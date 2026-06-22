@@ -98,8 +98,9 @@ spec:
                       type: object
                     type: array
                   projectId:
-                    description: ProjectID is the ID of the project (optional for
-                      system-level robots)
+                    description: |-
+                      ProjectID is the numeric Harbor project id the robot is scoped to (optional
+                      for system-level robots). A project name is also accepted for backward compat.
                     type: string
                 required:
                 - name

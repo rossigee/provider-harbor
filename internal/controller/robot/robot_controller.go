@@ -154,8 +154,10 @@ func robotObservation(cr *v1beta1.Robot, robot *harborclients.RobotStatus) manag
 	cr.Status.AtProvider.UpdateTime = &ut
 
 	descDrifted := cr.Spec.ForProvider.Description != nil && robot.Description != nil && *cr.Spec.ForProvider.Description != *robot.Description
-	projDrifted := cr.Spec.ForProvider.ProjectID != nil && robot.ProjectID != nil && *cr.Spec.ForProvider.ProjectID != *robot.ProjectID
-	upToDate := !descDrifted && !projDrifted
+	// A robot's project is fixed at creation (Harbor scopes it immutably) and the
+	// observed ProjectID is the project NAME, not the numeric-id spec value, so it
+	// is not a meaningful drift signal — compare description only.
+	upToDate := !descDrifted
 
 	// Mark Available: the resource exists and is usable. Drift is signalled via
 	// ResourceUpToDate (-> Update)/Synced, not by withholding Ready.

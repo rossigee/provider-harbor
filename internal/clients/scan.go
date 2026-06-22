@@ -59,8 +59,13 @@ func (c *HarborClient) TriggerScan(ctx context.Context, projectID, repoName, ref
 
 	c.logger.Info("Triggering Harbor artifact scan", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return errors.Wrap(err, "cannot resolve project for scan")
+	}
+
 	params := harborscan.NewScanArtifactParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithReference(reference)
 	if _, err := v2Client.Scan.ScanArtifact(ctx, params); err != nil {
@@ -87,9 +92,14 @@ func (c *HarborClient) ListScans(ctx context.Context, projectID, repoName string
 
 	c.logger.Info("Listing Harbor artifact scans", "projectId", projectID, "repo", repoName)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for scan listing")
+	}
+
 	withScan := true
 	params := harborartifact.NewListArtifactsParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithWithScanOverview(&withScan)
 	resp, err := v2Client.Artifact.ListArtifacts(ctx, params)
@@ -152,9 +162,14 @@ func (c *HarborClient) GetScan(ctx context.Context, projectID, repoName, referen
 
 	c.logger.Info("Retrieving Harbor scan", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for scan")
+	}
+
 	withScan := true
 	params := harborartifact.NewGetArtifactParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithReference(reference).
 		WithWithScanOverview(&withScan)
@@ -212,8 +227,13 @@ func (c *HarborClient) StopScan(ctx context.Context, projectID, repoName, refere
 
 	c.logger.Info("Stopping Harbor artifact scan", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return errors.Wrap(err, "cannot resolve project for scan")
+	}
+
 	params := harborscan.NewStopScanArtifactParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithReference(reference)
 	if _, err := v2Client.Scan.StopScanArtifact(ctx, params); err != nil {

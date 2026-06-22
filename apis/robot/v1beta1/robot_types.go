@@ -30,7 +30,8 @@ type RobotParameters struct {
 	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty"`
 
-	// ProjectID is the ID of the project (optional for system-level robots)
+	// ProjectID is the numeric Harbor project id the robot is scoped to (optional
+	// for system-level robots). A project name is also accepted for backward compat.
 	// +kubebuilder:validation:Optional
 	ProjectID *string `json:"projectId,omitempty"`
 

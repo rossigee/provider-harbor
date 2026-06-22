@@ -11,7 +11,8 @@ import (
 
 // ArtifactParameters defines the desired state of an Artifact
 type ArtifactParameters struct {
-	// ProjectID is the ID or name of the project
+	// ProjectID is the numeric Harbor project id (a project name is also accepted
+	// for backward compat).
 	// +kubebuilder:validation:Required
 	ProjectID string `json:"projectId"`
 

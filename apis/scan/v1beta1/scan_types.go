@@ -10,6 +10,8 @@ import (
 )
 
 type ScanParameters struct {
+	// ProjectID is the numeric Harbor project id (a project name is also accepted
+	// for backward compat).
 	ProjectID      string `json:"projectId"`
 	RepositoryName string `json:"repositoryName"`
 	Reference      string `json:"reference"`

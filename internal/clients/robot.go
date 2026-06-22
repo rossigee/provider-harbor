@@ -31,6 +31,10 @@ import (
 type RobotSpec struct {
 	Name        string
 	Description *string
+	// ProjectID is the numeric Harbor project id the robot is scoped to. It is
+	// resolved to the project name at the API boundary because Harbor's robot
+	// permission namespace is addressed by project name. A non-numeric value is
+	// treated as a project name directly (backward compat).
 	ProjectID   *string
 	ExpiresIn   *int64
 	Permissions []RobotPermission
@@ -96,7 +100,9 @@ func robotStatusFromModel(r *harbormodels.Robot) *RobotStatus {
 		t := time.Unix(r.ExpiresAt, 0)
 		st.ExpiresAt = &t
 	}
-	// A project robot's permission namespace is its project name.
+	// A project robot's permission namespace is its project NAME (Harbor stores
+	// the name there, not the numeric id). ProjectID therefore observes the name;
+	// callers that compare against the numeric-id spec must resolve first.
 	if len(r.Permissions) > 0 && r.Permissions[0] != nil && r.Permissions[0].Namespace != "" {
 		st.ProjectID = ptr.To(r.Permissions[0].Namespace)
 	}
@@ -128,7 +134,12 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 
 	c.logger.Info("Creating Harbor robot account", "name", spec.Name, "projectId", spec.ProjectID)
 
-	projectName := ptr.Deref(spec.ProjectID, "")
+	// projectId is the numeric Harbor project id (per the field contract); the
+	// robot permission namespace needs the project NAME, so resolve id -> name.
+	projectName, err := c.resolveProjectName(ctx, ptr.Deref(spec.ProjectID, ""))
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for robot")
+	}
 	req := &harbormodels.RobotCreate{
 		Name:        spec.Name,
 		Description: ptr.Deref(spec.Description, ""),
@@ -169,6 +180,17 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 
 	c.logger.Info("Listing Harbor robot accounts", "projectId", projectID)
 
+	// Observed robots carry the project NAME in their permission namespace, while
+	// the spec projectId is the numeric id; resolve to a name to filter by project.
+	var wantProject string
+	if projectID != nil && *projectID != "" {
+		name, err := c.resolveProjectName(ctx, *projectID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot resolve project for robot listing")
+		}
+		wantProject = name
+	}
+
 	pageSize := int64(100)
 	params := harborrobot.NewListRobotParams().WithContext(ctx).WithPageSize(&pageSize)
 	resp, err := v2Client.Robot.ListRobot(ctx, params)
@@ -182,8 +204,8 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 			continue
 		}
 		st := robotStatusFromModel(r)
-		// When scoped to a project, drop robots from other projects.
-		if projectID != nil && st.ProjectID != nil && *st.ProjectID != *projectID {
+		// When scoped to a project, drop robots from other projects (match by name).
+		if wantProject != "" && st.ProjectID != nil && *st.ProjectID != wantProject {
 			continue
 		}
 		robots = append(robots, st)
@@ -243,7 +265,12 @@ func (c *HarborClient) UpdateRobot(ctx context.Context, robotID string, spec *Ro
 
 	c.logger.Info("Updating Harbor robot account", "robotId", robotID, "name", spec.Name)
 
-	projectName := ptr.Deref(spec.ProjectID, "")
+	// projectId is the numeric Harbor project id; resolve to the project name for
+	// the robot permission namespace.
+	projectName, err := c.resolveProjectName(ctx, ptr.Deref(spec.ProjectID, ""))
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for robot")
+	}
 	duration := robotDuration(spec.ExpiresIn)
 	req := &harbormodels.Robot{
 		ID:          id,

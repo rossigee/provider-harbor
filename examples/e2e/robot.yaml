@@ -23,6 +23,11 @@ metadata:
 spec:
   forProvider:
     name: uptest-robot
+    # projectId is the numeric Harbor project id (the field contract). A project
+    # name is also accepted via the provider's id->name fallback, which is what
+    # this static example relies on (the numeric id is unknown until the Project
+    # above is created). The provider resolves either form to the project name
+    # for the robot permission namespace.
     projectId: uptest-robot-proj
     permissions:
       - namespace: repository

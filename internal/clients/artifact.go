@@ -28,6 +28,9 @@ import (
 
 // ArtifactSpec defines the desired state of a Harbor artifact
 type ArtifactSpec struct {
+	// ProjectID is the numeric Harbor project id (a project name is also accepted
+	// for backward compat). Harbor's artifact endpoints address the project by
+	// name in the path, so it is resolved id -> name at the API boundary.
 	ProjectID      string
 	RepositoryName string
 	Reference      string
@@ -86,9 +89,14 @@ func (c *HarborClient) ListArtifacts(ctx context.Context, projectID, repoName st
 
 	c.logger.Info("Listing Harbor artifacts", "projectId", projectID, "repo", repoName)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for artifact listing")
+	}
+
 	withScan := true
 	params := harborartifact.NewListArtifactsParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithWithScanOverview(&withScan)
 	resp, err := v2Client.Artifact.ListArtifacts(ctx, params)
@@ -128,9 +136,14 @@ func (c *HarborClient) GetArtifact(ctx context.Context, projectID, repoName, ref
 
 	c.logger.Info("Retrieving Harbor artifact", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot resolve project for artifact")
+	}
+
 	withScan := true
 	params := harborartifact.NewGetArtifactParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithReference(reference).
 		WithWithScanOverview(&withScan)
@@ -164,8 +177,13 @@ func (c *HarborClient) DeleteArtifact(ctx context.Context, projectID, repoName, 
 
 	c.logger.Info("Deleting Harbor artifact", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	projectName, err := c.resolveProjectName(ctx, projectID)
+	if err != nil {
+		return errors.Wrap(err, "cannot resolve project for artifact")
+	}
+
 	params := harborartifact.NewDeleteArtifactParams().WithContext(ctx).
-		WithProjectName(projectID).
+		WithProjectName(projectName).
 		WithRepositoryName(repoName).
 		WithReference(reference)
 	if _, err := v2Client.Artifact.DeleteArtifact(ctx, params); err != nil {

@@ -73,6 +73,23 @@ func fakeHarborRobots(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
+	// GET /projects/{id} resolves a numeric project id to its name, so a numeric
+	// projectId in the spec is turned into the project NAME for the robot
+	// permission namespace. Project 16 -> "tenant-acme".
+	mux.HandleFunc("/api/v2.0/projects/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/v2.0/projects/")
+		w.Header().Set("Content-Type", "application/json")
+		if idStr == "16" {
+			_, _ = fmt.Fprint(w, `{"project_id":16,"name":"tenant-acme"}`)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"NOT_FOUND","message":"project not found"}]}`))
+	})
 	mux.HandleFunc("/api/v2.0/robots/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -169,6 +186,50 @@ func TestRobotClient_RealCRUD(t *testing.T) {
 	// Delete is idempotent.
 	if err := c.DeleteRobot(ctx, st.ID); err != nil {
 		t.Fatalf("idempotent DeleteRobot: %v", err)
+	}
+}
+
+// TestRobotClient_NumericProjectIDResolvedToName proves the field contract: a
+// numeric projectId (the Harbor project id, e.g. "16") is resolved to the project
+// NAME via GET /projects/{id} and that name is what lands in the robot permission
+// namespace — not the literal "16" (which would 404 createRobotNotFound).
+func TestRobotClient_NumericProjectIDResolvedToName(t *testing.T) {
+	srv := fakeHarborRobots(t)
+	defer srv.Close()
+	c := newTestClient(t, srv.URL)
+	ctx := context.Background()
+
+	numericID := "16"
+	st, err := c.CreateRobot(ctx, &RobotSpec{
+		Name:        "ci",
+		ProjectID:   &numericID,
+		Permissions: []RobotPermission{{Namespace: "repository", Access: []string{"pull"}}},
+	})
+	if err != nil {
+		t.Fatalf("CreateRobot with numeric projectId: %v", err)
+	}
+
+	// Read it back: the observed ProjectID is the permission namespace, which must
+	// be the resolved project NAME "tenant-acme", proving id->name resolution ran.
+	got, err := c.GetRobot(ctx, st.ID)
+	if err != nil || got == nil {
+		t.Fatalf("GetRobot after create: st=%v err=%v", got, err)
+	}
+	if got.ProjectID == nil || *got.ProjectID != "tenant-acme" {
+		t.Errorf("expected permission namespace resolved to project name %q, got %v (numeric id used verbatim would be %q)", "tenant-acme", got.ProjectID, numericID)
+	}
+	// The Harbor full name encodes the namespace as robot$<name>+<short>.
+	if !strings.Contains(got.Name, "robot$tenant-acme+") {
+		t.Errorf("expected robot full name to carry resolved project name, got %q", got.Name)
+	}
+
+	// List scoped by the numeric id resolves to the name and still finds it.
+	robots, err := c.ListRobots(ctx, &numericID)
+	if err != nil {
+		t.Fatalf("ListRobots with numeric projectId: %v", err)
+	}
+	if len(robots) != 1 {
+		t.Errorf("expected one robot when listing by numeric projectId, got %d", len(robots))
 	}
 }
 

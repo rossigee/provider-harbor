@@ -67,8 +67,9 @@ spec:
                       prefix)
                     type: string
                   projectId:
-                    description: ProjectID is the ID or name of the project this repository
-                      belongs to
+                    description: |-
+                      ProjectID is the numeric Harbor project id this repository belongs to
+                      (a project name is also accepted for backward compat).
                     type: string
                 required:
                 - name

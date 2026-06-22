@@ -60,6 +60,9 @@ spec:
               forProvider:
                 properties:
                   projectId:
+                    description: |-
+                      ProjectID is the numeric Harbor project id (a project name is also accepted
+                      for backward compat).
                     type: string
                   reference:
                     type: string
