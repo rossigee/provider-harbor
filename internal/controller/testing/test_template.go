@@ -121,10 +121,7 @@ func Test[RESOURCE]ParametersValidation(t *testing.T) {
 // Project:           22%  ⭕ (5 tests) - NEXT PRIORITY
 // Robot:             22%  ⭕ (5 tests) - NEXT PRIORITY
 // Registry:          22%  ⭕ (5 tests)
-// Repository:        22%  ⭕ (5 tests)
-// Artifact:          22%  ⭕ (5 tests)
 // Member:            22%  ⭕ (5 tests)
-// Scan:              22%  ⭕ (5 tests)
 // Webhook:           28%  ⭕ (5 tests)
 // Retention:         22%  ⭕ (5 tests)
 // Replication:       22%  ⭕ (5 tests)

@@ -1,5 +1,5 @@
 # Phase 2 Example: Harbor Provider Resources
-# This demonstrates how to use the new Repository, Artifact, Member, and Scan resources
+# This demonstrates how to use the Member resources
 # from the Crossplane Harbor Provider
 
 ---
@@ -20,41 +20,7 @@ spec:
     severity: high
 
 ---
-# Example 2: Create a Repository (Phase 2)
-apiVersion: repository.harbor.m.crossplane.io/v1beta1
-kind: Repository
-metadata:
-  name: myproject-myrepo
-  namespace: default
-spec:
-  providerConfigRef:
-    name: harbor-provider-config
-  forProvider:
-    projectId: "1"  # ID of the project from Example 1
-    name: myrepo
-    description: "My container repository"
-
----
-# Example 3: Observe an Artifact (Phase 2)
-apiVersion: artifact.harbor.m.crossplane.io/v1beta1
-kind: Artifact
-metadata:
-  name: myapp-image
-  namespace: default
-spec:
-  providerConfigRef:
-    name: harbor-provider-config
-  forProvider:
-    projectId: "1"
-    repositoryName: myrepo
-    reference: "v1.0.0"
-    type: image
-  # Note: This resource is read-only (observes artifacts)
-  # It does NOT create artifacts in Harbor - that happens through Docker push
-  # Use this to monitor artifact status, vulnerabilities, and pull counts
-
----
-# Example 4: Add a Project Member (Phase 2)
+# Example 2: Add a Project Member (Phase 2)
 apiVersion: member.harbor.m.crossplane.io/v1beta1
 kind: Member
 metadata:
@@ -70,7 +36,7 @@ spec:
   # Roles: admin, master, developer, guest, maintainer
 
 ---
-# Example 5: Another Member - Project Admin
+# Example 3: Another Member - Project Admin
 apiVersion: member.harbor.m.crossplane.io/v1beta1
 kind: Member
 metadata:
@@ -83,23 +49,6 @@ spec:
     projectId: "1"
     username: jane-admin
     role: master
-
----
-# Example 6: Trigger a Vulnerability Scan (Phase 2)
-apiVersion: scan.harbor.m.crossplane.io/v1beta1
-kind: Scan
-metadata:
-  name: myapp-scan
-  namespace: default
-spec:
-  providerConfigRef:
-    name: harbor-provider-config
-  forProvider:
-    projectId: "1"
-    repositoryName: myrepo
-    reference: "v1.0.0"
-  # Note: Creating this resource triggers a scan job in Harbor
-  # The Status.AtProvider fields show the scan results
 
 # Provider Config Reference
 # This should be created before the above resources:
@@ -129,19 +78,7 @@ spec:
 
 # Expected Status After Deployment:
 #
-# $ kubectl get repositories
-# NAME                    READY   SYNCED   REPOSITORY   AGE
-# myproject-myrepo        True    True     myrepo       30s
-#
-# $ kubectl get artifacts
-# NAME              READY   SYNCED   DIGEST   SIZE        AGE
-# myapp-image       True    True     sha256:...  4294967296  15s
-#
 # $ kubectl get members
 # NAME                    READY   USERNAME        ROLE        AGE
 # myproject-developer     True    john-developer  developer   20s
 # myproject-admin         True    jane-admin      master      18s
-#
-# $ kubectl get scans
-# NAME          READY   STATUS      CRITICAL   HIGH   AGE
-# myapp-scan    True    Finished    0          3      12s

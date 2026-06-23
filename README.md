@@ -4,14 +4,14 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A v2-only Crossplane provider for declarative [Harbor](https://goharbor.io/)
-container-registry management: **15 namespaced resource kinds**, each with a
+container-registry management: **12 namespaced resource kinds**, each with a
 working create/observe/update/delete reconciler proven against a real Harbor
 server in CI.
 
 ## Overview
 
 This provider manages Harbor resources (projects, registries, users, groups,
-robot accounts, repositories, webhooks, replication, retention, and more) as
+robot accounts, webhooks, replication, retention, and more) as
 Kubernetes custom resources. Every kind has a reconciler and a table-driven unit
 test against an in-memory Harbor fake; the mutable kinds additionally run
 apply→Ready→import→delete against a **real Harbor** (the official goharbor Helm
@@ -32,9 +32,6 @@ and must carry `metadata.namespace`.
 |----------|-------|---------|---------|
 | `Project` | `project.harbor.*` | Project lifecycle (public flag, quotas) | [project.yaml](examples/e2e/project.yaml) |
 | `Registry` | `registry.harbor.*` | Remote/proxy registry endpoint + credentials 🔑 | [registry.yaml](examples/e2e/registry.yaml) |
-| `Repository` | `repository.harbor.*` | Repository metadata under a project ⚠️ | [repository.yaml](examples/e2e/repository.yaml) |
-| `Artifact` | `artifact.harbor.*` | Artifact (tag/digest) — observe + delete ⚠️ | [artifact.yaml](examples/e2e/artifact.yaml) |
-| `Scan` | `scan.harbor.*` | Trigger/track a vulnerability scan ⚠️ | [scan.yaml](examples/e2e/scan.yaml) |
 | `ScannerRegistration` | `scanner.harbor.*` | Register an external scanner adapter | [scanner.yaml](examples/e2e/scanner.yaml) |
 | `User` | `user.harbor.*` | Local Harbor user account 🔑 | [user.yaml](examples/e2e/user.yaml) |
 | `UserGroup` | `usergroup.harbor.*` | LDAP(1)/HTTP(2)/OIDC(3) group | [usergroup.yaml](examples/e2e/usergroup.yaml) |
@@ -48,16 +45,18 @@ and must carry `metadata.namespace`.
 
 🔑 = involves a secret value — see [Working with secret-bearing
 resources](#working-with-secret-bearing-resources).
-⚠️ = non-declarative lifecycle — see [Non-default resource
-behaviors](#non-default-resource-behaviors).
 
-### What is NOT currently modeled
+### What is NOT modeled
 
-Some Harbor concepts have no CRD. Unlike a clean desired-state object, these are
-either runtime actions, content produced out-of-band, or global singletons:
+Some Harbor concepts have no CRD. They are runtime actions, content produced
+out-of-band, or global singletons — a managed resource around them would never
+hold meaningful desired state:
 
 | Concept | Why there is no CRD |
 |---------|---------------------|
+| Repository | Auto-created on first `docker push` and cannot be explicitly created; only its metadata would be manageable. Not worth a CRD. |
+| Artifact | Image content arrives via `docker push`, not the API — read-only observe/delete. Not desired state. |
+| Scan | A scan is a *trigger/action*, not a stored object (no in-place update). Run it via Harbor's API/UI or CI, not a CRD. |
 | Quota | Project quota is a sub-field of `Project`, not an independent object. |
 | Garbage collection / purge | A scheduled maintenance action, not desired state. |
 | Audit log | Read-only event stream, not config. |
@@ -96,24 +95,6 @@ Robot accounts are the credential-bearing kind, and the most non-standard:
   Harbor returns the observed `projectId` as the project *name* rather than the
   numeric spec value, so it is deliberately excluded from drift comparison.
 
-### `Scan` — an action, not a config object
-
-`Scan` is a scan *trigger*. `Create` calls Harbor's trigger-scan API, `Delete`
-stops it, and **`Update` is a no-op**. It reports Available only once the scan
-completes successfully. There is no stored desired state to drift against.
-
-### `Artifact` — read-only (observe + delete)
-
-Artifacts arrive via `docker push`, not the API. `Create` does not push and
-`Update` is a no-op; the controller only observes an existing artifact and can
-delete it. Treat it as a handle to registry content, not a thing you create.
-
-### `Repository` — lazy / auto-created
-
-Harbor auto-creates a repository on first push; it cannot be explicitly created.
-The controller manages the **metadata** of a repository that already exists once
-something has been pushed to it.
-
 ### `Member` is split and deprecated
 
 Harbor distinguishes user members (`member_user`) from group members
@@ -124,12 +105,11 @@ defaults to `3` (OIDC; `1`=LDAP, `2`=HTTP).
 
 ### `projectId` is a numeric id, not a name
 
-`Robot`, `Repository`, `Artifact`, and `Scan` take `spec.forProvider.projectId`
-as Harbor's **numeric** project id (not the project name). The string-keyed kinds
-(`Project`→`name`, `Registry`→`name`, `User`→`username`,
-`ScannerRegistration`→`name`) use their natural name as identity; the
-numeric-id-keyed kinds (`Robot`, `UserGroup`, `UserMember`, `GroupMember`) store
-the Harbor-assigned id as the external-name.
+`Robot` takes `spec.forProvider.projectId` as Harbor's **numeric** project id
+(not the project name). The string-keyed kinds (`Project`→`name`,
+`Registry`→`name`, `User`→`username`, `ScannerRegistration`→`name`) use their
+natural name as identity; the numeric-id-keyed kinds (`Robot`, `UserGroup`,
+`UserMember`, `GroupMember`) store the Harbor-assigned id as the external-name.
 
 ## Working with secret-bearing resources
 

@@ -45,18 +45,6 @@ type HarborClienter interface {
 	UpdateRegistry(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error)
 	DeleteRegistry(ctx context.Context, registryName string) error
 
-	// Repository operations
-	ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error)
-	GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error)
-	UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error)
-	DeleteRepository(ctx context.Context, projectID, repoName string) error
-
-	// Artifact operations
-	ListArtifacts(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error)
-	GetArtifact(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
-	DeleteArtifact(ctx context.Context, projectID, repoName, reference string) error
-	GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
-
 	// Member operations.
 	//
 	// The username-keyed AddProjectMember/GetProjectMember/UpdateProjectMember/
@@ -86,12 +74,6 @@ type HarborClienter interface {
 	UpdateProjectMemberByID(ctx context.Context, projectID, memberID, role string) error
 	// DeleteProjectMemberByID removes a member by its Harbor member id (idempotent).
 	DeleteProjectMemberByID(ctx context.Context, projectID, memberID string) error
-
-	// Scan operations
-	TriggerScan(ctx context.Context, projectID, repoName, reference string) error
-	ListScans(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error)
-	GetScan(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error)
-	StopScan(ctx context.Context, projectID, repoName, reference string) error
 
 	// Robot operations
 	CreateRobot(ctx context.Context, spec *RobotSpec) (*RobotStatus, error)
@@ -169,18 +151,6 @@ type MockHarborClient struct {
 	UpdateRegistryFunc func(ctx context.Context, registryName string, spec *RegistrySpec) (*RegistryStatus, error)
 	DeleteRegistryFunc func(ctx context.Context, registryName string) error
 
-	// Repository operations
-	ListRepositoriesFunc func(ctx context.Context, projectID string) ([]*RepositoryStatus, error)
-	GetRepositoryFunc    func(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error)
-	UpdateRepositoryFunc func(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error)
-	DeleteRepositoryFunc func(ctx context.Context, projectID, repoName string) error
-
-	// Artifact operations
-	ListArtifactsFunc              func(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error)
-	GetArtifactFunc                func(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
-	DeleteArtifactFunc             func(ctx context.Context, projectID, repoName, reference string) error
-	GetArtifactVulnerabilitiesFunc func(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error)
-
 	// Member operations
 	AddProjectMemberFunc        func(ctx context.Context, projectID, username, role string) error
 	ListProjectMembersFunc      func(ctx context.Context, projectID string) ([]*MemberStatus, error)
@@ -193,12 +163,6 @@ type MockHarborClient struct {
 	GetProjectMemberByIDFunc    func(ctx context.Context, projectID, memberID string) (*MemberStatus, error)
 	UpdateProjectMemberByIDFunc func(ctx context.Context, projectID, memberID, role string) error
 	DeleteProjectMemberByIDFunc func(ctx context.Context, projectID, memberID string) error
-
-	// Scan operations
-	TriggerScanFunc func(ctx context.Context, projectID, repoName, reference string) error
-	ListScansFunc   func(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error)
-	GetScanFunc     func(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error)
-	StopScanFunc    func(ctx context.Context, projectID, repoName, reference string) error
 
 	// Robot operations
 	CreateRobotFunc func(ctx context.Context, spec *RobotSpec) (*RobotStatus, error)
@@ -461,77 +425,6 @@ func (m *MockHarborClient) DeleteRegistry(ctx context.Context, registryName stri
 	return nil
 }
 
-// ListRepositories calls ListRepositoriesFunc
-func (m *MockHarborClient) ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error) {
-	if m.ListRepositoriesFunc != nil {
-		return m.ListRepositoriesFunc(ctx, projectID)
-	}
-	return nil, nil
-}
-
-// GetRepository calls GetRepositoryFunc
-func (m *MockHarborClient) GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error) {
-	if m.GetRepositoryFunc != nil {
-		return m.GetRepositoryFunc(ctx, projectID, repoName)
-	}
-	return nil, nil
-}
-
-// UpdateRepository calls UpdateRepositoryFunc
-func (m *MockHarborClient) UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error) {
-	if m.UpdateRepositoryFunc != nil {
-		return m.UpdateRepositoryFunc(ctx, projectID, repoName, spec)
-	}
-	return &RepositoryStatus{
-		ID:            "1",
-		FullName:      projectID + "/" + repoName,
-		ProjectID:     projectID,
-		ArtifactCount: 0,
-		CreationTime:  time.Now(),
-		UpdateTime:    time.Now(),
-	}, nil
-}
-
-// DeleteRepository calls DeleteRepositoryFunc
-func (m *MockHarborClient) DeleteRepository(ctx context.Context, projectID, repoName string) error {
-	if m.DeleteRepositoryFunc != nil {
-		return m.DeleteRepositoryFunc(ctx, projectID, repoName)
-	}
-	return nil
-}
-
-// ListArtifacts calls ListArtifactsFunc
-func (m *MockHarborClient) ListArtifacts(ctx context.Context, projectID, repoName string) ([]*ArtifactStatus, error) {
-	if m.ListArtifactsFunc != nil {
-		return m.ListArtifactsFunc(ctx, projectID, repoName)
-	}
-	return nil, nil
-}
-
-// GetArtifact calls GetArtifactFunc
-func (m *MockHarborClient) GetArtifact(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
-	if m.GetArtifactFunc != nil {
-		return m.GetArtifactFunc(ctx, projectID, repoName, reference)
-	}
-	return nil, nil
-}
-
-// DeleteArtifact calls DeleteArtifactFunc
-func (m *MockHarborClient) DeleteArtifact(ctx context.Context, projectID, repoName, reference string) error {
-	if m.DeleteArtifactFunc != nil {
-		return m.DeleteArtifactFunc(ctx, projectID, repoName, reference)
-	}
-	return nil
-}
-
-// GetArtifactVulnerabilities calls GetArtifactVulnerabilitiesFunc
-func (m *MockHarborClient) GetArtifactVulnerabilities(ctx context.Context, projectID, repoName, reference string) (*ArtifactStatus, error) {
-	if m.GetArtifactVulnerabilitiesFunc != nil {
-		return m.GetArtifactVulnerabilitiesFunc(ctx, projectID, repoName, reference)
-	}
-	return nil, nil
-}
-
 // AddProjectMember calls AddProjectMemberFunc
 func (m *MockHarborClient) AddProjectMember(ctx context.Context, projectID, username, role string) error {
 	if m.AddProjectMemberFunc != nil {
@@ -616,38 +509,6 @@ func (m *MockHarborClient) UpdateProjectMemberByID(ctx context.Context, projectI
 func (m *MockHarborClient) DeleteProjectMemberByID(ctx context.Context, projectID, memberID string) error {
 	if m.DeleteProjectMemberByIDFunc != nil {
 		return m.DeleteProjectMemberByIDFunc(ctx, projectID, memberID)
-	}
-	return nil
-}
-
-// TriggerScan calls TriggerScanFunc
-func (m *MockHarborClient) TriggerScan(ctx context.Context, projectID, repoName, reference string) error {
-	if m.TriggerScanFunc != nil {
-		return m.TriggerScanFunc(ctx, projectID, repoName, reference)
-	}
-	return nil
-}
-
-// ListScans calls ListScansFunc
-func (m *MockHarborClient) ListScans(ctx context.Context, projectID, repoName string) ([]*ScanStatus, error) {
-	if m.ListScansFunc != nil {
-		return m.ListScansFunc(ctx, projectID, repoName)
-	}
-	return nil, nil
-}
-
-// GetScan calls GetScanFunc
-func (m *MockHarborClient) GetScan(ctx context.Context, projectID, repoName, reference string) (*ScanStatus, error) {
-	if m.GetScanFunc != nil {
-		return m.GetScanFunc(ctx, projectID, repoName, reference)
-	}
-	return nil, nil
-}
-
-// StopScan calls StopScanFunc
-func (m *MockHarborClient) StopScan(ctx context.Context, projectID, repoName, reference string) error {
-	if m.StopScanFunc != nil {
-		return m.StopScanFunc(ctx, projectID, repoName, reference)
 	}
 	return nil
 }

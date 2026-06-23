@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Removed
+
+**Drop the `Repository`, `Artifact`, and `Scan` kinds entirely (no declarative value)**
+None of the three hold meaningful desired state, so a managed resource around them only adds surface:
+- **`Repository`** — Harbor auto-creates a repository on first `docker push` and cannot be explicitly created; the controller could only manage metadata of an already-pushed repo.
+- **`Artifact`** — image content arrives via `docker push`, not the API; the controller was observe/delete-only (no create, no-op update).
+- **`Scan`** — a vulnerability scan is a trigger/action (`Update` was a no-op), not a stored object; trigger it via Harbor's API/UI or CI instead.
+- Deleted: `apis/{artifact,repository,scan}`, `internal/controller/{artifact,repository,scan}`, the matching `internal/clients` files (`artifact.go`, `repository.go`, `scan.go` + httptests), their `package/crds` CRDs, and `examples/e2e/{artifact,repository,scan}.yaml`. Removed the now-dead methods from the client interface and the test mock, the Repository/Artifact workflow integration tests, and the three documents from `examples/phase2-resources.yaml`.
+- Provider now ships **12** kinds (was 15). `Scanner`/`ScannerRegistration` is unaffected. These concepts are now listed under "What is NOT modeled" in the README.
+
 ### Features
 
 **`Robot`: level-aware (`project`/`system`); remove import/adoption (robots are not adoptable)**

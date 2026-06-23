@@ -21,15 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rossigee/provider-harbor/apis"
-	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
 	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
 	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
-	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
 	retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
 	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
-	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
 	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
@@ -134,12 +131,6 @@ func main() {
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
 
-	// Setup Repository controller (Phase 2)
-	kingpin.FatalIfError(repositorycontroller.Setup(mgr, o), "Cannot setup Repository controller")
-
-	// Setup Artifact controller (Phase 2)
-	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
-
 	// Setup Member controller (Phase 2) — deprecated catch-all; superseded by
 	// UserMember and GroupMember below. Kept registered for backward compat.
 	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
@@ -149,9 +140,6 @@ func main() {
 
 	// Setup GroupMember controller (single-responsibility group members)
 	kingpin.FatalIfError(membercontroller.SetupGroupMember(mgr, o), "Cannot setup GroupMember controller")
-
-	// Setup Scan controller (Phase 2)
-	kingpin.FatalIfError(scancontroller.Setup(mgr, o), "Cannot setup Scan controller")
 
 	// Setup Robot controller (Phase 3)
 	// The v1beta1 Robot CRD now ships in package/crds and registers in-cluster
