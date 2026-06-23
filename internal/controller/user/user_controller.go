@@ -13,8 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	controllerpkg "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -39,22 +40,28 @@ const (
 )
 
 // Setup adds a controller that reconciles User managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.UserGroupVersionKind.Kind)
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.UserGroupVersionKind),
+	reconcilerOpts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
 		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
-		managed.WithPollInterval(1*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+		managed.WithPollInterval(1 * time.Minute),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))),
+	}
+	// Feature-gated options (e.g. Management Policies) appended when enabled.
+	reconcilerOpts = append(reconcilerOpts, controllerpkg.ReconcilerOptions(o)...)
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.UserGroupVersionKind),
+		reconcilerOpts...)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.User{}).
 		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))

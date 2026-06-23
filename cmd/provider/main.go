@@ -10,12 +10,13 @@ import (
 	"runtime"
 	"time"
 
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -33,6 +34,7 @@ import (
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
 	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
+	"github.com/rossigee/provider-harbor/internal/features"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -44,6 +46,12 @@ func main() {
 		pollInterval     = app.Flag("poll", "Poll interval controls how often an individual resource should be checked for drift.").Default("10m").Duration()
 		leaderElection   = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
+
+		// Management Policies (beta) let an XR opt out of destructive actions via a
+		// non-default spec.managementPolicies (e.g. [Observe,Create,Update,LateInitialize]
+		// = manage-but-never-delete). On by default in this fork; disable with the flag
+		// or ENABLE_MANAGEMENT_POLICIES=false.
+		enableManagementPolicies = app.Flag("enable-management-policies", "Enable support for Management Policies (honours non-default spec.managementPolicies).").Default("true").Bool()
 	)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -92,9 +100,19 @@ func main() {
 	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
 
-	// Setup native controllers with rate limiting
-	o := controller.Options{
+	// Build the feature gate set from CLI flags / env.
+	feats := &feature.Flags{}
+	if *enableManagementPolicies {
+		feats.Enable(features.EnableBetaManagementPolicies)
+		log.Info("Beta feature enabled", "flag", features.EnableBetaManagementPolicies)
+	}
+
+	// Setup native controllers with rate limiting. Features are carried on the
+	// shared controller.Options so every *.Setup(mgr, o) can conditionally enable
+	// management-policy support in its reconciler.
+	o := xpcontroller.Options{
 		MaxConcurrentReconciles: *maxReconcileRate,
+		Features:                feats,
 	}
 
 	// Setup Project controller
@@ -104,6 +122,7 @@ func main() {
 	kingpin.FatalIfError(scannercontroller.Setup(mgr, scannercontroller.Options{
 		Logger:       log.WithValues("controller", "scanner"),
 		PollInterval: pollInterval.String(),
+		Features:     feats,
 	}), "Cannot setup Scanner controller")
 
 	// Setup User controller

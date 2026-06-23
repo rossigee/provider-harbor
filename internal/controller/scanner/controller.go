@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -32,6 +33,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
+	"github.com/rossigee/provider-harbor/internal/features"
 )
 
 const (
@@ -46,24 +48,36 @@ const (
 type Options struct {
 	Logger       logging.Logger
 	PollInterval string
+	// Features carries the provider feature gates (e.g. EnableBetaManagementPolicies).
+	// This controller has its own Options struct rather than reusing the shared
+	// crossplane-runtime controller.Options, so the feature set is threaded here.
+	Features *feature.Flags
 }
 
 // Setup adds a controller that reconciles ScannerRegistration managed resources
 func Setup(mgr ctrl.Manager, opts Options) error {
 	name := managed.ControllerName(v1beta1.ScannerRegistrationGroupVersionKind.Kind)
 
+	reconcilerOpts := []managed.ReconcilerOption{
+		managed.WithExternalConnector(&connector{
+			kube:   mgr.GetClient(),
+			logger: opts.Logger,
+		}),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(10 * time.Minute),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))),
+	}
+	// Feature-gated options (e.g. Management Policies) appended when enabled.
+	if opts.Features != nil && opts.Features.Enabled(features.EnableBetaManagementPolicies) {
+		reconcilerOpts = append(reconcilerOpts, managed.WithManagementPolicies())
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		For(&v1beta1.ScannerRegistration{}).
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
-			managed.WithExternalConnector(&connector{
-				kube:   mgr.GetClient(),
-				logger: opts.Logger,
-			}),
-			managed.WithLogger(opts.Logger.WithValues("controller", name)),
-			managed.WithPollInterval(10*time.Minute),
-			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name)))))
+			reconcilerOpts...))
 }
 
 // connector is responsible for producing ExternalClients.

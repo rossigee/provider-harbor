@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	controllerpkg "github.com/rossigee/provider-harbor/internal/controller"
 )
 
 const (
@@ -39,22 +40,28 @@ const (
 )
 
 // SetupGroupMember adds a controller that reconciles GroupMember managed resources.
-func SetupGroupMember(mgr ctrl.Manager, o controller.Options) error {
+func SetupGroupMember(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.GroupMemberGroupVersionKind.Kind)
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.GroupMemberGroupVersionKind),
+	reconcilerOpts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&groupMemberConnector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
 		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
-		managed.WithPollInterval(1*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+		managed.WithPollInterval(1 * time.Minute),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))),
+	}
+	// Feature-gated options (e.g. Management Policies) appended when enabled.
+	reconcilerOpts = append(reconcilerOpts, controllerpkg.ReconcilerOptions(o)...)
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.GroupMemberGroupVersionKind),
+		reconcilerOpts...)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.GroupMember{}).
 		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(1)))
