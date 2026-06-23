@@ -220,8 +220,3 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special
-
-# ====================================================================================
-# Local Development Extensions
-# Include local development targets if Makefile.dev exists
--include Makefile.dev

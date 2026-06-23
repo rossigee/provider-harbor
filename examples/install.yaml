@@ -1,6 +1,0 @@
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: provider-harbor
-spec:
-  package: ghcr.io/rossigee/provider-harbor:v0.16.0

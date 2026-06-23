@@ -61,7 +61,7 @@ hold meaningful desired state:
 | Garbage collection / purge | A scheduled maintenance action, not desired state. |
 | Audit log | Read-only event stream, not config. |
 | Immutable-tag rule | Not yet modeled (could be added as a per-project policy CR). |
-| Label | An `examples/label/` stub exists but there is **no** `apis/label` group or controller — not served. |
+| Label | No `apis/label` group or controller — not served. |
 | System / project configuration | Global singletons set out-of-band. |
 
 ## Non-default resource behaviors
