@@ -1,0 +1,30 @@
+apiVersion: project.harbor.m.crossplane.io/v1beta1
+kind: Project
+metadata:
+  name: uptest-member-proj
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/project
+spec:
+  forProvider:
+    name: uptest-member-proj
+    public: false
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e
+---
+apiVersion: member.harbor.m.crossplane.io/v1beta1
+kind: Member
+metadata:
+  name: uptest-member
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/member
+spec:
+  forProvider:
+    projectId: uptest-member-proj
+    username: uptest-user
+    role: developer
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

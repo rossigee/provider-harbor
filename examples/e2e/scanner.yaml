@@ -1,0 +1,16 @@
+apiVersion: scanner.harbor.m.crossplane.io/v1beta1
+kind: ScannerRegistration
+metadata:
+  name: uptest-scanner
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/scanner
+spec:
+  forProvider:
+    name: uptest-scanner
+    url: http://my-harbor-trivy.harbor.svc:8080   # the in-cluster Trivy adapter
+    useInternalAddr: true
+    skipCertVerify: true
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e

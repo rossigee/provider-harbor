@@ -321,3 +321,28 @@ dev-help:
 	@echo ""
 
 .PHONY: dev-help
+
+# ====================================================================================
+# End-to-end tests on KIND (real Harbor + uptest). Self-contained; no build submodule.
+
+# Published provider package tag to test. Override: make e2e-kind E2E_VERSION=v0.x.y
+E2E_VERSION ?= v0.17.0
+
+.PHONY: e2e-kind e2e-kind-keep e2e-help
+
+# Run e2e on a throwaway kind cluster with a real Harbor, then tear it down.
+e2e-kind:
+	@VERSION=$(E2E_VERSION) bash scripts/e2e.sh
+
+# Same, but keep the kind cluster afterwards (for debugging: KIND_CLUSTER=harbor-e2e).
+e2e-kind-keep:
+	@KEEP=1 VERSION=$(E2E_VERSION) bash scripts/e2e.sh
+
+e2e-help:
+	@echo "E2E (kind + real Harbor + uptest):"
+	@echo "  make e2e-kind                      run e2e (apply->Ready->delete), tear down"
+	@echo "  make e2e-kind-keep                 run e2e, keep the cluster for debugging"
+	@echo "  make e2e-kind E2E_VERSION=v0.x.y   test a specific published package tag"
+	@echo ""
+	@echo "  Examples live in examples/e2e/; setup in test/e2e/uptest-setup.sh."
+	@echo "  Requires: kind, helm, kubectl, chainsaw, go (uptest auto-installed)."

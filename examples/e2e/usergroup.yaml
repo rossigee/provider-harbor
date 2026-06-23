@@ -1,0 +1,14 @@
+apiVersion: usergroup.harbor.m.crossplane.io/v1beta1
+kind: UserGroup
+metadata:
+  name: uptest-usergroup
+  namespace: uptest
+  annotations:
+    meta.upbound.io/example-id: harbor/v1beta1/usergroup
+spec:
+  forProvider:
+    groupName: uptest-usergroup
+    groupType: 3   # OIDC; accepted by Harbor regardless of auth_mode
+  providerConfigRef:
+    kind: ProviderConfig
+    name: harbor-e2e
