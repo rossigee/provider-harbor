@@ -44,6 +44,7 @@ import (
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
+	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
 
 	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
@@ -243,6 +244,8 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		configRef = usergroup.Spec.ProviderConfigReference
 	} else if robot, ok := mg.(*robotv1beta1.Robot); ok {
 		configRef = robot.Spec.ProviderConfigReference
+	} else if webhook, ok := mg.(*webhookv1beta1.Webhook); ok {
+		configRef = webhook.Spec.ProviderConfigReference
 	} else {
 		// Fallback: assume the managed resource has ProviderConfigReference
 		// This is a bit of a hack but works for most cases
