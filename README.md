@@ -1,10 +1,19 @@
 # Provider Harbor
 
+> [!WARNING]
+> **The next release contains breaking API changes.** All existing CRs must be
+> deleted and re-applied — CRD names change and in-place upgrade is not possible.
+> See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for the full migration guide.
+>
+> Key changes: unified group (`harbor.m.crossplane.io` for all MRs;
+> `harbor.crossplane.io` for ProviderConfig); `UserMember`/`GroupMember`
+> consolidated into `Member` with a `type` discriminator.
+
 [![Build](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml/badge.svg)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A v2-only Crossplane provider for declarative [Harbor](https://goharbor.io/)
-container-registry management: **12 namespaced resource kinds**, each with a
+container-registry management: **10 namespaced resource kinds**, each with a
 working create/observe/update/delete reconciler proven against a real Harbor
 server in CI.
 
@@ -25,23 +34,21 @@ authoritative identity for Observe/Update/Delete, and idempotent deletes.
 
 ## Resource catalog
 
-All kinds use the namespaced v2 group `<group>.harbor.m.crossplane.io/v1beta1`
+All kinds use the namespaced group `harbor.m.crossplane.io/v1beta1`
 and must carry `metadata.namespace`.
 
 | Resource | Group | Purpose | Example |
 |----------|-------|---------|---------|
-| `Project` | `project.harbor.*` | Project lifecycle (public flag, quotas) | [project.yaml](examples/e2e/project.yaml) |
-| `Registry` | `registry.harbor.*` | Remote/proxy registry endpoint + credentials 🔑 | [registry.yaml](examples/e2e/registry.yaml) |
-| `ScannerRegistration` | `scanner.harbor.*` | Register an external scanner adapter | [scanner.yaml](examples/e2e/scanner.yaml) |
-| `User` | `user.harbor.*` | Local Harbor user account 🔑 | [user.yaml](examples/e2e/user.yaml) |
-| `UserGroup` | `usergroup.harbor.*` | LDAP(1)/HTTP(2)/OIDC(3) group | [usergroup.yaml](examples/e2e/usergroup.yaml) |
-| `UserMember` | `member.harbor.*` | Project membership for a user | [usermember.yaml](examples/e2e/usermember.yaml) |
-| `GroupMember` | `member.harbor.*` | Project membership for a group | [groupmember.yaml](examples/e2e/groupmember.yaml) |
-| `Member` | `member.harbor.*` | **Deprecated** — user-only catch-all; use `UserMember`/`GroupMember` | [member.yaml](examples/e2e/member.yaml) |
-| `Robot` 🔑 | `robot.harbor.*` | Robot account (project- or system-level CI/CD credential) | [robot.yaml](examples/e2e/robot.yaml) |
-| `Webhook` | `webhook.harbor.*` | Project webhook policy | [webhook.yaml](examples/e2e/webhook.yaml) |
-| `Replication` | `replication.harbor.*` | Replication policy between registries | [replication.yaml](examples/e2e/replication.yaml) |
-| `Retention` | `retention.harbor.*` | Tag-retention policy (one per project) | [retention.yaml](examples/e2e/retention.yaml.disabled) |
+| `Project` | `harbor.m.*` | Project lifecycle (public flag, quotas) | [project.yaml](examples/e2e/project.yaml) |
+| `Registry` | `harbor.m.*` | Remote/proxy registry endpoint + credentials 🔑 | [registry.yaml](examples/e2e/registry.yaml) |
+| `ScannerRegistration` | `harbor.m.*` | Register an external scanner adapter | [scanner.yaml](examples/e2e/scanner.yaml) |
+| `User` | `harbor.m.*` | Local Harbor user account 🔑 | [user.yaml](examples/e2e/user.yaml) |
+| `UserGroup` | `harbor.m.*` | LDAP(1)/HTTP(2)/OIDC(3) group | [usergroup.yaml](examples/e2e/usergroup.yaml) |
+| `Member` | `harbor.m.*` | Project member (type: user or group) | [member.yaml](examples/e2e/member.yaml) |
+| `Robot` 🔑 | `harbor.m.*` | Robot account (project- or system-level CI/CD credential) | [robot.yaml](examples/e2e/robot.yaml) |
+| `Webhook` | `harbor.m.*` | Project webhook policy | [webhook.yaml](examples/e2e/webhook.yaml) |
+| `Replication` | `harbor.m.*` | Replication policy between registries | [replication.yaml](examples/e2e/replication.yaml) |
+| `Retention` | `harbor.m.*` | Tag-retention policy (one per project) | [retention.yaml](examples/e2e/retention.yaml.disabled) |
 
 🔑 = involves a secret value — see [Working with secret-bearing
 resources](#working-with-secret-bearing-resources).
@@ -95,13 +102,13 @@ Robot accounts are the credential-bearing kind, and the most non-standard:
   Harbor returns the observed `projectId` as the project *name* rather than the
   numeric spec value, so it is deliberately excluded from drift comparison.
 
-### `Member` is split and deprecated
+### `Member` type discriminator
 
-Harbor distinguishes user members (`member_user`) from group members
-(`member_group`). The original catch-all `Member` (user-only) is **deprecated**
-(its served version carries a deprecation warning) in favour of the
-single-responsibility `UserMember` and `GroupMember`. `GroupMember.groupType`
-defaults to `3` (OIDC; `1`=LDAP, `2`=HTTP).
+
+
+
+`Member` uses `spec.forProvider.type: user|group` as a discriminator. `groupType`
+defaults to `3` (OIDC; `1`=LDAP, `2`=HTTP). Set `username` for user members, `groupName` for group members.
 
 ### `projectId` is a numeric id, not a name
 
@@ -109,7 +116,7 @@ defaults to `3` (OIDC; `1`=LDAP, `2`=HTTP).
 (not the project name). The string-keyed kinds (`Project`→`name`,
 `Registry`→`name`, `User`→`username`, `ScannerRegistration`→`name`) use their
 natural name as identity; the numeric-id-keyed kinds (`Robot`, `UserGroup`,
-`UserMember`, `GroupMember`) store the Harbor-assigned id as the external-name.
+`Member`) store the Harbor-assigned id as the external-name.
 
 ## Working with secret-bearing resources
 
@@ -146,7 +153,7 @@ spec:
     source: Secret
     secretRef: {namespace: default, name: harbor-creds, key: password}
 ---
-apiVersion: project.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata: {name: my-project, namespace: default}
 spec:

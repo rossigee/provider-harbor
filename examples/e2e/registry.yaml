@@ -1,4 +1,4 @@
-apiVersion: registry.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Registry
 metadata:
   name: uptest-registry

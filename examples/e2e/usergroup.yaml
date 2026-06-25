@@ -1,4 +1,4 @@
-apiVersion: usergroup.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: UserGroup
 metadata:
   name: uptest-usergroup

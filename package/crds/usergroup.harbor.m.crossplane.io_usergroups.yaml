@@ -6,7 +6,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.21.0
   name: usergroups.usergroup.harbor.m.crossplane.io
 spec:
-  group: usergroup.harbor.m.crossplane.io
+  group: harbor.m.crossplane.io
   names:
     categories:
     - crossplane

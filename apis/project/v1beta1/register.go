@@ -12,7 +12,7 @@ import (
 
 // Package type metadata.
 const (
-	CRDGroup   = "project.harbor.m.crossplane.io"
+	CRDGroup = "harbor.m.crossplane.io"
 	CRDVersion = "v1beta1"
 )
 

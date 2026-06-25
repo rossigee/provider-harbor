@@ -4,7 +4,7 @@ Copyright 2024 Crossplane Harbor Provider.
 
 // Package v1beta1 contains the v1beta1 API of the harbor usergroup provider.
 // +kubebuilder:object:generate=true
-// +groupName=usergroup.harbor.m.crossplane.io
+// +groupName=harbor.m.crossplane.io
 // +versionName=v1beta1
 package v1beta1
 
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	Group   = "usergroup.harbor.m.crossplane.io"
+	Group   = "harbor.m.crossplane.io"
 	Version = "v1beta1"
 )
 

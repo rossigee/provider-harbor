@@ -1,4 +1,4 @@
-apiVersion: project.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: uptest-robot-proj
@@ -13,7 +13,7 @@ spec:
     kind: ProviderConfig
     name: harbor-e2e
 ---
-apiVersion: robot.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Robot
 metadata:
   name: uptest-robot

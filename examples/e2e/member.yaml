@@ -1,4 +1,4 @@
-apiVersion: project.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: uptest-member-proj
@@ -13,7 +13,7 @@ spec:
     kind: ProviderConfig
     name: harbor-e2e
 ---
-apiVersion: member.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: Member
 metadata:
   name: uptest-member
@@ -23,6 +23,7 @@ metadata:
 spec:
   forProvider:
     projectId: uptest-member-proj
+    type: user
     username: uptest-user
     role: developer
   providerConfigRef:

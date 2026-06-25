@@ -1,4 +1,4 @@
-apiVersion: scanner.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ScannerRegistration
 metadata:
   name: uptest-scanner

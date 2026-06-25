@@ -131,15 +131,9 @@ func main() {
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
 
-	// Setup Member controller (Phase 2) — deprecated catch-all; superseded by
-	// UserMember and GroupMember below. Kept registered for backward compat.
 	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
 
-	// Setup UserMember controller (single-responsibility user members)
-	kingpin.FatalIfError(membercontroller.SetupUserMember(mgr, o), "Cannot setup UserMember controller")
 
-	// Setup GroupMember controller (single-responsibility group members)
-	kingpin.FatalIfError(membercontroller.SetupGroupMember(mgr, o), "Cannot setup GroupMember controller")
 
 	// Setup Robot controller (Phase 3)
 	// The v1beta1 Robot CRD now ships in package/crds and registers in-cluster

@@ -1,4 +1,4 @@
-apiVersion: user.harbor.m.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: User
 metadata:
   name: uptest-user
