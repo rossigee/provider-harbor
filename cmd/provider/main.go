@@ -16,6 +16,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -56,9 +57,9 @@ func main() {
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	zl := zap.New(zap.UseDevMode(*debug))
-	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
-	// Always set the logger - this is needed for proper debug output
 	ctrl.SetLogger(zl)
+	crlog.SetLogger(zl)
+	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
 
 	// Log startup information with build and configuration details
 	log.Info("Provider starting up",
