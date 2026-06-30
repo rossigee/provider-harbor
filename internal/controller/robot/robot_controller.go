@@ -57,11 +57,12 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	builder := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
+		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Robot{})
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller builder ready, completing with ratelimiter\n")
 
-	err := builder.Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
+	err := builder.Complete(ratelimiter.NewReconciler(name, r, nil))
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup completed with error: %v\n", err)
 	return err
