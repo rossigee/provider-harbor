@@ -62,7 +62,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller builder ready, completing with ratelimiter\n")
 
-	err := builder.Complete(ratelimiter.NewReconciler(name, r, nil))
+	err := builder.Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup completed with error: %v\n", err)
 	return err
