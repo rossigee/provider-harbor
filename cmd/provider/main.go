@@ -5,6 +5,7 @@ Copyright 2024 Crossplane Harbor Provider.
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,6 +35,7 @@ import (
 	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
 	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
 	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
+	"github.com/rossigee/provider-harbor/internal/tracing"
 	"github.com/rossigee/provider-harbor/internal/version"
 )
 
@@ -56,6 +58,11 @@ func main() {
 	ctrl.SetLogger(zl)
 	crlog.SetLogger(zl)
 	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
+
+	shutdownTracing := tracing.Init("provider-harbor")
+	defer shutdownTracing(context.Background())
+
+	shutdownTracing(context.Background())
 
 	log.Info("Provider starting up",
 		"provider", "provider-harbor",
