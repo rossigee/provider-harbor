@@ -6,9 +6,8 @@ package testing
 
 import (
 	"context"
+	"github.com/rossigee/provider-harbor/internal/clients"
 	"time"
-
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 // MockHarborClient is a mock implementation of the Harbor client for testing

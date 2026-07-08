@@ -9,6 +9,7 @@ import (
 	"reflect"
 )
 
+
 // Retention type metadata.
 var (
 	RetentionKind             = reflect.TypeOf(Retention{}).Name()
@@ -16,7 +17,4 @@ var (
 	RetentionKindAPIVersion   = RetentionKind + "." + SchemeGroupVersion.String()
 	RetentionGroupVersionKind = SchemeGroupVersion.WithKind(RetentionKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&Retention{}, &RetentionList{})
 }

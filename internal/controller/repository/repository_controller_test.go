@@ -7,13 +7,11 @@ package repository
 import (
 	"context"
 	"errors"
+	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 func TestConnectNotRepository(t *testing.T) {

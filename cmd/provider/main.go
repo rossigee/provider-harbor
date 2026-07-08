@@ -6,37 +6,35 @@ package main
 
 import (
 	"context"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/rossigee/provider-harbor/apis"
+	"github.com/rossigee/provider-harbor/internal/controller/artifact"
+	"github.com/rossigee/provider-harbor/internal/controller/member"
+	"github.com/rossigee/provider-harbor/internal/controller/project"
+	"github.com/rossigee/provider-harbor/internal/controller/registry"
+	"github.com/rossigee/provider-harbor/internal/controller/replication"
+	"github.com/rossigee/provider-harbor/internal/controller/repository"
+	"github.com/rossigee/provider-harbor/internal/controller/retention"
+	"github.com/rossigee/provider-harbor/internal/controller/robot"
+	"github.com/rossigee/provider-harbor/internal/controller/scan"
+	"github.com/rossigee/provider-harbor/internal/controller/scanner"
+	"github.com/rossigee/provider-harbor/internal/controller/user"
+	"github.com/rossigee/provider-harbor/internal/controller/usergroup"
+	"github.com/rossigee/provider-harbor/internal/controller/webhook"
+	"github.com/rossigee/provider-harbor/internal/tracing"
+	"github.com/rossigee/provider-harbor/internal/version"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	ctrl "sigs.k8s.io/controller-runtime"
-	crlog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/rossigee/provider-harbor/apis"
-	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
-	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
-	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
-	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
-	replicationcontroller "github.com/rossigee/provider-harbor/internal/controller/replication"
-	repositorycontroller "github.com/rossigee/provider-harbor/internal/controller/repository"
-	retentioncontroller "github.com/rossigee/provider-harbor/internal/controller/retention"
-	robotcontroller "github.com/rossigee/provider-harbor/internal/controller/robot"
-	scancontroller "github.com/rossigee/provider-harbor/internal/controller/scan"
-	scannercontroller "github.com/rossigee/provider-harbor/internal/controller/scanner"
-	usercontroller "github.com/rossigee/provider-harbor/internal/controller/user"
-	usergroupcontroller "github.com/rossigee/provider-harbor/internal/controller/usergroup"
-	webhookcontroller "github.com/rossigee/provider-harbor/internal/controller/webhook"
-	"github.com/rossigee/provider-harbor/internal/tracing"
-	"github.com/rossigee/provider-harbor/internal/version"
+	"time"
 )
 
 func main() {
@@ -61,7 +59,6 @@ func main() {
 
 	shutdownTracing := tracing.Init("provider-harbor")
 	defer shutdownTracing(context.Background())
-
 
 	log.Info("Provider starting up",
 		"provider", "provider-harbor",

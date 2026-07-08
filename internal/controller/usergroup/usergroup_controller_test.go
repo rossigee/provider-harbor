@@ -7,12 +7,10 @@ package usergroup
 import (
 	"context"
 	"errors"
-	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
 )
 
 func TestConnectNotUserGroup(t *testing.T) {

@@ -9,13 +9,11 @@ import (
 	"reflect"
 )
 
+
 var (
 	ScanKind             = reflect.TypeOf(Scan{}).Name()
 	ScanGroupKind        = schema.GroupKind{Group: Group, Kind: ScanKind}
 	ScanKindAPIVersion   = ScanKind + "." + SchemeGroupVersion.String()
 	ScanGroupVersionKind = SchemeGroupVersion.WithKind(ScanKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&Scan{}, &ScanList{})
 }

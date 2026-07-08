@@ -5,9 +5,8 @@ Copyright 2024 Crossplane Harbor Provider.
 package v1beta1
 
 import (
-	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"reflect"
 )
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind.

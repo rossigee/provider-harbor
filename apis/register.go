@@ -7,8 +7,8 @@ package apis
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
+)
 
-	// V2 Native API groups (namespaced)
 	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	memberv1beta1 "github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"

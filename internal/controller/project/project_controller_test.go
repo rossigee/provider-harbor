@@ -7,16 +7,13 @@ package project
 import (
 	"context"
 	"errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-
-	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 func TestConnectNotProject(t *testing.T) {
@@ -891,15 +888,15 @@ func TestObserveProjectWithStorageInfo(t *testing.T) {
 		service: &mockProjectClient{
 			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
 				return &harborclients.ProjectStatus{
-					Name:                   "my-project",
-					Public:                 false,
-					OwnerID:                1,
-					OwnerName:              "admin",
-					RepoCount:              5,
-					ChartCount:             3,
-					CurrentStorageUsage:    1073741824,
-					CreatedAt:              time.Now(),
-					UpdatedAt:              time.Now(),
+					Name:                "my-project",
+					Public:              false,
+					OwnerID:             1,
+					OwnerName:           "admin",
+					RepoCount:           5,
+					ChartCount:          3,
+					CurrentStorageUsage: 1073741824,
+					CreatedAt:           time.Now(),
+					UpdatedAt:           time.Now(),
 				}, nil
 			},
 		},
@@ -970,16 +967,16 @@ func TestObserveProjectPopulatesAllStatusFields(t *testing.T) {
 		service: &mockProjectClient{
 			getProjectFunc: func(ctx context.Context, projectName string) (*harborclients.ProjectStatus, error) {
 				return &harborclients.ProjectStatus{
-					ID:                   "123",
-					Name:                 "my-project",
-					Public:               false,
-					OwnerID:              1,
-					OwnerName:            "admin",
-					RepoCount:            10,
-					ChartCount:           5,
-					CurrentStorageUsage:  5368709120,
-					CreatedAt:            now.Add(-72 * time.Hour),
-					UpdatedAt:            now.Add(-1 * time.Hour),
+					ID:                  "123",
+					Name:                "my-project",
+					Public:              false,
+					OwnerID:             1,
+					OwnerName:           "admin",
+					RepoCount:           10,
+					ChartCount:          5,
+					CurrentStorageUsage: 5368709120,
+					CreatedAt:           now.Add(-72 * time.Hour),
+					UpdatedAt:           now.Add(-1 * time.Hour),
 				}, nil
 			},
 		},

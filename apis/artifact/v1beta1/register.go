@@ -9,6 +9,7 @@ import (
 	"reflect"
 )
 
+
 // Artifact type metadata.
 var (
 	ArtifactKind             = reflect.TypeOf(Artifact{}).Name()
@@ -16,7 +17,4 @@ var (
 	ArtifactKindAPIVersion   = ArtifactKind + "." + SchemeGroupVersion.String()
 	ArtifactGroupVersionKind = SchemeGroupVersion.WithKind(ArtifactKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&Artifact{}, &ArtifactList{})
 }

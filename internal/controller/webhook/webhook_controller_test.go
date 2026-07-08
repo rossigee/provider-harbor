@@ -7,15 +7,13 @@ package webhook
 import (
 	"context"
 	"errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 )
 
 func TestConnectNotWebhook(t *testing.T) {

@@ -9,8 +9,7 @@ Copyright 2024 Crossplane Harbor Provider.
 package v1beta1
 
 import (
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -20,5 +19,13 @@ const (
 
 var (
 	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
-	SchemeBuilder      = &scheme.Builder{GroupVersion: SchemeGroupVersion} //nolint:staticcheck
+	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 )
+
+func addKnownTypes(s *runtime.Scheme) error {
+	s.AddKnownTypes(SchemeGroupVersion,
+		&Replication{},
+		&ReplicationList{},
+	)
+	return nil
+}

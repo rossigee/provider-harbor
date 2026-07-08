@@ -6,12 +6,10 @@ package clients
 
 import (
 	"context"
-
-	corev1 "k8s.io/api/core/v1"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // GetCredentialsFromSecret retrieves credentials from a Kubernetes secret

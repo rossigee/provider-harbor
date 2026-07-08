@@ -1,11 +1,10 @@
 package user
 
 import (
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 func TestExternalNameLogic(t *testing.T) {

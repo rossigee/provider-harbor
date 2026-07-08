@@ -21,33 +21,30 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/goharbor/go-client/pkg/harbor"
+	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
+	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
+	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
+	"github.com/pkg/errors"
+	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/v1beta1"
+	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
 	"net"
 	"net/http"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/goharbor/go-client/pkg/harbor"
-	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
-	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
-	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
-	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
-	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
-	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
-	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
-	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
-	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/v1beta1"
-
-	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 )
 
 const (
@@ -290,7 +287,13 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credentials key: %s\n", credentialKey)
-	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Secret data keys: %v\n", func() []string { keys := []string{}; for k := range secret.Data { keys = append(keys, k) }; return keys }())
+	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Secret data keys: %v\n", func() []string {
+		keys := []string{}
+		for k := range secret.Data {
+			keys = append(keys, k)
+		}
+		return keys
+	}())
 
 	// Get the credential data from the secret
 	credentialData, ok := secret.Data[credentialKey]
@@ -1723,9 +1726,9 @@ func (c *HarborClient) CreateWebhook(ctx context.Context, spec *WebhookSpec) (*W
 	c.logger.Info("Creating Harbor webhook", "projectId", spec.ProjectID, "name", spec.Name, "url", spec.URL)
 
 	target := &sdkmodels.WebhookTargetObject{
-		Address:         spec.URL,
-		Type:            "http",
-		SkipCertVerify:  spec.SkipCertVerify,
+		Address:        spec.URL,
+		Type:           "http",
+		SkipCertVerify: spec.SkipCertVerify,
 	}
 	if spec.AuthHeader != nil {
 		target.AuthHeader = *spec.AuthHeader
@@ -1764,7 +1767,7 @@ func (c *HarborClient) CreateWebhook(ctx context.Context, spec *WebhookSpec) (*W
 	}
 
 	getParams := &sdkwebhook.GetWebhookPolicyOfProjectParams{
-		ProjectNameOrID:  spec.ProjectID,
+		ProjectNameOrID: spec.ProjectID,
 		WebhookPolicyID: webhookID,
 		Context:         ctx,
 	}
@@ -1862,7 +1865,7 @@ func (c *HarborClient) GetWebhook(ctx context.Context, projectID, webhookID stri
 	c.logger.Info("Retrieving Harbor webhook", "projectId", projectID, "webhookId", webhookID)
 
 	params := &sdkwebhook.GetWebhookPolicyOfProjectParams{
-		ProjectNameOrID:  projectID,
+		ProjectNameOrID: projectID,
 		WebhookPolicyID: webhookIDInt,
 		Context:         ctx,
 	}
@@ -1917,9 +1920,9 @@ func (c *HarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID s
 	c.logger.Info("Updating Harbor webhook", "projectId", projectID, "webhookId", webhookID, "name", spec.Name)
 
 	target := &sdkmodels.WebhookTargetObject{
-		Address:         spec.URL,
-		Type:            "http",
-		SkipCertVerify:  spec.SkipCertVerify,
+		Address:        spec.URL,
+		Type:           "http",
+		SkipCertVerify: spec.SkipCertVerify,
 	}
 	if spec.AuthHeader != nil {
 		target.AuthHeader = *spec.AuthHeader
@@ -1937,7 +1940,7 @@ func (c *HarborClient) UpdateWebhook(ctx context.Context, projectID, webhookID s
 	}
 
 	params := &sdkwebhook.UpdateWebhookPolicyOfProjectParams{
-		ProjectNameOrID:  projectID,
+		ProjectNameOrID: projectID,
 		WebhookPolicyID: webhookIDInt,
 		Policy:          policy,
 		Context:         ctx,
@@ -1985,7 +1988,7 @@ func (c *HarborClient) DeleteWebhook(ctx context.Context, projectID, webhookID s
 	c.logger.Info("Deleting Harbor webhook", "projectId", projectID, "webhookId", webhookID)
 
 	params := &sdkwebhook.DeleteWebhookPolicyOfProjectParams{
-		ProjectNameOrID:  projectID,
+		ProjectNameOrID: projectID,
 		WebhookPolicyID: webhookIDInt,
 		Context:         ctx,
 	}

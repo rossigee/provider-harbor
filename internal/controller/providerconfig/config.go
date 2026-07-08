@@ -5,14 +5,12 @@ Copyright 2022 Upbound Inc.
 package providerconfig
 
 import (
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
+	"sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 // Setup adds a controller that reconciles ProviderConfigs by accounting for

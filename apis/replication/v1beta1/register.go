@@ -9,6 +9,7 @@ import (
 	"reflect"
 )
 
+
 // Replication type metadata.
 var (
 	ReplicationKind             = reflect.TypeOf(Replication{}).Name()
@@ -16,7 +17,4 @@ var (
 	ReplicationKindAPIVersion   = ReplicationKind + "." + SchemeGroupVersion.String()
 	ReplicationGroupVersionKind = SchemeGroupVersion.WithKind(ReplicationKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&Replication{}, &ReplicationList{})
 }

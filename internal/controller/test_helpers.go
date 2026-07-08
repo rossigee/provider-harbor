@@ -6,13 +6,11 @@ package controller
 
 import (
 	"context"
-	"testing"
-
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/rossigee/provider-harbor/internal/clients"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"testing"
 )
 
 // MockHarborClient is a mock implementation of HarborClient for testing

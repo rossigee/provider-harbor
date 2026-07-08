@@ -6,9 +6,9 @@ package v1beta1
 
 import (
 	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
 
 // Package type metadata.
 const (
@@ -28,7 +28,4 @@ var (
 	ScannerRegistrationKindAPIVersion   = ScannerRegistrationKind + "." + CRDGroupVersion.String()
 	ScannerRegistrationGroupVersionKind = CRDGroupVersion.WithKind(ScannerRegistrationKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&ScannerRegistration{}, &ScannerRegistrationList{})
 }

@@ -6,9 +6,9 @@ package v1beta1
 
 import (
 	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
 
 // Package type metadata.
 const (
@@ -28,7 +28,4 @@ var (
 	ProjectKindAPIVersion   = ProjectKind + "." + CRDGroupVersion.String()
 	ProjectGroupVersionKind = CRDGroupVersion.WithKind(ProjectKind)
 )
-
-func init() {
-	SchemeBuilder.Register(&Project{}, &ProjectList{})
 }

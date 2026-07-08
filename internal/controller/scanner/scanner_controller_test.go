@@ -7,14 +7,12 @@ package scanner
 import (
 	"context"
 	"errors"
-	"testing"
-	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
-	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	"github.com/rossigee/provider-harbor/internal/clients"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
+	"time"
 )
 
 func TestConnectNotScannerRegistration(t *testing.T) {
