@@ -5,11 +5,9 @@ Copyright 2024 Crossplane Harbor Provider.
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
@@ -40,8 +38,6 @@ import (
 )
 
 func main() {
-	_, _ = os.Stderr.WriteString("DEBUG: Provider main() started\n")
-
 	// Enable controller-runtime debug logging
 	_ = os.Setenv("LOG_LEVEL", "debug")
 	_ = os.Setenv("CATTLE_DEVELOPER_LOGGING", "true")
@@ -61,7 +57,6 @@ func main() {
 	crlog.SetLogger(zl)
 	log := logging.NewLogrLogger(zl.WithName("provider-harbor"))
 
-	// Log startup information with build and configuration details
 	log.Info("Provider starting up",
 		"provider", "provider-harbor",
 		"version", version.Version,
@@ -72,11 +67,6 @@ func main() {
 		"max-reconcile-rate", *maxReconcileRate,
 		"leader-election", *leaderElection,
 		"debug-mode", *debug)
-
-	log.Debug("Detailed startup configuration",
-		"sync-period", syncPeriod.String(),
-		"poll-interval", pollInterval.String(),
-		"max-reconcile-rate", *maxReconcileRate)
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
@@ -96,24 +86,9 @@ func main() {
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
-	_, _ = os.Stderr.WriteString("DEBUG: Controller manager created successfully\n")
 
 	// Add Harbor APIs to scheme
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
-	_, _ = os.Stderr.WriteString("DEBUG: APIs added to scheme\n")
-
-	// Check if Project type is registered
-	scheme := mgr.GetScheme()
-	if scheme != nil {
-		_, _ = os.Stderr.WriteString("DEBUG: Scheme has types: ")
-		types := scheme.AllKnownTypes()
-		fmt.Fprintf(os.Stderr, "Found %d types\n", len(types))
-		for k := range types {
-			if strings.Contains(k.Kind, "Project") {
-				_, _ = os.Stderr.WriteString("DEBUG: Found Project type: " + k.String() + "\n")
-			}
-		}
-	}
 
 	// Setup native controllers with rate limiting
 	o := controller.Options{
@@ -121,11 +96,7 @@ func main() {
 	}
 
 	// Setup Project controller
-	if err := projectcontroller.Setup(mgr, o); err != nil {
-		_, _ = os.Stderr.WriteString("ERROR: Failed to setup Project controller: " + err.Error() + "\n")
-		kingpin.FatalIfError(err, "Cannot setup Project controller")
-	}
-	_, _ = os.Stderr.WriteString("DEBUG: Project controller setup completed\n")
+	kingpin.FatalIfError(projectcontroller.Setup(mgr, o), "Cannot setup Project controller")
 
 	// Setup Registry controller
 	kingpin.FatalIfError(registrycontroller.Setup(mgr, o), "Cannot setup Registry controller")
@@ -144,7 +115,6 @@ func main() {
 
 	// Setup Robot controller
 	kingpin.FatalIfError(robotcontroller.Setup(mgr, o), "Cannot setup Robot controller")
-	_, _ = os.Stderr.WriteString("DEBUG: Robot controller setup completed\n")
 
 	// Setup User controller
 	kingpin.FatalIfError(usercontroller.Setup(mgr, o), "Cannot setup User controller")
