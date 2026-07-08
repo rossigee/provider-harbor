@@ -62,7 +62,6 @@ func main() {
 	shutdownTracing := tracing.Init("provider-harbor")
 	defer shutdownTracing(context.Background())
 
-	shutdownTracing(context.Background())
 
 	log.Info("Provider starting up",
 		"provider", "provider-harbor",

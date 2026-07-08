@@ -26,12 +26,6 @@ const (
 var tracer trace.Tracer
 var tp *sdktrace.TracerProvider
 
-// Init sets up OpenTelemetry tracing. Reads config from environment variables:
-//
-//	OTEL_TRACING_ENABLED - enable tracing (default: false)
-//	OTEL_EXPORTER_OTLP_ENDPOINT - OTLP collector endpoint (default: localhost:4317)
-//	OTEL_SERVICE_NAME - service name (default: provider-xxx)
-//	OTEL_SAMPLING_RATIO - sampling ratio 0.0-1.0 (default: 0.1)
 func Init(serviceName string) func(context.Context) {
 	tracer = otel.Tracer(tracerName)
 
@@ -82,13 +76,25 @@ func Init(serviceName string) func(context.Context) {
 
 	return func(ctx context.Context) {
 		if tp != nil {
-			tp.Shutdown(ctx)
+			_ = tp.Shutdown(ctx)
 		}
 	}
 }
 
-func StartSpan(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	return tracer.Start(ctx, name, opts...)
+func StartSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
+	return tracer.Start(ctx, name,
+		trace.WithAttributes(attrs...),
+	)
+}
+
+func StartSpanWithAttrs(ctx context.Context, name, resourceType, resourceName, operation string) (context.Context, trace.Span) {
+	return tracer.Start(ctx, name,
+		trace.WithAttributes(
+			attribute.String(resourceTypeAttr, resourceType),
+			attribute.String(resourceNameAttr, resourceName),
+			attribute.String(operationAttr, operation),
+		),
+	)
 }
 
 func SpanAttrs(resourceType, resourceName, operation string) []attribute.KeyValue {

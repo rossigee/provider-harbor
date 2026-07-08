@@ -24,6 +24,7 @@ import (
 	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
+	"github.com/rossigee/provider-harbor/internal/tracing"
 )
 
 const (
@@ -100,6 +101,10 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+	_, span := tracing.StartSpan(ctx, "project.observe",
+		tracing.SpanAttrs("Project", mg.GetName(), "observe")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Project)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotProject)
@@ -152,6 +157,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+	_, span := tracing.StartSpan(ctx, "project.create",
+		tracing.SpanAttrs("Project", mg.GetName(), "create")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Project)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotProject)
@@ -198,6 +207,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	_, span := tracing.StartSpan(ctx, "project.update",
+		tracing.SpanAttrs("Project", mg.GetName(), "update")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Project)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotProject)
@@ -238,6 +251,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
+	_, span := tracing.StartSpan(ctx, "project.delete",
+		tracing.SpanAttrs("Project", mg.GetName(), "delete")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Project)
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotProject)

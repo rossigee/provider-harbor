@@ -23,6 +23,7 @@ import (
 	"github.com/rossigee/provider-harbor/apis/retention/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
+	"github.com/rossigee/provider-harbor/internal/tracing"
 )
 
 const (
@@ -76,6 +77,10 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+	_, span := tracing.StartSpan(ctx, "retention.observe",
+		tracing.SpanAttrs("Retention", mg.GetName(), "observe")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Retention)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotRetention)
@@ -113,6 +118,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+	_, span := tracing.StartSpan(ctx, "retention.create",
+		tracing.SpanAttrs("Retention", mg.GetName(), "create")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Retention)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotRetention)
@@ -145,6 +154,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	_, span := tracing.StartSpan(ctx, "retention.update",
+		tracing.SpanAttrs("Retention", mg.GetName(), "update")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Retention)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotRetention)
@@ -170,6 +183,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
+	_, span := tracing.StartSpan(ctx, "retention.delete",
+		tracing.SpanAttrs("Retention", mg.GetName(), "delete")...)
+	defer span.End()
+
 	cr, ok := mg.(*v1beta1.Retention)
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotRetention)
