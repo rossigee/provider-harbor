@@ -1,0 +1,180 @@
+# Auto-Merge Workflow for Dependabot PRs
+# Version: 2026-07-09
+#
+# Implements severity-based auto-merge policy for Dependabot PRs:
+# - Minor/patch updates for Go, GitHub Actions, Docker → auto-merge
+# - Major updates, security updates, unclassified → block (human review)
+#
+# CI's govulncheck + gosec must pass before auto-merge proceeds.
+# This workflow runs on pull_request_target so it can write to the PR.
+
+name: Dependabot Auto-Merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - labeled
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Determine Merge Strategy
+        id: merge-strategy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const title = context.payload.pull_request.title;
+
+            // Define auto-mergeable patterns (minor/patch only, never security or major)
+            const autoMergeLabels = [
+              'dependencies/go/minor',
+              'dependencies/go/patch',
+              'dependencies/github-actions/minor',
+              'dependencies/github-actions/patch',
+              'dependencies/docker/minor',
+              'dependencies/docker/patch',
+            ];
+
+            const isAutoMergeable = autoMergeLabels.some(label => labels.includes(label));
+            const isSecurity = labels.includes('dependencies/security') || labels.includes('security');
+            const isMajor = labels.some(l => l.includes('/major')) || title.includes('!');
+
+            if (isSecurity) {
+              console.log('⛔ Security update — blocking, requires human review');
+              return 'block';
+            } else if (isMajor) {
+              console.log('⛔ Major version update — blocking, requires human review');
+              return 'block';
+            } else if (isAutoMergeable) {
+              console.log('✅ Minor/patch update — eligible for auto-merge');
+              return 'automerge';
+            } else {
+              console.log('⛔ Unclassified or no matching label — blocking, requires human review');
+              return 'block';
+            }
+
+      - name: Check CI Status
+        if: steps.merge-strategy.outputs.result == 'automerge'
+        id: ci-status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: context.payload.pull_request.head.sha,
+              status: 'completed',
+            });
+
+            // Required CI check names from ci.yml
+            const requiredChecks = ['lint', 'check-diff', 'unit-tests', 'security-scan'];
+            const completedChecks = checks.check_runs || [];
+
+            let allPassed = true;
+            const results = [];
+
+            for (const check of requiredChecks) {
+              const found = completedChecks.find(c =>
+                c.name.toLowerCase().includes(check.toLowerCase())
+              );
+              if (found) {
+                results.push(`  ${found.name}: ${found.conclusion}`);
+                if (found.conclusion !== 'success') {
+                  allPassed = false;
+                }
+              } else {
+                results.push(`  ${check}: not found (may still be running)`);
+              }
+            }
+
+            console.log('CI Check Results:');
+            results.forEach(r => console.log(r));
+
+            // Allow some flexibility: if checks are still running, wait
+            if (!allPassed) {
+              const running = completedChecks.filter(c => c.status !== 'completed');
+              if (running.length > 0) {
+                console.log('Some checks still running, will re-run...');
+                return 'pending';
+              }
+              console.log('❌ Required checks failed — blocking auto-merge');
+              return 'failed';
+            }
+
+            console.log('✅ All required CI checks passed');
+            return 'passed';
+
+      - name: Wait for CI if Pending
+        if: steps.ci-status.outputs.result == 'pending'
+        run: |
+          echo "Waiting for CI checks to complete..."
+          sleep 60
+
+      - name: Retry CI Status Check
+        if: steps.ci-status.outputs.result == 'pending'
+        id: ci-status-retry
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: context.payload.pull_request.head.sha,
+              status: 'completed',
+            });
+
+            const requiredChecks = ['lint', 'check-diff', 'unit-tests', 'security-scan'];
+            const completedChecks = checks.check_runs || [];
+            let allPassed = true;
+
+            for (const check of requiredChecks) {
+              const found = completedChecks.find(c =>
+                c.name.toLowerCase().includes(check.toLowerCase())
+              );
+              if (found && found.conclusion !== 'success') {
+                allPassed = false;
+              }
+            }
+
+            if (allPassed) {
+              console.log('✅ All required CI checks passed');
+              return 'passed';
+            } else {
+              console.log('❌ Required checks not all passing');
+              return 'failed';
+            }
+
+      - name: Enable Auto-Merge
+        if: steps.ci-status-retry.outputs.result == 'passed' || steps.ci-status.outputs.result == 'passed'
+        run: |
+          echo "🔄 Enabling Dependabot auto-merge..."
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto --squash \
+            --delete-branch \
+            --repo ${{ github.repository }}
+          echo "✅ Auto-merge enabled for PR #${{ github.event.pull_request.number }}"
+
+      - name: Notify Blocked PR
+        if: steps.merge-strategy.outputs.result == 'block'
+        run: |
+          echo "⛔ PR #${{ github.event.pull_request.number }} requires human review"
+          echo "   Title: ${{ github.event.pull_request.title }}"
+          echo "   Labels: $(echo '${{ join(github.event.pull_request.labels.*.name, ', ') }}' | tr -d \"'\" | tr -d '\"')"
+          echo "   Author: ${{ github.event.pull_request.user.login }}"

@@ -1,0 +1,99 @@
+# Standardized Dependabot Configuration for Crossplane Providers
+# Version: 2026-07-09
+#
+# Apply this template to each provider's .github/dependabot.yml
+# Monitors: Go modules, GitHub Actions, Dockerfiles
+# Schedule: Weekly (Friday) - consistent across all providers
+#
+# Auto-merge is handled by the auto-merge.yml workflow
+# which respects severity labels applied by Dependabot.
+
+version: 2
+registries:
+  # ghcr.io for container image base updates
+  ghcr-io-rossigee:
+    type: docker
+    url: https://ghcr.io
+    username: x-access-token
+    password: ${{ secrets.GITHUB_TOKEN }}
+
+updates:
+  # Go module dependencies
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "10:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "go"
+    # Groups to reduce PR noise
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions in CI workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "10:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dockerfiles in cluster/images/
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "10:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+    # Target all Dockerfile locations
+    registries:
+      - ghcr-io-rossigee
+
+  # Dockerfiles in root (some providers)
+  - package-ecosystem: "docker"
+    directory: "/cluster/images"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "10:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+    registries:
+      - ghcr-io-rossigee
