@@ -52,7 +52,7 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ github.token }}
           submodules: true
@@ -74,7 +74,7 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ github.token }}
           submodules: true
@@ -98,7 +98,7 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ github.token }}
           submodules: true
@@ -131,7 +131,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ github.token }}
           submodules: true
@@ -196,7 +196,7 @@ jobs:
   #     contents: read
   #   steps:
   #     - name: Checkout
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v7
   #       with:
   #         fetch-depth: 0
   #         token: ${{ github.token }}
