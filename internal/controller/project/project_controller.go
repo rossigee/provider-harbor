@@ -99,7 +99,7 @@ type external struct {
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	_, span := tracing.StartSpan(ctx, "project.observe",
-		tracing.SpanAttrs("Project", mg.GetName(), "observe")...)
+		tracing.SpanAttrs("Project", tracing.ResourceName(mg), "observe")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Project)
@@ -155,7 +155,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	_, span := tracing.StartSpan(ctx, "project.create",
-		tracing.SpanAttrs("Project", mg.GetName(), "create")...)
+		tracing.SpanAttrs("Project", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Project)
@@ -205,7 +205,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	_, span := tracing.StartSpan(ctx, "project.update",
-		tracing.SpanAttrs("Project", mg.GetName(), "update")...)
+		tracing.SpanAttrs("Project", tracing.ResourceName(mg), "update")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Project)
@@ -249,7 +249,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	_, span := tracing.StartSpan(ctx, "project.delete",
-		tracing.SpanAttrs("Project", mg.GetName(), "delete")...)
+		tracing.SpanAttrs("Project", tracing.ResourceName(mg), "delete")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Project)

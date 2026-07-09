@@ -93,7 +93,7 @@ type external struct {
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	_, span := tracing.StartSpan(ctx, "scanner.observe",
-		tracing.SpanAttrs("Scanner", mg.GetName(), "observe")...)
+		tracing.SpanAttrs("Scanner", tracing.ResourceName(mg), "observe")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.ScannerRegistration)
@@ -155,7 +155,7 @@ func (c *external) isUpToDate(cr *v1beta1.ScannerRegistration, status *clients.S
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	_, span := tracing.StartSpan(ctx, "scanner.create",
-		tracing.SpanAttrs("Scanner", mg.GetName(), "create")...)
+		tracing.SpanAttrs("Scanner", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.ScannerRegistration)
@@ -194,7 +194,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	_, span := tracing.StartSpan(ctx, "scanner.update",
-		tracing.SpanAttrs("Scanner", mg.GetName(), "update")...)
+		tracing.SpanAttrs("Scanner", tracing.ResourceName(mg), "update")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.ScannerRegistration)
@@ -239,7 +239,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	_, span := tracing.StartSpan(ctx, "scanner.delete",
-		tracing.SpanAttrs("Scanner", mg.GetName(), "delete")...)
+		tracing.SpanAttrs("Scanner", tracing.ResourceName(mg), "delete")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.ScannerRegistration)

@@ -93,7 +93,7 @@ type external struct {
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	_, span := tracing.StartSpan(ctx, "registry.observe",
-		tracing.SpanAttrs("Registry", mg.GetName(), "observe")...)
+		tracing.SpanAttrs("Registry", tracing.ResourceName(mg), "observe")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Registry)
@@ -147,7 +147,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	_, span := tracing.StartSpan(ctx, "registry.create",
-		tracing.SpanAttrs("Registry", mg.GetName(), "create")...)
+		tracing.SpanAttrs("Registry", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Registry)
@@ -216,7 +216,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	_, span := tracing.StartSpan(ctx, "registry.update",
-		tracing.SpanAttrs("Registry", mg.GetName(), "update")...)
+		tracing.SpanAttrs("Registry", tracing.ResourceName(mg), "update")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Registry)
@@ -278,7 +278,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	_, span := tracing.StartSpan(ctx, "registry.delete",
-		tracing.SpanAttrs("Registry", mg.GetName(), "delete")...)
+		tracing.SpanAttrs("Registry", tracing.ResourceName(mg), "delete")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Registry)

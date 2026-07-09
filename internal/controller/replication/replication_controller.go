@@ -75,7 +75,7 @@ type external struct {
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	_, span := tracing.StartSpan(ctx, "replication.observe",
-		tracing.SpanAttrs("Replication", mg.GetName(), "observe")...)
+		tracing.SpanAttrs("Replication", tracing.ResourceName(mg), "observe")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Replication)
@@ -116,7 +116,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	_, span := tracing.StartSpan(ctx, "replication.create",
-		tracing.SpanAttrs("Replication", mg.GetName(), "create")...)
+		tracing.SpanAttrs("Replication", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Replication)
@@ -160,7 +160,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	_, span := tracing.StartSpan(ctx, "replication.update",
-		tracing.SpanAttrs("Replication", mg.GetName(), "update")...)
+		tracing.SpanAttrs("Replication", tracing.ResourceName(mg), "update")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Replication)
@@ -191,7 +191,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	_, span := tracing.StartSpan(ctx, "replication.delete",
-		tracing.SpanAttrs("Replication", mg.GetName(), "delete")...)
+		tracing.SpanAttrs("Replication", tracing.ResourceName(mg), "delete")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Replication)

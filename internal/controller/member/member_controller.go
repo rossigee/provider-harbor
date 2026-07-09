@@ -29,6 +29,7 @@ const (
 	errNewClient    = "cannot create new Harbor client"
 )
 
+
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.MemberGroupVersionKind.Kind)
 
@@ -75,7 +76,7 @@ type external struct {
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	_, span := tracing.StartSpan(ctx, "member.observe",
-		tracing.SpanAttrs("Member", mg.GetName(), "observe")...)
+		tracing.SpanAttrs("Member", tracing.ResourceName(mg), "observe")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Member)
@@ -104,7 +105,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	_, span := tracing.StartSpan(ctx, "member.create",
-		tracing.SpanAttrs("Member", mg.GetName(), "create")...)
+		tracing.SpanAttrs("Member", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Member)
@@ -122,7 +123,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	_, span := tracing.StartSpan(ctx, "member.update",
-		tracing.SpanAttrs("Member", mg.GetName(), "update")...)
+		tracing.SpanAttrs("Member", tracing.ResourceName(mg), "update")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Member)
@@ -140,7 +141,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	_, span := tracing.StartSpan(ctx, "member.delete",
-		tracing.SpanAttrs("Member", mg.GetName(), "delete")...)
+		tracing.SpanAttrs("Member", tracing.ResourceName(mg), "delete")...)
 	defer span.End()
 
 	cr, ok := mg.(*v1beta1.Member)
