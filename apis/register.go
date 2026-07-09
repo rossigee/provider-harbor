@@ -7,7 +7,6 @@ package apis
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
-)
 
 	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	memberv1beta1 "github.com/rossigee/provider-harbor/apis/member/v1beta1"

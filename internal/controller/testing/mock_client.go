@@ -6,7 +6,7 @@ package testing
 
 import (
 	"context"
-	"github.com/rossigee/provider-harbor/internal/clients"
+	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	"time"
 )
 

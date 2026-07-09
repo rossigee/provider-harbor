@@ -12,15 +12,15 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/crossplane/crossplane/apis/v2/core/v2"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
-	"github.com/rossigee/provider-harbor/internal/clients"
-	"github.com/rossigee/provider-harbor/internal/controller"
+	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	"github.com/rossigee/provider-harbor/internal/tracing"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
-	"sigs.k8s.io/controller-runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"strings"
@@ -159,7 +159,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe returning exists=true, upToDate=%v\n", upToDate)
 
 			// Set the Ready condition to True since we found the resource
-			cr.SetConditions(xpv2.Available())
+			cr.SetConditions(xpv1.Available())
 
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}

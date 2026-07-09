@@ -8,18 +8,20 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/rossigee/provider-harbor/apis/v1beta1"
-	"sigs.k8s.io/controller-runtime"
+
+	v1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 // Setup adds a controller that reconciles ProviderConfigs by accounting for
 // their current usage.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := providerconfig.ControllerName(v1beta1.ProviderConfigGroupKind)
+	name := providerconfig.ControllerName(v1beta1.ProviderConfigGroupKind.Kind)
 
 	of := resource.ProviderConfigKinds{
 		Config:    v1beta1.ProviderConfigGroupVersionKind,
+		Usage:     v1beta1.ProviderConfigUsageGroupVersionKind,
 		UsageList: v1beta1.ProviderConfigUsageListGroupVersionKind,
 	}
 

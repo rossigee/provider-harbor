@@ -10,6 +10,7 @@ package v1beta1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const (
@@ -24,9 +25,5 @@ var (
 )
 
 func addKnownTypes(s *runtime.Scheme) error {
-	s.AddKnownTypes(SchemeGroupVersion,
-		&Scan{},
-		&ScanList{},
-	)
 	return nil
 }

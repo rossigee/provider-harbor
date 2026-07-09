@@ -1,45 +1,35 @@
 /*
-Copyright 2022 Upbound Inc.
+Copyright 2025 The Crossplane Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 package v1beta1
 
 import (
-	"harbor.m.crossplane.io"
-	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
-	"v1beta1"
-)
 
-var (
-	// SchemeGroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
-
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ProviderConfig type metadata.
 var (
-	ProviderConfigKind             = reflect.TypeOf(ProviderConfig{}).Name()
-	ProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}.String()
-	ProviderConfigKindAPIVersion   = ProviderConfigKind + "." + SchemeGroupVersion.String()
-	ProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigKind)
-)
-
-// ProviderConfigUsage type metadata.
-var (
-	ProviderConfigUsageKind             = reflect.TypeOf(ProviderConfigUsage{}).Name()
-	ProviderConfigUsageGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigUsageKind}.String()
-	ProviderConfigUsageKindAPIVersion   = ProviderConfigUsageKind + "." + SchemeGroupVersion.String()
-	ProviderConfigUsageGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageKind)
-
-	ProviderConfigUsageListKind             = reflect.TypeOf(ProviderConfigUsageList{}).Name()
-	ProviderConfigUsageListGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigUsageListKind}.String()
-	ProviderConfigUsageListKindAPIVersion   = ProviderConfigUsageListKind + "." + SchemeGroupVersion.String()
+	ProviderConfigKind                    = reflect.TypeOf(ProviderConfig{}).Name()
+	ProviderConfigGroupKind               = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}
+	ProviderConfigKindAPIVersion          = ProviderConfigKind + "." + SchemeGroupVersion.String()
+	ProviderConfigGroupVersionKind        = SchemeGroupVersion.WithKind(ProviderConfigKind)
+	ProviderConfigUsageKind               = reflect.TypeOf(ProviderConfigUsage{}).Name()
+	ProviderConfigUsageGroupVersionKind   = SchemeGroupVersion.WithKind(ProviderConfigUsageKind)
+	ProviderConfigUsageListKind           = reflect.TypeOf(ProviderConfigUsageList{}).Name()
 	ProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageListKind)
 )
-
-func addKnownTypes(s *runtime.Scheme) error {
-	return nil
-}

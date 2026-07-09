@@ -21,30 +21,31 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/crossplane/crossplane/apis/v2/core/v2"
-	"github.com/goharbor/go-client/pkg/harbor"
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
-	"github.com/pkg/errors"
-	"github.com/rossigee/provider-harbor/apis/project/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/registry/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/robot/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/user/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/v1beta1"
-	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
 	"net"
 	"net/http"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/goharbor/go-client/pkg/harbor"
+	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
+	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
+	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
+	"github.com/pkg/errors"
+	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
+	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
+	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
+	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
+	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
+	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
+	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
+	providerconfigv1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -254,7 +255,7 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		return nil, errors.New(errNoProviderConfig)
 	}
 
-	pc := &v1beta1.ProviderConfig{}
+	pc := &providerconfigv1beta1.ProviderConfig{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: configRef.Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetProviderConfig)
 	}
@@ -502,7 +503,7 @@ func (c *HarborClient) GetVersion(ctx context.Context) (string, error) {
 	// systeminfo, err := v2Client.Systeminfo.GetSysteminfo(ctx, &systeminfo.GetSysteminfoParams{})
 
 	c.logger.Info("Retrieving Harbor version information")
-	return "Harbor v2.x (Go client)", nil
+	return "Harbor xpv1.x (Go client)", nil
 }
 
 // GetMemoryFootprint returns estimated memory usage for this client

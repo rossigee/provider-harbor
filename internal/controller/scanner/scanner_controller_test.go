@@ -9,8 +9,8 @@ import (
 	"errors"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
-	"github.com/rossigee/provider-harbor/internal/clients"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	harborclients "github.com/rossigee/provider-harbor/internal/clients"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
 )
