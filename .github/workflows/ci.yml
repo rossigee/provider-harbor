@@ -147,7 +147,7 @@ jobs:
       - name: Run Go Vulnerability Check
         run: |
           cp go.mod go.mod.bak && cp go.sum go.sum.bak
-          GOWORK=$(mktemp -d) go install golang.org/x/vuln/cmd/govulncheck@v1.5.0 || { mv go.mod.bak go.mod 2>/dev/null; mv go.sum.bak go.sum 2>/dev/null; exit 1; }
+          GOWORK=$(mktemp -d)/go.work && echo "go 1.24" > $GOWORK && GOWORK=$GOWORK go install golang.org/x/vuln/cmd/govulncheck@v1.5.0 || { GOWORK_DIR=$(dirname $GOWORK); rm -f $GOWORK 2>/dev/null; rmdir $GOWORK_DIR 2>/dev/null; mv go.mod.bak go.mod 2>/dev/null; mv go.sum.bak go.sum 2>/dev/null; exit 1; }
           (GOFLAGS=-mod=mod GOWORK=$GOWORK go run -mod=mod golang.org/x/vuln/cmd/govulncheck ./... 2>&1 || true) | tee /tmp/govulncheck.out >/dev/null
           mv go.mod.bak go.mod && mv go.sum.bak go.sum
           if grep -q "^Vulnerability #" /tmp/govulncheck.out; then
@@ -163,6 +163,7 @@ jobs:
             echo "No vulnerabilities found."
           fi
           rm -f /tmp/govulncheck.out
+          GOWORK_DIR=$(dirname $GOWORK); rm -f $GOWORK 2>/dev/null; rmdir $GOWORK_DIR 2>/dev/null
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
