@@ -25,5 +25,9 @@ var (
 )
 
 func addKnownTypes(s *runtime.Scheme) error {
+	s.AddKnownTypes(SchemeGroupVersion,
+		&Scan{},
+		&ScanList{},
+	)
 	return nil
 }

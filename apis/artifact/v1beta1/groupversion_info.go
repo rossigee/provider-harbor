@@ -29,5 +29,9 @@ var (
 )
 
 func addKnownTypes(s *runtime.Scheme) error {
+	s.AddKnownTypes(SchemeGroupVersion,
+		&Artifact{},
+		&ArtifactList{},
+	)
 	return nil
 }
