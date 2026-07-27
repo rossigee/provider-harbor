@@ -18,3 +18,34 @@ metadata:
       without Terraform dependencies. Read the
       [readme](https://github.com/rossigee/provider-harbor/blob/main/README.md)
       for instructions.
+spec:
+  permissionRequests:
+  - apiGroups:
+    - harbor.crossplane.io
+    - harbor.m.crossplane.io
+    resources:
+    - projects
+    - projects/status
+    - repositories
+    - repositories/status
+    - providerconfigs
+    - providerconfigs/status
+    - providerconfigusages
+    - providerconfigusages/status
+    verbs:
+    - "*"
+  - apiGroups:
+    - events.k8s.io
+    resources:
+    - events
+    verbs:
+    - "*"
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - list
+    - watch
+  controller: {}
