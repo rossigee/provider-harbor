@@ -45,8 +45,8 @@ require (
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/loads v0.25.0 // indirect
-	github.com/go-openapi/runtime v0.32.6 // indirect
-	github.com/go-openapi/runtime/server-middleware v0.32.6 // indirect
+	github.com/go-openapi/runtime v0.33.0 // indirect
+	github.com/go-openapi/runtime/server-middleware v0.33.0 // indirect
 	github.com/go-openapi/spec v0.22.9 // indirect
 	github.com/go-openapi/strfmt v0.27.0 // indirect
 	github.com/go-openapi/swag v0.27.3 // indirect
@@ -92,7 +92,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect

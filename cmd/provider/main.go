@@ -8,6 +8,7 @@ import (
 	"context"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/rossigee/provider-harbor/apis"
+	harborcontroller "github.com/rossigee/provider-harbor/internal/controller"
 	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
 	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
@@ -24,6 +25,8 @@ import (
 	"github.com/rossigee/provider-harbor/internal/tracing"
 	"github.com/rossigee/provider-harbor/internal/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"os"
 	"path/filepath"
@@ -71,10 +74,15 @@ func main() {
 		"leader-election", *leaderElection,
 		"debug-mode", *debug)
 
+	s := apimachineryruntime.NewScheme()
+	kingpin.FatalIfError(scheme.AddToScheme(s), "Cannot add k8s types to scheme")
+	kingpin.FatalIfError(apis.AddToScheme(s), "Cannot add Harbor APIs to scheme")
+
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:             s,
 		LeaderElection:   *leaderElection,
 		LeaderElectionID: "crossplane-leader-election-provider-harbor",
 		Cache: cache.Options{
@@ -86,13 +94,12 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
-	// Add Harbor APIs to scheme
-	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Harbor APIs to scheme")
-
 	// Setup native controllers with rate limiting
 	o := controller.Options{
 		MaxConcurrentReconciles: *maxReconcileRate,
 	}
+
+	kingpin.FatalIfError(harborcontroller.Setup(mgr), "Cannot setup Harbor controllers")
 
 	// Setup Project controller
 	kingpin.FatalIfError(projectcontroller.Setup(mgr, o), "Cannot setup Project controller")
