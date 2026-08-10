@@ -1,43 +1,48 @@
-# Provider Harbor
+# provider-harbor
 
-[![Build](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml/badge.svg)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/Coverage-21%25-brightgreen)](https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/rossigee/provider-harbor/ci.yml?branch=master)][build]
+[![Version](https://img.shields.io/github/v/release/rossigee/provider-harbor)][releases]
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/Version-0.17.0-blue.svg)](https://github.com/rossigee/provider-harbor/releases/tag/v0.17.0)
+
+[build]: https://github.com/rossigee/provider-harbor/actions/workflows/ci.yml
+[releases]: https://github.com/rossigee/provider-harbor/releases
 
 ## Overview
 
 A native Crossplane provider for Harbor container registry management. Manage Harbor resources (projects, registries, users, repositories, webhooks, and more) using Kubernetes-native declarative configuration.
 
-## Supported Resources
+## Container Registry
 
-### Core Resources
-- **Projects** - Create and manage Harbor projects with security policies
-- **Registries** - Register and manage remote registries
-- **Users** - Manage user accounts with password secrets
-- **User Groups** - LDAP/HTTP/OIDC group management (Types 1, 2, 3)
-- **Repositories** - Repository lifecycle and metadata management
-- **Artifacts** - Image artifact management and vulnerability scanning
-- **Scanners** - Scanner registration (Trivy, Clair, Aqua, etc.)
+- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.17.2`
 
-### Enterprise Resources  
-- **Robot Accounts** - CI/CD service accounts with scoped permissions
-- **Webhooks** - Event automation for scan completion, image push
-- **Replication Policies** - Cross-registry image replication with filtering
-- **Retention Policies** - Automated artifact cleanup with custom rules
-- **Members** - Project member management and role-based access control
-- **Scans** - Vulnerability scan management and reporting
+## Features
 
-## Recent Improvements (v0.17.0)
+- **Projects** — create and manage Harbor projects with security policies
+- **Registries** — register and manage remote registries
+- **Users & User Groups** — user accounts with password secrets; LDAP/HTTP/OIDC group management
+- **Repositories & Artifacts** — repository lifecycle, metadata, and image artifact management with vulnerability scanning
+- **Scanners** — scanner registration (Trivy, Clair, Aqua, etc.)
+- **Robot Accounts** — CI/CD service accounts with scoped permissions
+- **Webhooks** — event automation for scan completion, image push
+- **Replication Policies** — cross-registry image replication with filtering
+- **Retention Policies** — automated artifact cleanup with custom rules
+- **Members** — project member management and role-based access control
+- **Scans** — vulnerability scan management and reporting
 
-- ✅ **100% API Coverage** - All 12 Harbor resource controllers enabled and production-ready
-- ✅ **Comprehensive Testing** - 150+ unit tests with 21% codebase coverage
-- ✅ **Advanced Test Patterns** - Connection lifecycle, error handling, edge cases, nil field handling
-- ✅ **Perfect Linting** - All golangci-lint checks passing (errcheck, staticcheck, QF1012)
-- ✅ **Resource Adoption** - External name tracking for managing existing Harbor resources
-- ✅ **Cache Optimization** - Namespace-restricted manager cache eliminates timeout issues
+## Getting Started
 
-## Quick Start
+### Prerequisites
+
+- Kubernetes with Crossplane installed
+- A Harbor instance and admin (or sufficiently scoped) credentials
+
+### Installation
+
+```bash
+kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:v0.17.2
+```
+
+### Configuration
 
 ```yaml
 apiVersion: v1
@@ -59,7 +64,11 @@ spec:
     source: Secret
     secretRef:
       name: harbor-creds
----
+```
+
+## Usage
+
+```yaml
 apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
@@ -72,16 +81,55 @@ spec:
     name: default
 ```
 
-## Documentation
+## Resource Types
 
-Quick links to documentation:
+| Resource | API Group | Description |
+|----------|-----------|-------------|
+| Project | `project.harbor.m.crossplane.io` | Harbor projects and security policies |
+| Registry | `registry.harbor.m.crossplane.io` | Remote registry registration |
+| User | `user.harbor.m.crossplane.io` | User accounts |
+| UserGroup | `usergroup.harbor.m.crossplane.io` | LDAP/HTTP/OIDC group management |
+| Repository | `repository.harbor.m.crossplane.io` | Repository lifecycle and metadata |
+| Artifact | `artifact.harbor.m.crossplane.io` | Image artifact and vulnerability management |
+| Scanner | `scanner.harbor.m.crossplane.io` | Scanner registration |
+| Robot | `robot.harbor.m.crossplane.io` | CI/CD service accounts |
+| Webhook | `webhook.harbor.m.crossplane.io` | Event automation |
+| Replication | `replication.harbor.m.crossplane.io` | Cross-registry replication policies |
+| Retention | `retention.harbor.m.crossplane.io` | Artifact retention policies |
+| Member | `member.harbor.m.crossplane.io` | Project membership and RBAC |
+| Scan | `scan.harbor.m.crossplane.io` | Vulnerability scan management |
 
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guide with security best practices, monitoring, RBAC, and troubleshooting
-- **[RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)** - Release versioning, timeline, and checklist
-- **[IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** - Implementation guide for features and resources
-- **[API_ANALYSIS.md](docs/API_ANALYSIS.md)** - Harbor API gaps and coverage analysis
-- **[MIGRATION_UPJET.md](docs/MIGRATION_UPJET.md)** - Migration guide from Upjet-based provider
-- **[MIGRATION_TERRAFORM.md](docs/MIGRATION_TERRAFORM.md)** - Migration guide from Terraform provider
-- **[ROBOTACCOUNT-DOCKER-CONFIG.md](docs/ROBOTACCOUNT-DOCKER-CONFIG.md)** - Docker config JSON support for RobotAccount
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+## Development
 
+```bash
+# Build
+make build
+
+# Test
+make test
+
+# Lint
+make lint
+
+# Generate
+make generate
+```
+
+Further documentation:
+
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** — production deployment, security, monitoring, RBAC, troubleshooting
+- **[RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)** — release versioning, timeline, checklist
+- **[IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** — implementation guide for features and resources
+- **[API_ANALYSIS.md](docs/API_ANALYSIS.md)** — Harbor API gaps and coverage analysis
+- **[MIGRATION_UPJET.md](docs/MIGRATION_UPJET.md)** — migration guide from the Upjet-based provider
+- **[MIGRATION_TERRAFORM.md](docs/MIGRATION_TERRAFORM.md)** — migration guide from the Terraform provider
+- **[ROBOTACCOUNT-DOCKER-CONFIG.md](docs/ROBOTACCOUNT-DOCKER-CONFIG.md)** — Docker config JSON support for RobotAccount
+- **[CHANGELOG.md](CHANGELOG.md)** — version history and release notes
+
+## Contributing
+
+Issues and pull requests are welcome at [github.com/rossigee/provider-harbor](https://github.com/rossigee/provider-harbor).
+
+## License
+
+provider-harbor is under the Apache 2.0 license.
