@@ -29,6 +29,6 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&Retention{},
 		&RetentionList{},
 	)
-		metav1.AddToGroupVersion(s, SchemeGroupVersion)
+	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
 }

@@ -42,8 +42,8 @@ import (
 	scannerv1beta1 "github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	userv1beta1 "github.com/rossigee/provider-harbor/apis/user/v1beta1"
 	usergroupv1beta1 "github.com/rossigee/provider-harbor/apis/usergroup/v1beta1"
-	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	providerconfigv1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
+	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

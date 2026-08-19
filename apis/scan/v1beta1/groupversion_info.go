@@ -30,6 +30,6 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&Scan{},
 		&ScanList{},
 	)
-		metav1.AddToGroupVersion(s, SchemeGroupVersion)
+	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
 }

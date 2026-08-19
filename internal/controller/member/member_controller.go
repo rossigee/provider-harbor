@@ -29,7 +29,6 @@ const (
 	errNewClient    = "cannot create new Harbor client"
 )
 
-
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1beta1.MemberGroupVersionKind.Kind)
 

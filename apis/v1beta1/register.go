@@ -24,12 +24,12 @@ import (
 
 // ProviderConfig type metadata.
 var (
-	ProviderConfigKind                    = reflect.TypeOf(ProviderConfig{}).Name()
-	ProviderConfigGroupKind               = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}
-	ProviderConfigKindAPIVersion          = ProviderConfigKind + "." + SchemeGroupVersion.String()
-	ProviderConfigGroupVersionKind        = SchemeGroupVersion.WithKind(ProviderConfigKind)
-	ProviderConfigUsageKind               = reflect.TypeOf(ProviderConfigUsage{}).Name()
-	ProviderConfigUsageGroupVersionKind   = SchemeGroupVersion.WithKind(ProviderConfigUsageKind)
-	ProviderConfigUsageListKind           = reflect.TypeOf(ProviderConfigUsageList{}).Name()
+	ProviderConfigKind                      = reflect.TypeOf(ProviderConfig{}).Name()
+	ProviderConfigGroupKind                 = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}
+	ProviderConfigKindAPIVersion            = ProviderConfigKind + "." + SchemeGroupVersion.String()
+	ProviderConfigGroupVersionKind          = SchemeGroupVersion.WithKind(ProviderConfigKind)
+	ProviderConfigUsageKind                 = reflect.TypeOf(ProviderConfigUsage{}).Name()
+	ProviderConfigUsageGroupVersionKind     = SchemeGroupVersion.WithKind(ProviderConfigUsageKind)
+	ProviderConfigUsageListKind             = reflect.TypeOf(ProviderConfigUsageList{}).Name()
 	ProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageListKind)
 )
