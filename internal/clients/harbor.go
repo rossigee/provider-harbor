@@ -190,7 +190,7 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 				DualStack: true,
 			}).DialContext,
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.Insecure,
+				InsecureSkipVerify: config.Insecure, // #nosec G402 -- gated by provider config
 			},
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
