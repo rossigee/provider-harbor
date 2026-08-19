@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2025-09-26 - Updated for Go 1.25.3
+# Version: 2025-09-26 - Updated for Go 1.26.6
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)

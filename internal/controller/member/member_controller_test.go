@@ -7,11 +7,12 @@ package member
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
-	"time"
 )
 
 func TestConnectNotMember(t *testing.T) {

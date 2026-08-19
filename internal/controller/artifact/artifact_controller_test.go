@@ -7,11 +7,12 @@ package artifact
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
-	"time"
 )
 
 func TestObserveArtifactSuccess(t *testing.T) {

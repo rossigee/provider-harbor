@@ -7,13 +7,14 @@ package scan
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/rossigee/provider-harbor/apis/scan/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"testing"
-	"time"
 )
 
 func TestConnectSuccess(t *testing.T) {

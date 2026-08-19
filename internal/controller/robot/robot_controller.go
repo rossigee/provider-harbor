@@ -7,6 +7,10 @@ package robot
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -19,12 +23,9 @@ import (
 	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	"github.com/rossigee/provider-harbor/internal/tracing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"strings"
-	"time"
 )
 
 const (

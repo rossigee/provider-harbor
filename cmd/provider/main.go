@@ -6,6 +6,11 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
+	"time"
+
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/rossigee/provider-harbor/apis"
 	harborcontroller "github.com/rossigee/provider-harbor/internal/controller"
@@ -28,16 +33,12 @@ import (
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"os"
-	"path/filepath"
-	"runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"time"
 )
 
 func main() {

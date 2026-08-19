@@ -7,9 +7,10 @@ package controller
 import (
 	"context"
 	"errors"
-	"github.com/rossigee/provider-harbor/internal/clients"
 	"testing"
 	"time"
+
+	"github.com/rossigee/provider-harbor/internal/clients"
 )
 
 // TestClientMockProjectWorkflow verifies MockHarborClient with project operations

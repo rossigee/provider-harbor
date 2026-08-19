@@ -237,7 +237,7 @@ jobs:
 #    - Clear notifications when enabled
 #
 # 5. STANDARDIZED VERSION
-#    - Go 1.26.5
+#    - Go 1.26.6
 #    - Actions: checkout@v4, setup-go@v6, codeql-action@v4
 #    - Runners: ubuntu-24.04
 #
