@@ -84,9 +84,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotArtifact)
 	}
 
-	status, err := c.service.GetArtifact(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.RepositoryName, cr.Spec.ForProvider.Reference)
+	projectID := cr.Spec.ForProvider.ProjectID
+	repoName := cr.Spec.ForProvider.RepositoryName
+	reference := cr.Spec.ForProvider.Reference
+
+	status, err := c.service.GetArtifact(ctx, projectID, repoName, reference)
 	if err != nil {
-		return managed.ExternalObservation{}, err
+		return managed.ExternalObservation{}, errors.Wrapf(err, "failed to get artifact projectID=%s repo=%s ref=%s", projectID, repoName, reference)
 	}
 
 	cr.Status.AtProvider.ID = &status.ID
@@ -99,7 +103,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
-	// Set external name for adoption tracking
 	ctrlutil.SetExternalName(cr, status.Digest)
 
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
