@@ -57,14 +57,18 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1beta1.Artifact)
+	artifact, ok := mg.(*v1beta1.Artifact)
 	if !ok {
 		return nil, errors.New(errNotArtifact)
 	}
 
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
 	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
+		return nil, errors.Wrapf(err, "%s: %s", errNewClient, err.Error())
+	}
+
+	if svc == nil {
+		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
 	return &external{service: svc}, nil
