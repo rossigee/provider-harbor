@@ -57,7 +57,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	artifact, ok := mg.(*v1beta1.Artifact)
+	_, ok := mg.(*v1beta1.Artifact)
 	if !ok {
 		return nil, errors.New(errNotArtifact)
 	}
