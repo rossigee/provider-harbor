@@ -1,0 +1,165 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e9]:
+      - heading "Navigation Menu" [level=2] [ref=e10]
+      - generic [ref=e11]:
+        - link "Homepage" [ref=e13] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e16]:
+          - navigation "Global" [ref=e17]:
+            - list [ref=e18]:
+              - listitem [ref=e19]:
+                - button "Platform" [ref=e21] [cursor=pointer]
+              - listitem [ref=e24]:
+                - button "Solutions" [ref=e26] [cursor=pointer]
+              - listitem [ref=e29]:
+                - button "Resources" [ref=e31] [cursor=pointer]
+              - listitem [ref=e34]:
+                - button "Open Source" [ref=e36] [cursor=pointer]
+              - listitem [ref=e39]:
+                - button "Enterprise" [ref=e41] [cursor=pointer]
+              - listitem [ref=e44]:
+                - link "Pricing" [ref=e45] [cursor=pointer]:
+                  - /url: https://github.com/pricing
+          - generic [ref=e46]:
+            - button "Search or jump to, type / to search" [ref=e48] [cursor=pointer]
+            - link "Sign in" [ref=e55] [cursor=pointer]:
+              - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Frossigee%2Fprovider-harbor%2Factions%2Fruns%2F32634655634%2Fjob%2F97182478330
+            - link "Sign up" [ref=e58] [cursor=pointer]:
+              - /url: /signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E%2Factions%2Fjob%2Findex&source=header-repo&source_repo=rossigee%2Fprovider-harbor
+            - button "Appearance settings" [ref=e61] [cursor=pointer]
+  - main [ref=e68]:
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e73]:
+            - link "rossigee" [ref=e77] [cursor=pointer]:
+              - /url: /rossigee
+            - generic [ref=e78]: /
+            - strong [ref=e79]:
+              - link "provider-harbor" [ref=e80] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor
+            - generic [ref=e81]: Public
+          - generic [ref=e82]:
+            - list:
+              - listitem [ref=e83]:
+                - link "You must be signed in to change notification settings" [ref=e84] [cursor=pointer]:
+                  - /url: /login?return_to=%2Frossigee%2Fprovider-harbor
+                  - text: Notifications
+              - listitem [ref=e87]:
+                - link "Fork 1" [ref=e88] [cursor=pointer]:
+                  - /url: /login?return_to=%2Frossigee%2Fprovider-harbor
+                  - text: Fork
+                  - generic "1" [ref=e91]
+              - listitem [ref=e92]:
+                - link "You must be signed in to star a repository" [ref=e94] [cursor=pointer]:
+                  - /url: /login?return_to=%2Frossigee%2Fprovider-harbor
+                  - text: Star
+                  - generic "3 users starred this repository" [ref=e97]: "3"
+        - navigation "Repository" [ref=e98]:
+          - list [ref=e99]:
+            - listitem [ref=e100]:
+              - link "Code" [ref=e101] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor
+            - listitem [ref=e105]:
+              - link "Issues" [ref=e106] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/issues
+            - listitem [ref=e111]:
+              - link "Pull requests" [ref=e112] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/pulls
+            - listitem [ref=e116]:
+              - link "Actions" [ref=e117] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/actions
+            - listitem [ref=e121]:
+              - link "Projects" [ref=e122] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/projects
+            - listitem [ref=e126]:
+              - link "Security and quality" [ref=e127] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/security
+            - listitem [ref=e131]:
+              - link "Insights" [ref=e132] [cursor=pointer]:
+                - /url: /rossigee/provider-harbor/pulse
+      - generic [ref=e140]:
+        - generic [ref=e143]:
+          - link "E2E (kind + Harbor)" [ref=e146] [cursor=pointer]:
+            - /url: /rossigee/provider-harbor/actions/workflows/e2e.yaml
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - img "failed:" [ref=e155]
+              - 'heading "ci: upgrade to crossplane-cli v2.3.5 #53" [level=1] [ref=e157]'
+            - link "Sign in to view logs" [ref=e161] [cursor=pointer]:
+              - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Frossigee%2Fprovider-harbor%2Factions%2Fruns%2F32634655634%2Fjob%2F97182478330
+        - generic [ref=e162]:
+          - navigation "Workflow run" [ref=e168]:
+            - list [ref=e169]:
+              - listitem [ref=e170]:
+                - link "Summary" [ref=e171] [cursor=pointer]:
+                  - /url: /rossigee/provider-harbor/actions/runs/32634655634
+              - generic [ref=e174]:
+                - heading "All jobs" [level=4] [ref=e175]
+                - button "Filter by job status" [ref=e176] [cursor=pointer]
+              - listitem [ref=e179]
+              - listitem:
+                - list
+              - listitem [ref=e180]
+              - listitem [ref=e181]:
+                - heading "Run details" [level=3] [ref=e183]
+                - list "Run details" [ref=e184]:
+                  - listitem [ref=e185]:
+                    - link "Usage" [ref=e186] [cursor=pointer]:
+                      - /url: /rossigee/provider-harbor/actions/runs/32634655634/usage
+                  - listitem [ref=e189]:
+                    - link "Workflow file" [ref=e190] [cursor=pointer]:
+                      - /url: /rossigee/provider-harbor/actions/runs/32634655634/workflow
+          - region "Check run summary" [ref=e194]:
+            - generic [ref=e195]:
+              - region "Annotations" [ref=e197]:
+                - generic [ref=e201]:
+                  - button "Open job annotations" [ref=e203] [cursor=pointer]
+                  - generic [ref=e208]:
+                    - heading "Annotations" [level=2] [ref=e209]
+                    - generic [ref=e210]: 1 error and 1 warning
+              - generic [ref=e212]:
+                - generic [ref=e214]:
+                  - link "e2e" [ref=e217] [cursor=pointer]:
+                    - /url: "#logs"
+                  - generic [ref=e219]: failed Aug 23, 20266 minutes ago in 19s
+                - generic [ref=e221]:
+                  - generic [ref=e222]:
+                    - group:
+                      - generic "Set up job"
+                  - generic [ref=e223]:
+                    - group:
+                      - generic "Run actions/checkout@v4"
+                  - generic [ref=e224]:
+                    - group:
+                      - generic "Run actions/setup-go@v6"
+                  - generic [ref=e225]:
+                    - group:
+                      - generic "Resolve tag + lowercase image"
+                  - generic [ref=e226]:
+                    - group:
+                      - generic "Install tooling (crossplane CLI, kind, helm, chainsaw)"
+                  - generic [ref=e227]:
+                    - group:
+                      - generic "Log in to GHCR"
+                  - generic [ref=e228]:
+                    - group:
+                      - generic "Build + push provider package (amd64) for this commit"
+                  - generic [ref=e229]:
+                    - group:
+                      - generic "Run e2e on kind (real Harbor + uptest)"
+                  - generic [ref=e230]:
+                    - group:
+                      - generic "Post Log in to GHCR"
+                  - generic [ref=e231]:
+                    - group:
+                      - generic "Post Run actions/setup-go@v6"
+                  - generic [ref=e232]:
+                    - group:
+                      - generic "Post Run actions/checkout@v4"
+                  - generic [ref=e233]:
+                    - group:
+                      - generic "Complete job"
