@@ -108,6 +108,15 @@ KUBECTL=$(command -v kubectl) CHAINSAW="$CHAINSAW" \
   --setup-script="$ROOT/test/e2e/uptest-setup.sh" \
   --default-conditions=Ready --skip-update --default-timeout=600s || rc=$?
 
+# Capture provider logs on failure for debugging
+if [ $rc -ne 0 ]; then
+  log "e2e test failed, capturing provider logs for debugging"
+  echo "=== Provider Deployment Logs ===" >&2
+  k logs -n crossplane-system deployment/crossplane-provider-harbor --all-containers=true --tail=200 >&2 || true
+  echo "=== Provider Pod Events ===" >&2
+  k describe pod -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor >&2 || true
+fi
+
 if [ -z "${KEEP:-}" ]; then
   log "delete kind cluster ${KIND_CLUSTER}"
   kind delete cluster --name "$KIND_CLUSTER" >/dev/null 2>&1 || true
