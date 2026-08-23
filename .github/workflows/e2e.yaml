@@ -15,7 +15,7 @@ concurrency:
 
 env:
   GO_VERSION: '1.26.6'
-  CROSSPLANE_CLI_VERSION: 'v2.3.5'
+  CROSSPLANE_CLI_VERSION: 'v2.3.4'
   CHAINSAW_VERSION: 'v0.2.15'
   KIND_VERSION: 'v0.31.0'
   IMAGE: ghcr.io/${{ github.repository_owner }}/provider-harbor
