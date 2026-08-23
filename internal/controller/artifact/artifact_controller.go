@@ -114,7 +114,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
+	// Always mark as not up-to-date to force reconciliation
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
