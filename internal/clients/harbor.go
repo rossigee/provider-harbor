@@ -32,6 +32,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/goharbor/go-client/pkg/harbor"
+	sdkartifact "github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
 	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
@@ -1165,10 +1166,33 @@ func (c *HarborClient) getArtifactFromHarbor(ctx context.Context, v2Client inter
 
 	c.logger.Info("Querying Harbor API for artifact", "projectId", projectID, "repo", repoName, "reference", reference)
 
+	params := &sdkartifact.GetArtifactParams{
+		ProjectName:    projectID,
+		RepositoryName: repoName,
+		Reference:      reference,
+		Context:        ctx,
+	}
+
+	clientSet, ok := v2Client.(*harbor.ClientSet)
+	if !ok {
+		return nil, errors.New("failed to cast v2Client to *harbor.ClientSet")
+	}
+
+	result, err := clientSet.V2().Artifact.GetArtifact(ctx, params)
+	if err != nil {
+		c.logger.Info("Harbor API GetArtifact call failed", "error", err.Error(), "projectId", projectID, "repo", repoName, "reference", reference)
+		return nil, errors.Wrap(err, "failed to query Harbor API for artifact")
+	}
+
+	if result == nil || result.Payload == nil {
+		return nil, errors.New("Harbor API returned empty artifact")
+	}
+
+	artifact := result.Payload
 	artifactStatus := &ArtifactStatus{
-		ID:             reference,
-		Digest:         reference,
-		Size:           0,
+		ID:             fmt.Sprintf("%d", artifact.ID),
+		Digest:         artifact.Digest,
+		Size:           artifact.Size,
 		PullCount:      0,
 		CreationTime:   time.Now(),
 		UpdateTime:     time.Now(),
