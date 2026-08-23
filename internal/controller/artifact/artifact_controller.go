@@ -114,8 +114,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	// Always mark as not up-to-date to force reconciliation
-	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false}, nil
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
@@ -129,7 +128,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// Artifact is read-only - nothing to create
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
