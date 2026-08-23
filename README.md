@@ -133,3 +133,7 @@ Issues and pull requests are welcome at [github.com/rossigee/provider-harbor](ht
 ## License
 
 provider-harbor is under the Apache 2.0 license.
+
+## Implementation
+
+This provider is a native Crossplane controller that directly implements the provider APIs without using Terraform or upjet scaffolding. This approach yields smaller binaries, simpler code, and reduced dependencies.
