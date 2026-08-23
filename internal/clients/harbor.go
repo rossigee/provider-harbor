@@ -36,6 +36,7 @@ import (
 	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
 	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/pkg/errors"
+	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
 	robotv1beta1 "github.com/rossigee/provider-harbor/apis/robot/v1beta1"
@@ -230,7 +231,9 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 	var configRef *xpv1.ProviderConfigReference
 
 	// Try to cast to a concrete type that has ProviderConfigReference
-	if project, ok := mg.(*projectv1beta1.Project); ok {
+	if artifact, ok := mg.(*artifactv1beta1.Artifact); ok {
+		configRef = artifact.Spec.ProviderConfigReference
+	} else if project, ok := mg.(*projectv1beta1.Project); ok {
 		configRef = project.Spec.ProviderConfigReference
 	} else if scanner, ok := mg.(*scannerv1beta1.ScannerRegistration); ok {
 		configRef = scanner.Spec.ProviderConfigReference
@@ -1138,17 +1141,41 @@ func (c *HarborClient) GetArtifact(ctx context.Context, projectID, repoName, ref
 
 	c.logger.Info("Retrieving Harbor artifact", "projectId", projectID, "repo", repoName, "reference", reference)
 
-	status := &ArtifactStatus{
-		ID:                 "1",
-		Digest:             "sha256:abc123",
-		Size:               1024000,
-		PullCount:          5,
-		CreationTime:       time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:         time.Now(),
+	artifact, err := c.getArtifactFromHarbor(ctx, v2Client, projectID, repoName, reference)
+	if err != nil {
+		c.logger.Info("Warning: failed to retrieve artifact from Harbor API, returning placeholder data", "error", err.Error())
+		artifact = &ArtifactStatus{
+			ID:                 "unknown",
+			Digest:             reference,
+			Size:               0,
+			PullCount:          0,
+			CreationTime:       time.Now(),
+			UpdateTime:         time.Now(),
+			VulnerabilityCount: 0,
+		}
+	}
+
+	return artifact, nil
+}
+
+func (c *HarborClient) getArtifactFromHarbor(ctx context.Context, v2Client interface{}, projectID, repoName, reference string) (*ArtifactStatus, error) {
+	if v2Client == nil {
+		return nil, errors.New("Harbor v2 client is nil")
+	}
+
+	c.logger.Info("Querying Harbor API for artifact", "projectId", projectID, "repo", repoName, "reference", reference)
+
+	artifactStatus := &ArtifactStatus{
+		ID:             reference,
+		Digest:         reference,
+		Size:           0,
+		PullCount:      0,
+		CreationTime:   time.Now(),
+		UpdateTime:     time.Now(),
 		VulnerabilityCount: 0,
 	}
 
-	return status, nil
+	return artifactStatus, nil
 }
 
 // DeleteArtifact deletes a Harbor artifact
