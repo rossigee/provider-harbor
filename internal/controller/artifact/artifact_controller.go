@@ -131,12 +131,36 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		tracing.SpanAttrs("Artifact", tracing.ResourceName(mg), "create")...)
 	defer span.End()
 
-	_, ok := mg.(*v1beta1.Artifact)
+	cr, ok := mg.(*v1beta1.Artifact)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
-	// Artifact is read-only - nothing to create
+	// For read-only artifacts, immediately populate status and conditions
+	// so the resource becomes ready after creation
+	status, err := c.service.GetArtifact(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.RepositoryName, cr.Spec.ForProvider.Reference)
+	if err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, "failed to get artifact during create")
+	}
+
+	cr.Status.AtProvider.ID = &status.ID
+	cr.Status.AtProvider.Digest = &status.Digest
+	cr.Status.AtProvider.Size = &status.Size
+	cr.Status.AtProvider.PullCount = &status.PullCount
+	t := metav1.NewTime(status.CreationTime)
+	cr.Status.AtProvider.CreationTime = &t
+	ut := metav1.NewTime(status.UpdateTime)
+	cr.Status.AtProvider.UpdateTime = &ut
+	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
+
+	cr.SetConditions(
+		xpv1.Available().WithMessage("Artifact ready"),
+		xpv1.ReconcileSuccess(),
+	)
+
+	ctrlutil.SetExternalName(cr, status.Digest)
+
+	// Artifact is read-only - nothing to create externally
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
 }
 
