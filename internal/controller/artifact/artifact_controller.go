@@ -113,7 +113,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
+	// For read-only resources, never report as up-to-date to force continuous
+	// reconciliation and status updates. The managed reconciler may not persist
+	// status changes unless the resource is marked as not up-to-date.
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
