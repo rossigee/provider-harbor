@@ -102,6 +102,18 @@ restore_ctx() { [ -n "$ORIG_CTX" ] && kubectl config use-context "$ORIG_CTX" >/d
 trap restore_ctx EXIT
 kubectl config use-context "$KCTX" >/dev/null
 
+# Start streaming provider logs in background (capture during test, not just after failure)
+LOGFILE="/tmp/provider-harbor-e2e-debug.log"
+echo "[$(date)] Starting provider log capture during e2e test" > "$LOGFILE"
+(
+  # Wait a bit for provider pod to start
+  sleep 10
+  # Stream logs continuously with follow flag
+  timeout 700 k logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true -f >> "$LOGFILE" 2>&1 || true
+) &
+LOG_PID=$!
+trap "kill $LOG_PID 2>/dev/null || true" EXIT
+
 rc=0
 KUBECTL=$(command -v kubectl) CHAINSAW="$CHAINSAW" \
   "$UPTEST" e2e "$LIST" \
@@ -111,11 +123,16 @@ KUBECTL=$(command -v kubectl) CHAINSAW="$CHAINSAW" \
 # reconciler only sets Synced=True for plain managed resources in steady state;
 # Ready is never set by the framework (only by XR/composite machinery).
 
+# Kill background log capture
+kill $LOG_PID 2>/dev/null || true
+wait $LOG_PID 2>/dev/null || true
+
 # Capture provider logs on failure for debugging
 if [ $rc -ne 0 ]; then
-  log "e2e test failed, capturing provider logs for debugging"
-  echo "=== Provider Deployment Logs ===" >&2
-  k logs -n crossplane-system deployment/crossplane-provider-harbor --all-containers=true --tail=200 >&2 || true
+  log "e2e test failed, dumping captured provider logs"
+  echo "=== Captured Provider Logs During Test ===" >&2
+  cat "$LOGFILE" >&2 || true
+  echo "" >&2
   echo "=== Provider Pod Events ===" >&2
   k describe pod -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor >&2 || true
 fi
