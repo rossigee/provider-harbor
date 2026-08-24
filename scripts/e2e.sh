@@ -92,6 +92,28 @@ n="$(k get crd -o name 2>/dev/null | grep -c 'harbor.m.crossplane.io' || true)"
 [ "$n" -gt 0 ] || { echo "provider Healthy but $n CRDs registered — packaging broken"; exit 1; }
 log "provider Healthy, ${n} CRDs"
 
+log "push test artifact to Harbor"
+# Push busybox:latest to the uptest-images project so the Artifact resource can observe it
+POD="$(k get pod -n harbor -l app=harbor,component=core -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo '')"
+if [ -n "$POD" ]; then
+  # Import busybox image into the cluster and push to Harbor
+  docker pull busybox:latest >/dev/null 2>&1 || true
+  kind load docker-image --name "$KIND_CLUSTER" busybox:latest 2>/dev/null || true
+  # Push to Harbor using port-forward
+  timeout 30 k port-forward -n harbor svc/my-harbor-core 80:80 >/dev/null 2>&1 &
+  PF_PID=$!
+  sleep 2
+  # Tag and push (using admin credentials)
+  docker tag busybox:latest localhost:80/uptest-images/busybox:latest 2>/dev/null || true
+  echo "$HARBOR_PASSWORD" | docker login -u admin --password-stdin localhost:80 >/dev/null 2>&1 || true
+  docker push localhost:80/uptest-images/busybox:latest >/dev/null 2>&1 || true
+  docker logout localhost:80 >/dev/null 2>&1 || true
+  kill $PF_PID 2>/dev/null || true
+  log "artifact pushed"
+else
+  log "warning: could not find Harbor pod, skipping artifact push"
+fi
+
 log "run uptest e2e (apply -> Ready -> delete)"
 cd "$ROOT"   # uptest resolves manifest paths relative to cwd
 LIST="$(cd "$ROOT" && ls examples/e2e/*.yaml | paste -sd, -)"
