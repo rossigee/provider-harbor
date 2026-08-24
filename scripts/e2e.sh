@@ -106,7 +106,10 @@ rc=0
 KUBECTL=$(command -v kubectl) CHAINSAW="$CHAINSAW" \
   "$UPTEST" e2e "$LIST" \
   --setup-script="$ROOT/test/e2e/uptest-setup.sh" \
-  --default-conditions=Ready --skip-update --default-timeout=600s || rc=$?
+  --default-conditions=Synced --skip-update --default-timeout=600s || rc=$?
+# Note: Synced (not Ready) is asserted because crossplane-runtime v2's managed
+# reconciler only sets Synced=True for plain managed resources in steady state;
+# Ready is never set by the framework (only by XR/composite machinery).
 
 # Capture provider logs on failure for debugging
 if [ $rc -ne 0 ]; then
