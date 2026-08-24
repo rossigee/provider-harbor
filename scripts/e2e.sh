@@ -109,7 +109,7 @@ echo "[$(date)] Starting provider log capture during e2e test" > "$LOGFILE"
   # Wait a bit for provider pod to start
   sleep 10
   # Stream logs continuously with follow flag
-  timeout 700 k logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true -f >> "$LOGFILE" 2>&1 || true
+  timeout 700 kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true -f >> "$LOGFILE" 2>&1 || true
 ) &
 LOG_PID=$!
 trap "kill $LOG_PID 2>/dev/null || true" EXIT
