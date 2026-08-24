@@ -8,9 +8,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/pkg/errors"
@@ -40,15 +38,14 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
 		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
-		managed.WithPollInterval(1*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+		managed.WithPollInterval(1*time.Minute))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Webhook{}).
-		Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
+		Complete(r)
 }
 
 type connector struct {

@@ -11,9 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
@@ -48,8 +46,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			logger:       log,
 		}),
 		managed.WithLogger(log),
-		managed.WithPollInterval(10*time.Second),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+		managed.WithPollInterval(10*time.Second))
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot reconciler created, building controller\n")
 
@@ -61,7 +58,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller builder ready, completing with ratelimiter\n")
 
-	err := builder.Complete(ratelimiter.NewReconciler(name, r, ratelimiter.NewGlobal(10)))
+	err := builder.Complete(r)
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup completed with error: %v\n", err)
 	return err

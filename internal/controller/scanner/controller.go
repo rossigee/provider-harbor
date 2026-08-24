@@ -20,7 +20,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -54,8 +53,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			logger: log,
 		}),
 		managed.WithLogger(log),
-		managed.WithPollInterval(10*time.Minute),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorder(name))))
+		managed.WithPollInterval(10*time.Minute))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
