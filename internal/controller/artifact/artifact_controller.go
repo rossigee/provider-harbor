@@ -114,16 +114,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	// Explicitly set conditions to ensure they're persisted
+	// Explicitly set conditions to mark resource as ready
 	cr.SetConditions(
-		xpv1.Available().WithMessage("Artifact observed successfully"),
+		xpv1.Available().WithMessage("Artifact ready"),
 		xpv1.ReconcileSuccess(),
 	)
 
-	// For read-only resources, never report as up-to-date to force continuous
-	// reconciliation and status updates. The managed reconciler may not persist
-	// status changes unless the resource is marked as not up-to-date.
-	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false}, nil
+	// Report as up-to-date so the managed reconciler sets the Ready condition
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
