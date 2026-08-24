@@ -46,7 +46,6 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Artifact{}).
 		Complete(ratelimiter.NewReconciler(name, r, nil))
 }
