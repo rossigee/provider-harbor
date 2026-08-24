@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -112,6 +113,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
 	ctrlutil.SetExternalName(cr, status.Digest)
+
+	// Explicitly set conditions to ensure they're persisted
+	cr.SetConditions(
+		xpv1.Available().WithMessage("Artifact observed successfully"),
+		xpv1.ReconcileSuccess(),
+	)
 
 	// For read-only resources, never report as up-to-date to force continuous
 	// reconciliation and status updates. The managed reconciler may not persist
