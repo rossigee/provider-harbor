@@ -70,12 +70,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
-	return &external{service: svc, kube: c.kube}, nil
+	return &external{service: svc}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
-	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -102,6 +101,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrapf(err, "failed to get artifact projectID=%s repo=%s ref=%s", projectID, repoName, reference)
 	}
 
+	// Populate status fields
 	cr.Status.AtProvider.ID = &status.ID
 	cr.Status.AtProvider.Digest = &status.Digest
 	cr.Status.AtProvider.Size = &status.Size
@@ -114,12 +114,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	// Explicitly patch status to API server - managed reconciler may not auto-persist custom status fields
-	if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch artifact status")
-	}
-
-	// Report as up-to-date so the managed reconciler sets the Ready condition
+	// Report as up-to-date; managed reconciler will persist status and set Ready
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
@@ -133,31 +128,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
-	// For read-only artifacts, immediately populate status
-	// so the resource becomes ready after creation
-	status, err := c.service.GetArtifact(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.RepositoryName, cr.Spec.ForProvider.Reference)
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, "failed to get artifact during create")
-	}
-
-	cr.Status.AtProvider.ID = &status.ID
-	cr.Status.AtProvider.Digest = &status.Digest
-	cr.Status.AtProvider.Size = &status.Size
-	cr.Status.AtProvider.PullCount = &status.PullCount
-	t := metav1.NewTime(status.CreationTime)
-	cr.Status.AtProvider.CreationTime = &t
-	ut := metav1.NewTime(status.UpdateTime)
-	cr.Status.AtProvider.UpdateTime = &ut
-	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
-
-	ctrlutil.SetExternalName(cr, status.Digest)
-
-	// Explicitly patch status to API server
-	if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, "failed to patch artifact status during create")
-	}
+	// Set external name immediately so Observe can find the artifact
+	// Name is based on reference (digest, tag, etc)
+	ctrlutil.SetExternalName(cr, cr.Spec.ForProvider.Reference)
 
 	// Artifact is read-only - nothing to create externally
+	// Status will be populated by Observe which is called immediately after
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
 }
 
