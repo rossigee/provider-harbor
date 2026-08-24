@@ -96,10 +96,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	repoName := cr.Spec.ForProvider.RepositoryName
 	reference := cr.Spec.ForProvider.Reference
 
+	println("[ARTIFACT-OBSERVE] Starting observation for", cr.GetName(), "in", cr.GetNamespace())
+	println("[ARTIFACT-OBSERVE] Looking up:", projectID+"/"+repoName+"@"+reference)
+
 	status, err := c.service.GetArtifact(ctx, projectID, repoName, reference)
 	if err != nil {
+		println("[ARTIFACT-OBSERVE] ERROR: Failed to get artifact:", err.Error())
 		return managed.ExternalObservation{}, errors.Wrapf(err, "failed to get artifact projectID=%s repo=%s ref=%s", projectID, repoName, reference)
 	}
+
+	println("[ARTIFACT-OBSERVE] Got artifact status: ID="+status.ID+", Digest="+status.Digest)
 
 	// Populate status fields
 	cr.Status.AtProvider.ID = &status.ID
@@ -112,9 +118,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
+	println("[ARTIFACT-OBSERVE] Populated status fields in CR memory")
+	println("[ARTIFACT-OBSERVE] CR.Status.AtProvider.ID:", *cr.Status.AtProvider.ID)
+	println("[ARTIFACT-OBSERVE] CR.Status.AtProvider.Digest:", *cr.Status.AtProvider.Digest)
+
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	// Report as up-to-date; managed reconciler will persist status and set Ready
+	println("[ARTIFACT-OBSERVE] Returning: ResourceExists=true, ResourceUpToDate=true")
+	// Report as up-to-date; managed reconciler will persist status and set Synced
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
@@ -128,10 +139,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
+	println("[ARTIFACT-CREATE] Starting Create for", cr.GetName(), "in", cr.GetNamespace())
+	println("[ARTIFACT-CREATE] Reference:", cr.Spec.ForProvider.Reference)
+
 	// Set external name immediately so Observe can find the artifact
 	// Name is based on reference (digest, tag, etc)
 	ctrlutil.SetExternalName(cr, cr.Spec.ForProvider.Reference)
 
+	println("[ARTIFACT-CREATE] Set external name, returning empty ExternalCreation")
 	// Artifact is read-only - nothing to create externally
 	// Status will be populated by Observe which is called immediately after
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
