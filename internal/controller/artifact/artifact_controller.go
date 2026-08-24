@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -71,11 +70,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -114,11 +114,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	// Explicitly set conditions to mark resource as ready
-	cr.SetConditions(
-		xpv1.Available().WithMessage("Artifact ready"),
-		xpv1.ReconcileSuccess(),
-	)
+	// Explicitly patch status to API server - managed reconciler may not auto-persist custom status fields
+	if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch artifact status")
+	}
 
 	// Report as up-to-date so the managed reconciler sets the Ready condition
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
@@ -134,7 +133,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
-	// For read-only artifacts, immediately populate status and conditions
+	// For read-only artifacts, immediately populate status
 	// so the resource becomes ready after creation
 	status, err := c.service.GetArtifact(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.RepositoryName, cr.Spec.ForProvider.Reference)
 	if err != nil {
@@ -151,12 +150,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
-	cr.SetConditions(
-		xpv1.Available().WithMessage("Artifact ready"),
-		xpv1.ReconcileSuccess(),
-	)
-
 	ctrlutil.SetExternalName(cr, status.Digest)
+
+	// Explicitly patch status to API server
+	if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, "failed to patch artifact status during create")
+	}
 
 	// Artifact is read-only - nothing to create externally
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
