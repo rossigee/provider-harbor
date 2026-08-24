@@ -93,16 +93,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	repoName := cr.Spec.ForProvider.RepositoryName
 	reference := cr.Spec.ForProvider.Reference
 
-	println("[ARTIFACT-OBSERVE] Starting observation for", cr.GetName(), "in", cr.GetNamespace())
-	println("[ARTIFACT-OBSERVE] Looking up:", projectID+"/"+repoName+"@"+reference)
-
 	status, err := c.service.GetArtifact(ctx, projectID, repoName, reference)
 	if err != nil {
-		println("[ARTIFACT-OBSERVE] ERROR: Failed to get artifact:", err.Error())
 		return managed.ExternalObservation{}, errors.Wrapf(err, "failed to get artifact projectID=%s repo=%s ref=%s", projectID, repoName, reference)
 	}
-
-	println("[ARTIFACT-OBSERVE] Got artifact status: ID="+status.ID+", Digest="+status.Digest)
 
 	// Populate status fields
 	cr.Status.AtProvider.ID = &status.ID
@@ -115,13 +109,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
-	println("[ARTIFACT-OBSERVE] Populated status fields in CR memory")
-	println("[ARTIFACT-OBSERVE] CR.Status.AtProvider.ID:", *cr.Status.AtProvider.ID)
-	println("[ARTIFACT-OBSERVE] CR.Status.AtProvider.Digest:", *cr.Status.AtProvider.Digest)
-
 	ctrlutil.SetExternalName(cr, status.Digest)
 
-	println("[ARTIFACT-OBSERVE] Returning: ResourceExists=true, ResourceUpToDate=true")
 	// Report as up-to-date; managed reconciler will persist status and set Synced
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
