@@ -1183,12 +1183,12 @@ func (c *HarborClient) getArtifactFromHarbor(ctx context.Context, v2Client inter
 
 	artifact := result.Payload
 	artifactStatus := &ArtifactStatus{
-		ID:             fmt.Sprintf("%d", artifact.ID),
-		Digest:         artifact.Digest,
-		Size:           artifact.Size,
-		PullCount:      0,
-		CreationTime:   time.Now(),
-		UpdateTime:     time.Now(),
+		ID:                 fmt.Sprintf("%d", artifact.ID),
+		Digest:             artifact.Digest,
+		Size:               artifact.Size,
+		PullCount:          0,
+		CreationTime:       time.Now(),
+		UpdateTime:         time.Now(),
 		VulnerabilityCount: 0,
 	}
 
