@@ -189,7 +189,6 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
-				DualStack: true,
 			}).DialContext,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: config.Insecure, // #nosec G402 -- gated by provider config

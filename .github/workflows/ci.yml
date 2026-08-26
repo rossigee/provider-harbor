@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2025-09-26 - Updated for Go 1.26.6
+# Version: 2025-09-26 - Updated for Go 1.27.0
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)
@@ -27,9 +27,9 @@ permissions:
   actions: read    # Needed for detecting duplicate actions
 
 env:
-  GO_VERSION: '1.26.6'
-  GOLANGCI_VERSION: '2.12.2'
-  GOLANGCILINT_VERSION: '2.12.2'
+  GO_VERSION: '1.27.0'
+  GOLANGCI_VERSION: '2.13.1'
+  GOLANGCILINT_VERSION: '2.13.1'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
 
 jobs:
