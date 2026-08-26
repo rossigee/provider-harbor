@@ -1152,7 +1152,7 @@ func (c *HarborClient) GetArtifact(ctx context.Context, projectID, repoName, ref
 	return artifact, nil
 }
 
-func (c *HarborClient) getArtifactFromHarbor(ctx context.Context, v2Client interface{}, projectID, repoName, reference string) (*ArtifactStatus, error) {
+func (c *HarborClient) getArtifactFromHarbor(ctx context.Context, v2Client interface{}, projectID, repoName, reference string) (*ArtifactStatus, error) { //nolint:unused
 	if v2Client == nil {
 		return nil, errors.New("Harbor v2 client is nil")
 	}
