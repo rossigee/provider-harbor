@@ -3,7 +3,7 @@ module github.com/rossigee/provider-harbor
 go 1.27.1
 
 require (
-	github.com/crossplane/crossplane-runtime/v2 v2.5.0-rc.0
+	github.com/crossplane/crossplane-runtime/v2 v2.5.0
 	github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5
 	github.com/crossplane/crossplane/apis/v2 v2.5.0-rc.0
 	github.com/go-logr/logr v1.4.4
@@ -123,3 +123,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+replace github.com/crossplane/crossplane-runtime/v2 => github.com/rossigee/crossplane-runtime/v2 v2.5.0
