@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -23,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 const (
@@ -32,27 +33,36 @@ const (
 	errNewClient   = "cannot create new Harbor client"
 )
 
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.RobotGroupVersionKind.Kind)
 	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup called\n")
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.RobotGroupVersionKind),
+	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 			logger:       log,
 		}),
 		managed.WithLogger(log),
-		managed.WithPollInterval(10*time.Second))
+		managed.WithPollInterval(10 * time.Second),
+	}
+
+	if o.Features != nil && o.Features.Enabled(feature.EnableBetaManagementPolicies) {
+		opts = append(opts, managed.WithManagementPolicies())
+	}
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.RobotGroupVersionKind),
+		opts...,
+	)
 
 	fmt.Fprintf(os.Stderr, "DEBUG: Robot reconciler created, building controller\n")
 
 	builder := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Robot{})
 

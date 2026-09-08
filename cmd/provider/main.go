@@ -11,7 +11,10 @@ import (
 	"runtime"
 	"time"
 
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/rossigee/provider-harbor/apis"
 	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
@@ -49,7 +52,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -68,6 +70,7 @@ func main() {
 		pollInterval            = app.Flag("poll", "Poll interval controls how often an individual resource should be checked for drift.").Default("10m").Duration()
 		leaderElection          = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		maxReconcileRate        = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
+		enableManagementPolicies = app.Flag("enable-management-policies", "Enable support for management policies.").Default("true").OverrideDefaultFromEnvar("ENABLE_MANAGEMENT_POLICIES").Bool()
 		pollStateMetricInterval = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
 		metricsBindAddress      = app.Flag("metrics-bind-address", "The address the metrics endpoint binds to.").Default(":8080").String()
 	)
@@ -91,6 +94,7 @@ func main() {
 		"poll-interval", pollInterval.String(),
 		"max-reconcile-rate", *maxReconcileRate,
 		"leader-election", *leaderElection,
+		"management-policies", *enableManagementPolicies,
 		"debug-mode", *debug)
 
 	s := apimachineryruntime.NewScheme()
@@ -119,9 +123,23 @@ func main() {
 	mrStateMetrics := statemetrics.NewMRStateMetrics()
 	metrics.Registry.MustRegister(mrStateMetrics)
 
-	// Setup native controllers with rate limiting
-	o := controller.Options{
+	mo := xpcontroller.MetricOptions{
+		PollStateMetricInterval: *pollStateMetricInterval,
+		MRStateMetrics:          mrStateMetrics,
+	}
+
+	o := xpcontroller.Options{
+		Logger:                  log,
 		MaxConcurrentReconciles: *maxReconcileRate,
+		PollInterval:            *pollInterval,
+		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
+		Features:                &feature.Flags{},
+		MetricOptions:           &mo,
+	}
+
+	if *enableManagementPolicies {
+		o.Features.Enable(feature.EnableBetaManagementPolicies)
+		log.Info("Beta feature enabled", "flag", feature.EnableBetaManagementPolicies)
 	}
 
 	kingpin.FatalIfError(harborcontroller.Setup(mgr), "Cannot setup Harbor controllers")

@@ -19,7 +19,8 @@ import (
 	"github.com/rossigee/provider-harbor/internal/tracing"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 )
 
 const (
@@ -35,21 +36,30 @@ const (
 )
 
 // Setup adds a controller that reconciles UserGroup managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.UserGroupGroupVersionKind.Kind)
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.UserGroupGroupVersionKind),
+	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
 		}),
 		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
-		managed.WithPollInterval(1*time.Minute))
+		managed.WithPollInterval(1*time.Minute),
+	}
+
+	if o.Features != nil && o.Features.Enabled(feature.EnableBetaManagementPolicies) {
+		opts = append(opts, managed.WithManagementPolicies())
+	}
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.UserGroupGroupVersionKind),
+		opts...,
+	)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.UserGroup{}).
 		Complete(r)

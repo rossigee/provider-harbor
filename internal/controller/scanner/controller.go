@@ -30,7 +30,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
+	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 )
 
 const (
@@ -42,22 +43,31 @@ const (
 )
 
 // Setup adds a controller that reconciles ScannerRegistration managed resources
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.ScannerRegistrationGroupVersionKind.Kind)
 	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
+	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:   mgr.GetClient(),
 			logger: log,
 		}),
 		managed.WithLogger(log),
-		managed.WithPollInterval(10*time.Minute))
+		managed.WithPollInterval(10*time.Minute),
+	}
+
+	if o.Features != nil && o.Features.Enabled(feature.EnableBetaManagementPolicies) {
+		opts = append(opts, managed.WithManagementPolicies())
+	}
+
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1beta1.ScannerRegistrationGroupVersionKind),
+		opts...,
+	)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o).
+		WithOptions(o.ForControllerRuntime()).
 		For(&v1beta1.ScannerRegistration{}).
 		Complete(r)
 }
