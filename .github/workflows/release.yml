@@ -1,29 +1,88 @@
----
-# Standardized Release Workflow for Crossplane Providers
-# Version: 2026-06-09 - Unified publish pattern across all providers
-#
-# Pattern:
-# 1. Build provider binaries and packages (make build)
-# 2. Publish to GHCR in a SINGLE step using make publish with both:
-#    - REGISTRY_ORGS for Docker images
-#    - XPKG_REG_ORGS for Crossplane packages
-# 3. Create GitHub release
-#
-# Triggered on version tags (v*)
-
-name: Release
+# Custom Release Workflow for provider-harbor
+# Publishes to ghcr.io/rossigee using the crossplane build system.
+name: Release (Official Workflows)
 
 on:
   push:
     tags:
-      - 'v*'
-
-env:
-  GO_VERSION: '1.27.1'
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to release (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   release:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Init build submodule
+        run: git submodule update --init --depth 1 build
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.1'
+          cache: true
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: all
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build Artifacts
+        run: |
+          set -e  # Fail fast on any error
+
+          export VERSION="${{ steps.version.outputs.version }}"
+
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Version: ${VERSION}"
+
+          export BRANCH_NAME="master"
+
+          make build.all build.artifacts
+
+      - name: Upload XPKG Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: xpkg
+          path: _output/xpkg/linux_amd64/provider-harbor-${{ steps.version.outputs.version }}.xpkg
+
+  publish:
+    runs-on: ubuntu-24.04
+    needs: release
     permissions:
       contents: write
       packages: write
@@ -39,13 +98,95 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: '1.27.1'
 
       - name: Vendor Dependencies
+        run: go mod vendor
+
+      - name: Install Crossplane CLI v2.5.0 (from our fork)
         run: |
-          go mod vendor
-          make vendor.check
+          set -e
+          mkdir -p .cache/tools/linux_x86_64
+          echo "Installing crank@v2.5.0 via go install (matches rossigee/build fork)"
+          GOBIN=$(pwd)/.cache/tools/linux_x86_64 go install github.com/crossplane/crossplane/cmd/crank@v2.5.0
+          if [ -f .cache/tools/linux_x86_64/crank ]; then
+            mv .cache/tools/linux_x86_64/crank .cache/tools/linux_x86_64/crossplane-cli-v2.5.0
+          fi
+          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v2.5.0 || true
 
-      - name: Init build submodule
-        run: git submodule update --init --depth 1 build
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Detected version: $VERSION"
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and Publish Artifacts
+        env:
+          BRANCH_NAME: master
+        run: |
+          set -e
+          echo "Building version ${VERSION}"
+          make publish.artifacts \
+            REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
+            XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \
+            BRANCH_NAME=master
+
+      - name: Verify Publication
+        run: |
+          set -e
+          VERSION="${GITHUB_REF#refs/tags/}"
+          REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}"
+
+          echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
+          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
+            DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+            echo "✅ Verified container image ${VERSION} (${DIGEST})"
+          else
+            echo "❌ Failed to pull container image ${VERSION}"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ github.event.repository.name }} ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  verify-publication:
+    needs: publish
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify Publication
+        run: |
+          set -e
+
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          PROVIDER_NAME="${{ github.event.repository.name }}"
+          REGISTRY_PATH="ghcr.io/rossigee/${PROVIDER_NAME}"
+
+          echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
+
+          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
+            DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+            echo "✅ Verified container image ${VERSION}"
+            echo "   Digest: ${DIGEST}"
+          else
+            echo "❌ Failed to pull container image ${VERSION}"
+            exit 1
+          fi
