@@ -70,7 +70,7 @@ repos:
     hooks:
       - id: check-binaries
         name: Check for binary files
-        entry: bash -c 'find . -type f -executable -exec file {} \; | grep -E "ELF|executable|binary" | grep -v "\.git" | grep -v "^./build/" | grep -v "^./_output/" | grep -v "^./.cache/" | grep -v "^./scripts/" && exit 1 || exit 0'
+        entry: bash -c 'git ls-files | while read f; do test -x "$f" && file "$f" 2>/dev/null | grep -q "ELF" && echo "$f"; done | grep -v -E "^\.git/|^build/|^_output/|^.cache/|^scripts/" | grep -q . && { echo "Binary files found in git index"; exit 1; } || exit 0'
         language: system
         pass_filenames: false
 
