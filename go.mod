@@ -1,6 +1,6 @@
 module github.com/rossigee/provider-harbor
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/crossplane/crossplane-runtime/v2 v2.5.0-rc.0
