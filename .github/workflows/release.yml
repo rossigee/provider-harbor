@@ -103,17 +103,6 @@ jobs:
       - name: Vendor Dependencies
         run: go mod vendor
 
-      - name: Install Crossplane CLI v2.5.0 (from our fork)
-        run: |
-          set -e
-          mkdir -p .cache/tools/linux_x86_64
-          echo "Installing crank@v2.5.0 via go install (matches rossigee/build fork)"
-          GOBIN=$(pwd)/.cache/tools/linux_x86_64 go install github.com/crossplane/crossplane/cmd/crank@v2.5.0
-          if [ -f .cache/tools/linux_x86_64/crank ]; then
-            mv .cache/tools/linux_x86_64/crank .cache/tools/linux_x86_64/crossplane-cli-v2.5.0
-          fi
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v2.5.0 || true
-
       - name: Determine Version
         id: version
         run: |
@@ -132,6 +121,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+
+      - name: Install Crossplane CLI v2.5.0
+        run: |
+          set -e
+          mkdir -p .cache/tools/linux_x86_64
+          echo "Installing crossplane-cli v2.5.0 (from cli.crossplane.io to match rossigee/build fork k8s_tools.mk)"
+          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v2.5.0 \
+            --create-dirs https://cli.crossplane.io/stable/v2.5.0/bin/linux_amd64/crossplane
+          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v2.5.0
+          ls -l .cache/tools/linux_x86_64/
 
       - name: Build and Publish Artifacts
         env:
