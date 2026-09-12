@@ -7,7 +7,7 @@ This directory contains examples for creating Harbor users with the provider-har
 The `UserWithGeneratedPassword` resource automatically generates secure random passwords and stores them in Kubernetes secrets:
 
 ```yaml
-apiVersion: user.harbor.crossplane.io/v1alpha1
+apiVersion: user.harbor.m.crossplane.io/v1beta1
 kind: UserWithGeneratedPassword
 metadata:
   name: harbor-user-with-generated-password
@@ -109,7 +109,7 @@ spec:
 You can still create users with pre-existing passwords using the regular `User` resource:
 
 ```yaml
-apiVersion: user.harbor.crossplane.io/v1alpha1
+apiVersion: user.harbor.m.crossplane.io/v1beta1
 kind: User
 metadata:
   name: harbor-user-with-existing-password

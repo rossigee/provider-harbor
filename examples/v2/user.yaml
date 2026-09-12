@@ -13,4 +13,3 @@ spec:
       key: password
   providerConfigRef:
     name: default
-  deletionPolicy: Delete

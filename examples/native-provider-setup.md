@@ -37,7 +37,7 @@ data:
 ### 2. Create ProviderConfig
 
 ```yaml
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
@@ -57,7 +57,7 @@ spec:
 Create a Harbor project with security policies:
 
 ```yaml
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: production-project
@@ -71,7 +71,6 @@ spec:
     severity: "high"
   providerConfigRef:
     name: default
-  deletionPolicy: Delete
 ```
 
 ### Scanner Registration
@@ -79,7 +78,7 @@ spec:
 Register a Trivy vulnerability scanner:
 
 ```yaml
-apiVersion: scanner.harbor.crossplane.io/v1alpha1
+apiVersion: scanner.harbor.m.crossplane.io/v1beta1
 kind: ScannerRegistration
 metadata:
   name: trivy-scanner
@@ -92,7 +91,6 @@ spec:
     accessCredential: "your-scanner-token"
   providerConfigRef:
     name: default
-  deletionPolicy: Delete
 ```
 
 ## Production Use Cases
@@ -100,7 +98,7 @@ spec:
 ### 1. CI/CD Integration Project
 
 ```yaml
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: cicd-project
@@ -115,13 +113,12 @@ spec:
     storageLimit: 10737418240  # 10GB
   providerConfigRef:
     name: default
-  deletionPolicy: Delete
 ```
 
 ### 2. Public Open Source Project
 
 ```yaml
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: opensource-project
@@ -135,7 +132,6 @@ spec:
     severity: "low"
   providerConfigRef:
     name: default
-  deletionPolicy: Delete
 ```
 
 ## Troubleshooting

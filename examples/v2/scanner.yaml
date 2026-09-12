@@ -16,4 +16,3 @@ spec:
     isDefault: true
   providerConfigRef:
     name: default
-  deletionPolicy: Delete

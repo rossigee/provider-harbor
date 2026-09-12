@@ -75,7 +75,7 @@ If migrating from the Terraform-based provider:
 
 1. The API groups have changed:
    - Old: `harbor.crossplane.io/v1alpha1`
-   - New: `project.harbor.crossplane.io/v1alpha1`, `user.harbor.crossplane.io/v1alpha1`, etc.
+   - New: `project.harbor.m.crossplane.io/v1beta1`, `user.harbor.m.crossplane.io/v1beta1`, etc.
 
 2. Some field names may have changed for better Go/Kubernetes conventions
 

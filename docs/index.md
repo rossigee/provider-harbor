@@ -29,6 +29,18 @@ Resources are documented in the API types. Individual resource documentation wil
 | Retention | `retention.harbor.m.crossplane.io/v1beta1` | Retention policies |
 | Replication | `replication.harbor.m.crossplane.io/v1beta1` | Replication policies |
 
-### Other Resources
+### Identity & Scanning
 
-See `apis/` directory for all available resources.
+| Resource | API Group | Description |
+|----------|-----------|-------------|
+| User | `user.harbor.m.crossplane.io/v1beta1` | User accounts |
+| UserGroup | `usergroup.harbor.m.crossplane.io/v1beta1` | LDAP/OIDC group management |
+| Artifact | `artifact.harbor.m.crossplane.io/v1beta1` | Image artifacts and vulnerabilities |
+| Scanner | `scanner.harbor.m.crossplane.io/v1beta1` | Scanner registration |
+| Scan | `scan.harbor.m.crossplane.io/v1beta1` | Vulnerability scan management |
+| Webhook | `webhook.harbor.m.crossplane.io/v1beta1` | Event automation |
+| ProviderConfig | `harbor.m.crossplane.io/v1beta1` | Provider credentials (cluster-scoped) |
+
+## API Coverage Gaps
+
+Harbor API surface not yet modeled: project quotas and CVE allowlists as dedicated resources, immutable tag rules, tag retention under repositories beyond policy resources, OIDC/LDAP configuration endpoints, system-level garbage collection schedules, audit logs, and preheat/artifact-copy policies.

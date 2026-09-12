@@ -18,4 +18,3 @@ spec:
       environment: "production"
   providerConfigRef:
     name: default
-  deletionPolicy: Delete

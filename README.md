@@ -85,19 +85,22 @@ spec:
 
 | Resource | API Group | Description |
 |----------|-----------|-------------|
-| Project | `project.harbor.m.crossplane.io` | Harbor projects and security policies |
-| Registry | `registry.harbor.m.crossplane.io` | Remote registry registration |
-| User | `user.harbor.m.crossplane.io` | User accounts |
-| UserGroup | `usergroup.harbor.m.crossplane.io` | LDAP/HTTP/OIDC group management |
-| Repository | `repository.harbor.m.crossplane.io` | Repository lifecycle and metadata |
-| Artifact | `artifact.harbor.m.crossplane.io` | Image artifact and vulnerability management |
-| Scanner | `scanner.harbor.m.crossplane.io` | Scanner registration |
-| Robot | `robot.harbor.m.crossplane.io` | CI/CD service accounts |
-| Webhook | `webhook.harbor.m.crossplane.io` | Event automation |
-| Replication | `replication.harbor.m.crossplane.io` | Cross-registry replication policies |
-| Retention | `retention.harbor.m.crossplane.io` | Artifact retention policies |
-| Member | `member.harbor.m.crossplane.io` | Project membership and RBAC |
-| Scan | `scan.harbor.m.crossplane.io` | Vulnerability scan management |
+| Project | `project.harbor.m.crossplane.io/v1beta1` | Harbor projects and security policies |
+| Registry | `registry.harbor.m.crossplane.io/v1beta1` | Remote registry registration |
+| User | `user.harbor.m.crossplane.io/v1beta1` | User accounts |
+| UserGroup | `usergroup.harbor.m.crossplane.io/v1beta1` | LDAP/HTTP/OIDC group management |
+| Repository | `repository.harbor.m.crossplane.io/v1beta1` | Repository lifecycle and metadata |
+| Artifact | `artifact.harbor.m.crossplane.io/v1beta1` | Image artifact and vulnerability management |
+| Scanner | `scanner.harbor.m.crossplane.io/v1beta1` | Scanner registration |
+| Robot | `robot.harbor.m.crossplane.io/v1beta1` | CI/CD service accounts |
+| Webhook | `webhook.harbor.m.crossplane.io/v1beta1` | Event automation |
+| Replication | `replication.harbor.m.crossplane.io/v1beta1` | Cross-registry replication policies |
+| Retention | `retention.harbor.m.crossplane.io/v1beta1` | Artifact retention policies |
+| Member | `member.harbor.m.crossplane.io/v1beta1` | Project membership and RBAC |
+| Scan | `scan.harbor.m.crossplane.io/v1beta1` | Vulnerability scan management |
+| ProviderConfig | `harbor.m.crossplane.io/v1beta1` | Provider credentials (cluster-scoped) |
+
+All resources are namespaced `v1beta1` (`.m.` groups) for Crossplane v2 multi-tenancy. See [docs/index.md](docs/index.md) for the full reference and [API coverage gaps](docs/index.md#api-coverage-gaps).
 
 ## Development
 

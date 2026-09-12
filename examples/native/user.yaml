@@ -7,7 +7,7 @@ type: Opaque
 stringData:
   password: "securepassword123"
 ---
-apiVersion: user.harbor.crossplane.io/v1alpha1
+apiVersion: user.harbor.m.crossplane.io/v1beta1
 kind: User
 metadata:
   name: example-user
@@ -24,4 +24,3 @@ spec:
       key: password
   providerConfigRef:
     name: default
-  deletionPolicy: Delete

@@ -31,7 +31,6 @@ spec:
     public: false
   providerConfigRef:
     name: harbor-config
-  deletionPolicy: Delete
 ---
 # Harbor User (v2 namespaced)
 apiVersion: user.harbor.m.crossplane.io/v1beta1
@@ -49,7 +48,6 @@ spec:
       key: password
   providerConfigRef:
     name: harbor-config
-  deletionPolicy: Delete
 ---
 # Harbor Registry (v2 namespaced)
 apiVersion: registry.harbor.m.crossplane.io/v1beta1
@@ -72,7 +70,6 @@ spec:
         key: password
   providerConfigRef:
     name: harbor-config
-  deletionPolicy: Delete
 ---
 # Harbor Scanner Registration (v2 namespaced)
 apiVersion: scanner.harbor.m.crossplane.io/v1beta1
@@ -89,7 +86,6 @@ spec:
     accessCredential: scanner-token
   providerConfigRef:
     name: harbor-config
-  deletionPolicy: Delete
 ---
 # Secret for Harbor credentials (example - replace with actual values)
 apiVersion: v1

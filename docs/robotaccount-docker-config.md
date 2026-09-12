@@ -59,7 +59,7 @@ docker-config-template: |                         # Docker config JSON template
 ### Pattern 1: Legacy Usage (Unchanged)
 
 ```yaml
-apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+apiVersion: robotaccount.harbor.m.crossplane.io/v1beta1
 kind: RobotAccount
 metadata:
   name: legacy-robot
@@ -83,7 +83,7 @@ spec:
 ### Pattern 2: Enhanced Usage
 
 ```yaml
-apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+apiVersion: robotaccount.harbor.m.crossplane.io/v1beta1
 kind: RobotAccount
 metadata:
   name: enhanced-robot
@@ -120,7 +120,7 @@ spec:
   resources:
   - name: robot-account
     base:
-      apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+      apiVersion: robotaccount.harbor.m.crossplane.io/v1beta1
       kind: RobotAccount
       spec:
         writeConnectionSecretToRef:

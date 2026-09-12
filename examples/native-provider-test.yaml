@@ -61,7 +61,7 @@ stringData:
     }
 
 ---
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: harbor-native-config
@@ -75,7 +75,7 @@ spec:
 
 ---
 # Example Harbor Project using native provider
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: native-test-project
@@ -87,4 +87,3 @@ spec:
     public: false
   providerConfigRef:
     name: harbor-native-config
-  deletionPolicy: Delete

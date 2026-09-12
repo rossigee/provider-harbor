@@ -136,7 +136,7 @@ kubectl get project my-project -o jsonpath='{.status.conditions}' | jq
 
 ```yaml
 # ❌ INSECURE: Public project without scanning
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: public-app
@@ -146,7 +146,7 @@ spec:
     public: true  # WARNING: Publicly accessible
 
 # ✅ SECURE: Private project with security controls
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: production
@@ -167,7 +167,7 @@ spec:
 
 ```yaml
 # ❌ WEAK: Robot without expiration
-apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+apiVersion: robotaccount.harbor.m.crossplane.io/v1beta1
 kind: RobotAccount
 metadata:
   name: ci-robot-weak
@@ -184,7 +184,7 @@ spec:
         namespace: myproject
 
 # ✅ STRONG: Robot with time-limited credentials
-apiVersion: robotaccount.harbor.crossplane.io/v1alpha1
+apiVersion: robotaccount.harbor.m.crossplane.io/v1beta1
 kind: RobotAccount
 metadata:
   name: ci-robot-strong
@@ -200,15 +200,14 @@ spec:
           - action: push
             resource: repository
         kind: project
-        namespace: myproject
-  deletionPolicy: Delete  # Clean up on removal
+        namespace: myproject  # Clean up on removal
 ```
 
 ### Webhook Configuration
 
 ```yaml
 # ✅ SECURE: Webhook with authentication and verification
-apiVersion: webhook.harbor.crossplane.io/v1beta1
+apiVersion: webhook.harbor.m.crossplane.io/v1beta1
 kind: Webhook
 metadata:
   name: secure-webhook
@@ -223,7 +222,6 @@ spec:
     authHeader: Bearer YOUR_AUTH_TOKEN  # Authenticate to webhook
     skipCertVerify: false  # Verify TLS certificates
     enabled: true
-  deletionPolicy: Delete
 ```
 
 ### Drift Detection
@@ -251,13 +249,12 @@ deletionPolicy: Delete
 deletionPolicy: Orphan
 
 # Example: Keep Harbor project but remove Crossplane
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: keep-in-harbor
 spec:
-  ...
-  deletionPolicy: Orphan  # Harbor project survives kubectl delete
+  ...  # Harbor project survives kubectl delete
 ```
 
 ### Safe Deletion Flow
@@ -282,7 +279,7 @@ kubectl delete project my-project
 
 ```yaml
 # Region A - Primary Harbor
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: primary
@@ -296,7 +293,7 @@ spec:
 
 # Region B - Secondary Harbor
 ---
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: secondary
@@ -310,7 +307,7 @@ spec:
 
 # Use primary by default, secondary for DR
 ---
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: production
@@ -322,7 +319,7 @@ spec:
 
 # Replicate to secondary for DR
 ---
-apiVersion: replication.harbor.crossplane.io/v1beta1
+apiVersion: replication.harbor.m.crossplane.io/v1beta1
 kind: Replication
 metadata:
   name: dr-replica
@@ -466,14 +463,13 @@ kubectl apply -f webhooks-backup.yaml
 # If all Crossplane resources deleted but Harbor intact,
 # recreate resources with deletionPolicy: Orphan to re-adopt
 
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: production
 spec:
   forProvider:
-    name: production  # Must match existing project in Harbor
-  deletionPolicy: Orphan  # Don't delete from Harbor
+    name: production  # Must match existing project in Harbor  # Don't delete from Harbor
   providerConfigRef:
     name: default
 ```
@@ -654,7 +650,7 @@ kubectl logs -l app=provider-harbor -f | grep -i "connection"
 
 ```yaml
 # Harbor-1 in namespace harbor-prod
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: production
@@ -667,7 +663,7 @@ spec:
       namespace: harbor-prod
 
 ---
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: prod-project
@@ -680,7 +676,7 @@ spec:
 
 # Harbor-2 in namespace harbor-staging
 ---
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: staging
@@ -693,7 +689,7 @@ spec:
       namespace: harbor-staging
 
 ---
-apiVersion: project.harbor.crossplane.io/v1beta1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: staging-project

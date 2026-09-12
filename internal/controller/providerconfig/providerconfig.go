@@ -31,7 +31,7 @@ import (
 	"github.com/rossigee/provider-harbor/apis/v1beta1"
 )
 
-const controllerName = "providerconfig.harbor.crossplane.io"
+const controllerName = "providerconfig.harbor.m.crossplane.io"
 
 // Setup registers the ProviderConfig controller.
 func Setup(mgr ctrl.Manager) error {

@@ -7,7 +7,7 @@ type: Opaque
 stringData:
   access_secret: "registry-access-token"
 ---
-apiVersion: registry.harbor.crossplane.io/v1alpha1
+apiVersion: registry.harbor.m.crossplane.io/v1beta1
 kind: Registry
 metadata:
   name: example-registry
@@ -27,4 +27,3 @@ spec:
         key: access_secret
   providerConfigRef:
     name: default
-  deletionPolicy: Delete

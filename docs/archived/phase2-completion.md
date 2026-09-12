@@ -353,7 +353,6 @@ spec:
     reference: "v1.0.0"
   providerConfigRef:
     name: default
-  deletionPolicy: Delete
 ```
 
 Test:

@@ -10,7 +10,7 @@ stringData:
   password: "changeme"
   insecure: "false"
 ---
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default

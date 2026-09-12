@@ -55,7 +55,7 @@ spec:
 #### New Native Format
 ```yaml
 # NEW - Native provider
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: my-project
@@ -93,7 +93,7 @@ spec:
 #### New Native ProviderConfig
 ```yaml
 # NEW - Native
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
@@ -132,7 +132,7 @@ spec:
 
 ### Scanner Registration
 ```yaml
-apiVersion: scanner.harbor.crossplane.io/v1alpha1
+apiVersion: scanner.harbor.m.crossplane.io/v1beta1
 kind: ScannerRegistration
 metadata:
   name: trivy-scanner

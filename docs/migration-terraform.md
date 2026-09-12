@@ -69,7 +69,7 @@ resources:
 
 ```yaml
 # This works exactly the same with native provider
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project
 metadata:
   name: my-project
@@ -87,7 +87,7 @@ spec:
 
 ```yaml
 # Same format for both Terraform and Native providers
-apiVersion: harbor.crossplane.io/v1beta1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: harbor-config
@@ -110,7 +110,7 @@ spec:
 2. **Create test project with native provider:**
    ```bash
    kubectl apply -f - <<EOF
-   apiVersion: project.harbor.crossplane.io/v1alpha1
+   apiVersion: project.harbor.m.crossplane.io/v1beta1
    kind: Project
    metadata:
      name: native-test

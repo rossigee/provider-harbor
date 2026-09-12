@@ -7,7 +7,7 @@ Guide for configuring the Harbor provider.
 Create a ProviderConfig to configure connection settings:
 
 ```yaml
-apiVersion: harbor.crossplane.io/v1
+apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default

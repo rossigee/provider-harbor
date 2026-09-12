@@ -119,7 +119,7 @@ spec:
 
 ### Harbor Project Example (Unchanged)
 ```yaml
-apiVersion: project.harbor.crossplane.io/v1alpha1
+apiVersion: project.harbor.m.crossplane.io/v1beta1
 kind: Project  
 metadata:
   name: my-harbor-project

@@ -115,7 +115,7 @@ spec:
 #   password: <base64-encoded-password>
 #
 # ---
-# apiVersion: harbor.crossplane.io/v1beta1
+# apiVersion: harbor.m.crossplane.io/v1beta1
 # kind: ProviderConfig
 # metadata:
 #   name: harbor-provider-config
