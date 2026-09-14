@@ -74,70 +74,9 @@ jobs:
 
           make build.all build.artifacts
 
-      - name: Upload XPKG Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: xpkg
-          path: _output/xpkg/linux_amd64/provider-harbor-${{ steps.version.outputs.version }}.xpkg
-
-  publish:
-    runs-on: ubuntu-24.04
-    needs: release
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: '1.27.1'
-
-      - name: Vendor Dependencies
-        run: go mod vendor
-
-      - name: Determine Version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF#refs/tags/}"
-          fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-          echo "Detected version: $VERSION"
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - name: Install Crossplane CLI v2.5.0
+      - name: Publish Artifacts
         run: |
           set -e
-          mkdir -p .cache/tools/linux_x86_64
-          echo "Installing crossplane-cli v2.5.0 (from cli.crossplane.io to match rossigee/build fork k8s_tools.mk)"
-          curl -fsSLo .cache/tools/linux_x86_64/crossplane-cli-v2.5.0 \
-            --create-dirs https://cli.crossplane.io/stable/v2.5.0/bin/linux_amd64/crossplane
-          chmod +x .cache/tools/linux_x86_64/crossplane-cli-v2.5.0
-          ls -l .cache/tools/linux_x86_64/
-
-      - name: Build and Publish Artifacts
-        env:
-          BRANCH_NAME: master
-        run: |
-          set -e
-          echo "Building version ${VERSION}"
           make publish.artifacts \
             REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
             XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \
@@ -146,7 +85,7 @@ jobs:
       - name: Verify Publication
         run: |
           set -e
-          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION="${{ steps.version.outputs.version }}"
           REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}"
 
           echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
@@ -158,6 +97,29 @@ jobs:
             exit 1
           fi
 
+      - name: Upload XPKG Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: xpkg
+          path: _output/xpkg/linux_amd64/provider-harbor-${{ steps.version.outputs.version }}.xpkg
+
+  publish:
+    runs-on: ubuntu-24.04
+    needs: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -166,26 +128,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-
-  verify-publication:
-    needs: publish
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Verify Publication
-        run: |
-          set -e
-
-          VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          PROVIDER_NAME="${{ github.event.repository.name }}"
-          REGISTRY_PATH="ghcr.io/rossigee/${PROVIDER_NAME}"
-
-          echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
-
-          if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
-            DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
-            echo "✅ Verified container image ${VERSION}"
-            echo "   Digest: ${DIGEST}"
-          else
-            echo "❌ Failed to pull container image ${VERSION}"
-            exit 1
-          fi
