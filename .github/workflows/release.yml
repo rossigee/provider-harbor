@@ -1,5 +1,5 @@
-# Custom Release Workflow for provider-harbor
-# Publishes to ghcr.io/rossigee using the crossplane build system.
+# Custom Release Workflow
+# Publishes provider package to ghcr.io using simplified Docker + XPKG approach
 name: Release (Official Workflows)
 
 on:
@@ -60,38 +60,61 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and Push Docker Images
+      - name: Build Artifacts
         run: |
           set -e
+          export VERSION="${{ steps.version.outputs.version }}"
+          export BRANCH_NAME="master"
+          
+          # Build Go binaries, Docker image, and XPKG package
+          make build.all build.artifacts
 
+      - name: Push Docker Image
+        run: |
+          set -e
           export VERSION="${{ steps.version.outputs.version }}"
           export REGISTRY="ghcr.io/${{ github.repository_owner }}"
-          export IMAGE_NAME="harbor"
-
-          echo "Building and pushing ${REGISTRY}/${IMAGE_NAME}:${VERSION}"
-
-          make build.all
-
+          
+          # Extract package name from repository
+          PACKAGE_NAME=$(basename ${{ github.repository }})
+          
+          echo "Pushing multi-arch Docker image to ${REGISTRY}/${PACKAGE_NAME}:${VERSION}"
+          
+          # Push Docker image directly for multi-arch from repo root
           docker buildx build \
-            --file ./cluster/images/harbor/Dockerfile \
             --push \
-            --tag "${REGISTRY}/${IMAGE_NAME}:${VERSION}" \
-            --tag "${REGISTRY}/${IMAGE_NAME}:latest" \
+            --tag "${REGISTRY}/${PACKAGE_NAME}:${VERSION}" \
+            --tag "${REGISTRY}/${PACKAGE_NAME}:latest" \
             --platform linux/amd64,linux/arm64 \
+            --file ./cluster/images/*/Dockerfile \
             .
+
+      - name: Install Crossplane CLI and Publish XPKG
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          REGISTRY="ghcr.io/${{ github.repository_owner }}"
+          PACKAGE_NAME=$(basename ${{ github.repository }})
+          
+          echo "Installing Crossplane CLI and publishing XPKG"
+          go install github.com/crossplane/crossplane/cmd/crank@latest
+          
+          $(go env GOPATH)/bin/crank xpkg push \
+            --package-files _output/xpkg/linux_amd64/${PACKAGE_NAME}-${VERSION}.xpkg \
+            ${REGISTRY}/${PACKAGE_NAME}:${VERSION}
 
       - name: Verify Publication
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
-          REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}"
-
+          REGISTRY_PATH="ghcr.io/${{ github.repository_owner }}/$(basename ${{ github.repository }})"
+          
           echo "Verifying publication to ${REGISTRY_PATH}:${VERSION}"
           if docker pull "${REGISTRY_PATH}:${VERSION}" > /dev/null 2>&1; then
             DIGEST=$(docker inspect "${REGISTRY_PATH}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
-            echo "✅ Verified container image ${VERSION} (${DIGEST})"
+            echo "✅ Verified package ${VERSION} (${DIGEST})"
           else
-            echo "❌ Failed to pull container image ${VERSION}"
+            echo "❌ Failed to pull package ${VERSION}"
             exit 1
           fi
 
@@ -99,7 +122,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: xpkg
-          path: _output/xpkg/linux_amd64/provider-harbor-${{ steps.version.outputs.version }}.xpkg
+          path: _output/xpkg/linux_amd64/$(basename ${{ github.repository }})-${{ steps.version.outputs.version }}.xpkg
 
   publish:
     runs-on: ubuntu-24.04
