@@ -126,7 +126,7 @@ jobs:
 
       - name: Run Gosec Security Scanner
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == ''
-        uses: securego/gosec@master
+        uses: securego/gosec@v2.29.0
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
@@ -148,7 +148,7 @@ jobs:
 
       - name: Check for secrets with TruffleHog
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'secrets' || github.event.inputs.scan_type == ''
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.97.4
         with:
           path: ./
           base: master
@@ -184,7 +184,7 @@ jobs:
 
       - name: Dependency Review
         if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
@@ -238,7 +238,7 @@ jobs:
 #
 # 5. STANDARDIZED VERSION
 #    - Go 1.27.1
-#    - Actions: checkout@v4, setup-go@v6, codeql-action@v4
+#    - Actions: checkout@v7, setup-go@v7, codeql-action@v4
 #    - Runners: ubuntu-24.04
 #
 # To apply this template:
