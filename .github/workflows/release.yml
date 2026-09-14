@@ -73,11 +73,12 @@ jobs:
           make build.all
 
           docker buildx build \
+            --file ./cluster/images/harbor/Dockerfile \
             --push \
             --tag "${REGISTRY}/${IMAGE_NAME}:${VERSION}" \
             --tag "${REGISTRY}/${IMAGE_NAME}:latest" \
             --platform linux/amd64,linux/arm64 \
-            ./cluster/images/provider-harbor
+            .
 
       - name: Verify Publication
         run: |
