@@ -60,27 +60,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build Artifacts
-        run: |
-          set -e  # Fail fast on any error
-
-          export VERSION="${{ steps.version.outputs.version }}"
-
-          echo "Repository: ${{ github.repository }}"
-          echo "Repository owner: ${{ github.repository_owner }}"
-          echo "Version: ${VERSION}"
-
-          export BRANCH_NAME="master"
-
-          make build.all build.artifacts
-
-      - name: Publish Artifacts
+      - name: Build and Push Docker Images
         run: |
           set -e
-          make publish.artifacts \
-            REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
-            XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \
-            BRANCH_NAME=master
+
+          export VERSION="${{ steps.version.outputs.version }}"
+          export REGISTRY="ghcr.io/${{ github.repository_owner }}"
+          export IMAGE_NAME="harbor"
+
+          echo "Building and pushing ${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+
+          make build.all
+
+          docker buildx build \
+            --push \
+            --tag "${REGISTRY}/${IMAGE_NAME}:${VERSION}" \
+            --tag "${REGISTRY}/${IMAGE_NAME}:latest" \
+            --platform linux/amd64,linux/arm64 \
+            ./cluster/images/provider-harbor
 
       - name: Verify Publication
         run: |
