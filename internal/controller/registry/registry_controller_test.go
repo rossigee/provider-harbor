@@ -1005,7 +1005,6 @@ func TestUpdateRegistryWithAllFields(t *testing.T) {
 				}, nil
 			},
 		},
-		kube: nil,
 	}
 
 	_, err := ext.Update(ctx, registry)
@@ -1040,7 +1039,6 @@ func TestCreateRegistryWithoutCredentials(t *testing.T) {
 				}, nil
 			},
 		},
-		kube: nil,
 	}
 
 	_, err := ext.Create(ctx, registry)

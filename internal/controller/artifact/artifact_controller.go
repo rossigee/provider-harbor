@@ -77,12 +77,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
-	return &external{service: svc, kube: c.kube}, nil
+	return &external{service: svc}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
-	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -121,14 +120,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.VulnerabilityCount = &status.VulnerabilityCount
 
 	ctrlutil.SetExternalName(cr, status.Digest)
-
-	// Persist status to API server using status subresource (if kube client available)
-	if c.kube != nil {
-		if err := c.kube.Status().Update(ctx, cr); err != nil {
-			// Log but don't fail observation if status update fails - the resource still exists
-			// and the framework will retry the status update
-		}
-	}
 
 	// Report as up-to-date; managed reconciler will persist status and set Synced
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil

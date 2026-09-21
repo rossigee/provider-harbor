@@ -74,12 +74,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc, kube: c.kube}, nil
+	return &external{service: svc}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
-	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -103,14 +102,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.Role = &status.Role
 	t := metav1.NewTime(status.CreationTime)
 	cr.Status.AtProvider.CreationTime = &t
-
-	// Persist status to API server using status subresource (if kube client available)
-	if c.kube != nil {
-		if err := c.kube.Status().Update(ctx, cr); err != nil {
-			// Log but don't fail observation if status update fails - the resource still exists
-			// and the framework will retry the status update
-		}
-	}
 
 	upToDate := cr.Spec.ForProvider.Role == "" || status.Role == "" || cr.Spec.ForProvider.Role == status.Role
 

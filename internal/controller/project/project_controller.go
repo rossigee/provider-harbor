@@ -69,7 +69,7 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 // is called.
 type connector struct {
 	kube         client.Client
-	newServiceFn func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -88,14 +88,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc, kube: c.kube}, nil
+	return &external{service: svc}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	service harborclients.HarborClienter
-	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -140,14 +139,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.RepoCount = getInt64Ptr(project.RepoCount)
 	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
 	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
-
-	// Persist status to API server using status subresource (if kube client available)
-	if c.kube != nil {
-		if err := c.kube.Status().Update(ctx, cr); err != nil {
-			// Log but don't fail observation if status update fails - the resource still exists
-			// and the framework will retry the status update
-		}
-	}
 
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
@@ -202,14 +193,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
-	}
-
-	// Persist status to API server using status subresource (if kube client available)
-	if c.kube != nil {
-		if err := c.kube.Status().Update(ctx, cr); err != nil {
-			// Log but don't fail creation if status update fails - the resource was created
-			// and the framework will retry the status update
-		}
 	}
 
 	return managed.ExternalCreation{
