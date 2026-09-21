@@ -204,10 +204,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
 
-	// Persist status to API server using status subresource
-	if err := c.kube.Status().Update(ctx, cr); err != nil {
-		// Log but don't fail creation if status update fails - the resource was created
-		// and the framework will retry the status update
+	// Persist status to API server using status subresource (if kube client available)
+	if c.kube != nil {
+		if err := c.kube.Status().Update(ctx, cr); err != nil {
+			// Log but don't fail creation if status update fails - the resource was created
+			// and the framework will retry the status update
+		}
 	}
 
 	return managed.ExternalCreation{
