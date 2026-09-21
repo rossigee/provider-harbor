@@ -112,8 +112,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 			// Persist status to API server using status subresource
 			if c.kube != nil {
-				if err := c.kube.Status().Update(ctx, cr); err != nil {
-					return managed.ExternalObservation{}, errors.Wrap(err, "failed to update status")
+				if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+					return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
 				}
 			}
 
