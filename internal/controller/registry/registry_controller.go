@@ -137,6 +137,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 	cr.Status.AtProvider.Status = getStringPtr("healthy") // Mock status
 
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
 	// Check if resource is up to date
 	upToDate := (cr.Spec.ForProvider.Description == nil || registry.Description == nil || *cr.Spec.ForProvider.Description == *registry.Description) &&
 		cr.Spec.ForProvider.URL == registry.URL &&

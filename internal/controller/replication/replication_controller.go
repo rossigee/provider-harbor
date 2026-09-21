@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/replication/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -104,6 +105,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			cr.Status.AtProvider.CreationTime = &t
 			ut := metav1.NewTime(policy.UpdateTime)
 			cr.Status.AtProvider.UpdateTime = &ut
+
+			// Mark resource as ready/synced so status is persisted
+			cr.SetConditions(xpv1.Available())
 
 			upToDate := true
 			if cr.Spec.ForProvider.Description != nil && policy.Description != nil && *cr.Spec.ForProvider.Description != *policy.Description {

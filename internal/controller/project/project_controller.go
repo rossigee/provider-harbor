@@ -140,6 +140,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
 	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
 
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
 
