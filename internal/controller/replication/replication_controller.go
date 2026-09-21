@@ -106,10 +106,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			ut := metav1.NewTime(policy.UpdateTime)
 			cr.Status.AtProvider.UpdateTime = &ut
 
-			// Persist status to API server using status subresource
-			if err := c.kube.Status().Update(ctx, cr); err != nil {
-				// Log but don't fail observation if status update fails - the resource still exists
-				// and the framework will retry the status update
+			// Persist status to API server using status subresource (if kube client available)
+			if c.kube != nil {
+				if err := c.kube.Status().Update(ctx, cr); err != nil {
+					// Log but don't fail observation if status update fails - the resource still exists
+					// and the framework will retry the status update
+				}
 			}
 
 			upToDate := true

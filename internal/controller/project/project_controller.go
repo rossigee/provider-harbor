@@ -141,10 +141,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
 	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
 
-	// Persist status to API server using status subresource
-	if err := c.kube.Status().Update(ctx, cr); err != nil {
-		// Log but don't fail observation if status update fails - the resource still exists
-		// and the framework will retry the status update
+	// Persist status to API server using status subresource (if kube client available)
+	if c.kube != nil {
+		if err := c.kube.Status().Update(ctx, cr); err != nil {
+			// Log but don't fail observation if status update fails - the resource still exists
+			// and the framework will retry the status update
+		}
 	}
 
 	// Check if resource is up to date
