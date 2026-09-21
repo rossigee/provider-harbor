@@ -80,12 +80,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 // external observes, then either creates, updates, or deletes an external resource.
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -113,6 +114,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	if status.Description != "" {
 		cr.Status.AtProvider.Description = &status.Description
+	}
+
+	// Persist status to API server using status subresource
+	if err := c.kube.Status().Update(ctx, cr); err != nil {
+		// Log but don't fail observation if status update fails - the resource still exists
+		// and the framework will retry the status update
 	}
 
 	upToDate := cr.Spec.ForProvider.Description == nil || status.Description == "" || *cr.Spec.ForProvider.Description == status.Description

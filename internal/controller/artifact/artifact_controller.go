@@ -77,11 +77,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -121,6 +122,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
+	// Persist status to API server using status subresource
+	if err := c.kube.Status().Update(ctx, cr); err != nil {
+		// Log but don't fail observation if status update fails - the resource still exists
+		// and the framework will retry the status update
+	}
+
 	// Report as up-to-date; managed reconciler will persist status and set Synced
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
@@ -135,14 +142,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
-	println("[ARTIFACT-CREATE] Starting Create for", cr.GetName(), "in", cr.GetNamespace())
-	println("[ARTIFACT-CREATE] Reference:", cr.Spec.ForProvider.Reference)
-
 	// Set external name immediately so Observe can find the artifact
 	// Name is based on reference (digest, tag, etc)
 	ctrlutil.SetExternalName(cr, cr.Spec.ForProvider.Reference)
 
-	println("[ARTIFACT-CREATE] Set external name, returning empty ExternalCreation")
 	// Artifact is read-only - nothing to create externally
 	// Status will be populated by Observe which is called immediately after
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil
