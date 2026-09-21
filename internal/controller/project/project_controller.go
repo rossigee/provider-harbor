@@ -88,13 +88,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -142,6 +143,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Mark resource as ready/synced so status is persisted
 	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Update(ctx, cr); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to update status")
+		}
+	}
 
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
@@ -196,6 +204,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
+	}
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Update(ctx, cr); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, "failed to update status")
+		}
 	}
 
 	return managed.ExternalCreation{

@@ -75,11 +75,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -108,6 +109,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 			// Mark resource as ready/synced so status is persisted
 			cr.SetConditions(xpv1.Available())
+
+			// Persist status to API server using status subresource
+			if c.kube != nil {
+				if err := c.kube.Status().Update(ctx, cr); err != nil {
+					return managed.ExternalObservation{}, errors.Wrap(err, "failed to update status")
+				}
+			}
 
 			upToDate := true
 			if cr.Spec.ForProvider.Description != nil && policy.Description != nil && *cr.Spec.ForProvider.Description != *policy.Description {
