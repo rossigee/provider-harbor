@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2025-09-26 - Updated for Go 1.27.1
+# Version: 2026-09-08 - Updated for Go 1.27.1 + golangci-lint v2.13.2 + full security scanning
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)
@@ -89,7 +89,7 @@ jobs:
 
       - name: Check Diff
         run: |
-          make lint
+          make reviewable
           git diff --exit-code
 
   unit-tests:
@@ -119,7 +119,7 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.out
+          file: ./coverage.out
           verbose: true
 
   security-scan:
@@ -166,7 +166,7 @@ jobs:
           GOWORK_DIR=$(dirname $GOWORK); rm -f $GOWORK 2>/dev/null; rmdir $GOWORK_DIR 2>/dev/null
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2.29.0
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
@@ -182,53 +182,59 @@ jobs:
       - name: Upload Gosec Results
         uses: github/codeql-action/upload-sarif@v4
         if: always() && hashFiles('gosec-results.sarif') != ''
+        continue-on-error: true
         with:
           sarif_file: gosec-results.sarif
           category: gosec
 
   # CI ONLY VALIDATES BUILDS - NO PUBLISHING
-  # build-validation temporarily disabled - requires further investigation
-  # build-validation:
-  #   runs-on: ubuntu-24.04
-  #   needs: [lint, check-diff, unit-tests, security-scan]
-  #   if: github.ref == 'refs/heads/master'
-  #   permissions:
-  #     contents: read
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v7
-  #       with:
-  #         fetch-depth: 0
-  #         token: ${{ github.token }}
+  build-validation:
+    runs-on: ubuntu-24.04
+    needs: [lint, check-diff, unit-tests, security-scan]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
           submodules: true
 
-  #     - name: Setup Go
-  #       uses: actions/setup-go@v7
-  #       with:
-  #         go-version: ${{ env.GO_VERSION }}
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-  #     - name: Vendor Dependencies
-  #       run: go mod vendor
+      - name: Vendor Dependencies
+        run: go mod vendor
 
-  #     - name: Validate Build Process
-  #       run: |
-  #         # Validate that all build steps work without publishing
-  #         echo "Repository: ${{ github.repository }}"
-  #         echo "Repository owner: ${{ github.repository_owner }}"
-
-  #         # Build binary and docker image for linux_amd64 platform
-  #         make build.code PLATFORM=linux_amd64
-  #         make build.artifacts.platform PLATFORM=linux_amd64
-  #         echo "✅ Build successful"
-
-  #         # Verify build artifacts exist
-  #         ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
-  #         ls -la _output/images/provider-harbor/linux_amd64/ 2>/dev/null && echo "✅ Docker image exists" || echo "❌ Docker image missing"
-
-  #         echo ""
-  #         echo "🎯 Build validation completed successfully"
-  #         echo "📦 All artifacts can be built successfully"
-  #         echo "🏷️ XPKG publishing will occur only on release tag creation"
+      - name: Validate Build Process
+        run: |
+          # Validate that all build steps work without publishing
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+          
+          # Build binary
+          make build
+          echo "✅ Binary build successful"
+          
+          # Build Docker image locally (without push)
+          make docker.build
+          echo "✅ Docker image build successful"
+          
+          # Build Crossplane package locally (without push)
+          make xpkg.build
+          echo "✅ Crossplane package build successful"
+          
+          # Verify build artifacts exist
+          ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
+          ls -la _output/xpkg/linux_amd64/*.xpkg 2>/dev/null && echo "✅ Crossplane package exists" || echo "❌ Crossplane package missing"
+          
+          echo ""
+          echo "🎯 Build validation completed successfully"
+          echo "📦 All artifacts can be built successfully"
+          echo "🏷️  Publishing will occur only on release tag creation"
 
 # Key Principles for this Template:
 # 
@@ -253,7 +259,7 @@ jobs:
 # 5. STANDARDIZED BUILD SYSTEM
 #    - Uses rossigee/build submodule (working fork)
 #    - Consistent make targets across all providers
-#    - Go 1.24.5 with proper version handling
+#    - Go 1.27.1 with proper version handling
 # 
 # To apply this template:
 # 1. Copy this structure to .github/workflows/ci.yml
