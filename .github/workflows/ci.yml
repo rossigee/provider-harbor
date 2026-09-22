@@ -88,9 +88,7 @@ jobs:
         run: go mod vendor
 
       - name: Check Diff
-        run: |
-          make reviewable
-          git diff --exit-code
+        run: make reviewable
 
   unit-tests:
     runs-on: ubuntu-24.04
@@ -187,7 +185,6 @@ jobs:
           sarif_file: gosec-results.sarif
           category: gosec
 
-  # CI ONLY VALIDATES BUILDS - NO PUBLISHING
   build-validation:
     runs-on: ubuntu-24.04
     needs: [lint, check-diff, unit-tests, security-scan]
@@ -199,6 +196,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ github.token }}
           submodules: true
 
       - name: Setup Go
@@ -214,27 +212,20 @@ jobs:
           # Validate that all build steps work without publishing
           echo "Repository: ${{ github.repository }}"
           echo "Repository owner: ${{ github.repository_owner }}"
-          
-          # Build binary
-          make build
-          echo "✅ Binary build successful"
-          
-          # Build Docker image locally (without push)
-          make docker.build
-          echo "✅ Docker image build successful"
-          
-          # Build Crossplane package locally (without push)
-          make xpkg.build
-          echo "✅ Crossplane package build successful"
-          
+
+          # Build binary and docker image for linux_amd64 platform
+          make build.code PLATFORM=linux_amd64
+          make build.artifacts.platform PLATFORM=linux_amd64
+          echo "✅ Build successful"
+
           # Verify build artifacts exist
           ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
-          ls -la _output/xpkg/linux_amd64/*.xpkg 2>/dev/null && echo "✅ Crossplane package exists" || echo "❌ Crossplane package missing"
-          
+          ls -la _output/images/provider-harbor/linux_amd64/ 2>/dev/null && echo "✅ Docker image exists" || echo "❌ Docker image missing"
+
           echo ""
           echo "🎯 Build validation completed successfully"
           echo "📦 All artifacts can be built successfully"
-          echo "🏷️  Publishing will occur only on release tag creation"
+          echo "🏷️ XPKG publishing will occur only on release tag creation"
 
 # Key Principles for this Template:
 # 

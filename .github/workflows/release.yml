@@ -7,7 +7,12 @@
 # - Verifies successful publication to registry
 # - Creates GitHub release with auto-generated notes
 # - Single source of truth for version and latest tags
- 
+#
+# Changes from 2025-09-26:
+# - Added publication verification step
+# - Uses github.token for registry authentication (OIDC)
+# - Confirmed softprops/action-gh-release@v3 (Node 24 runtime; v2 is Node 20 legacy)
+
 name: Release
 
 on:
@@ -94,7 +99,13 @@ jobs:
           # See: build/makelib/xpkg.mk:125-127 and build/makelib/common.mk:87
           export BRANCH_NAME="master"
 
-          # Build and publish using make targets that handle Docker + Crossplane packages
+          # Build artifacts (binaries + Docker image)
+          make build.all build.artifacts
+
+          # Build Crossplane package (.xpkg)
+          make xpkg.build
+
+          # Publish to registry (Docker image + .xpkg package)
           make publish \
             REGISTRY_ORGS="ghcr.io/${{ github.repository_owner }}" \
             XPKG_REG_ORGS="ghcr.io/${{ github.repository_owner }}" \

@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -80,12 +81,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 // external observes, then either creates, updates, or deletes an external resource.
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -113,6 +115,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	if status.Description != "" {
 		cr.Status.AtProvider.Description = &status.Description
+	}
+
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+		}
 	}
 
 	upToDate := cr.Spec.ForProvider.Description == nil || status.Description == "" || *cr.Spec.ForProvider.Description == status.Description

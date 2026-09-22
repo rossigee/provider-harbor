@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -77,11 +78,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New("artifact: Connect: service is nil after creation")
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -121,6 +123,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ctrlutil.SetExternalName(cr, status.Digest)
 
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+		}
+	}
+
 	// Report as up-to-date; managed reconciler will persist status and set Synced
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
@@ -135,14 +147,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotArtifact)
 	}
 
-	println("[ARTIFACT-CREATE] Starting Create for", cr.GetName(), "in", cr.GetNamespace())
-	println("[ARTIFACT-CREATE] Reference:", cr.Spec.ForProvider.Reference)
-
 	// Set external name immediately so Observe can find the artifact
 	// Name is based on reference (digest, tag, etc)
 	ctrlutil.SetExternalName(cr, cr.Spec.ForProvider.Reference)
 
-	println("[ARTIFACT-CREATE] Set external name, returning empty ExternalCreation")
 	// Artifact is read-only - nothing to create externally
 	// Status will be populated by Observe which is called immediately after
 	return managed.ExternalCreation{ConnectionDetails: managed.ConnectionDetails{}}, nil

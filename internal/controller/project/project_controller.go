@@ -69,7 +69,7 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 // is called.
 type connector struct {
 	kube         client.Client
-	newServiceFn func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -127,7 +127,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Set external name for future reference and adoption tracking
 	ctrlutil.SetExternalName(cr, project.Name)
 
-	// Update status with observed state
+	// Update status with observed state using kube client to persist properly
 	cr.Status.AtProvider.ID = getStringPtr(project.ID)
 	if project.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: project.CreatedAt}
@@ -140,6 +140,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.RepoCount = getInt64Ptr(project.RepoCount)
 	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
 	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
+
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+		}
+	}
 
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
@@ -194,6 +204,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
+	}
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, "failed to patch status")
+		}
 	}
 
 	return managed.ExternalCreation{
