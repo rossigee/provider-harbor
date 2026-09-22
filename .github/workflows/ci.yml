@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2025-09-26 - Updated for Go 1.27.1
+# Version: 2026-09-08 - Updated for Go 1.27.1 + golangci-lint v2.13.2 + full security scanning
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)
@@ -117,7 +117,7 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.out
+          file: ./coverage.out
           verbose: true
 
   security-scan:
@@ -164,7 +164,7 @@ jobs:
           GOWORK_DIR=$(dirname $GOWORK); rm -f $GOWORK 2>/dev/null; rmdir $GOWORK_DIR 2>/dev/null
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2.29.0
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
@@ -180,6 +180,7 @@ jobs:
       - name: Upload Gosec Results
         uses: github/codeql-action/upload-sarif@v4
         if: always() && hashFiles('gosec-results.sarif') != ''
+        continue-on-error: true
         with:
           sarif_file: gosec-results.sarif
           category: gosec
@@ -249,7 +250,7 @@ jobs:
 # 5. STANDARDIZED BUILD SYSTEM
 #    - Uses rossigee/build submodule (working fork)
 #    - Consistent make targets across all providers
-#    - Go 1.24.5 with proper version handling
+#    - Go 1.27.1 with proper version handling
 # 
 # To apply this template:
 # 1. Copy this structure to .github/workflows/ci.yml
