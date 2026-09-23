@@ -57,7 +57,7 @@ stringData:
       "url": "https://harbor.example.com",
       "username": "admin",
       "password": "your-password",
-      "insecure": "false"
+      "insecure": false
     }
 
 ---
