@@ -58,10 +58,13 @@ log "install Harbor (in-cluster, no TLS/persistence)"
 helm repo add harbor https://helm.goharbor.io >/dev/null 2>&1 || true
 helm repo update harbor >/dev/null 2>&1
 k create namespace harbor --dry-run=client -o yaml | k apply -f - >/dev/null
+# trivy.enabled=false: vulnerability scanning is not exercised by
+# apply->Ready->delete uptest cases and was OOM-killing chainsaw on the
+# 7GB ubuntu-24.04 runner alongside kind + full Harbor + Crossplane.
 helm --kube-context "$KCTX" upgrade --install my-harbor harbor/harbor -n harbor \
   --set expose.type=clusterIP --set expose.tls.enabled=false \
   --set externalURL=http://harbor.harbor.svc --set persistence.enabled=false \
-  --set harborAdminPassword="$HARBOR_PASSWORD" --set trivy.enabled=true \
+  --set harborAdminPassword="$HARBOR_PASSWORD" --set trivy.enabled=false \
   --set jobservice.replicas=1 --wait --timeout 10m >/dev/null
 
 log "install provider ${IMAGE}:${VERSION}"
