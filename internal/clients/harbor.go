@@ -31,11 +31,13 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	openapiruntime "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/goharbor/go-client/pkg/harbor"
 	sdkartifact "github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
+	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	sdkrobotv1 "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robotv1"
 	sdkusergroup "github.com/goharbor/go-client/pkg/sdk/v2.0/client/usergroup"
@@ -347,7 +349,128 @@ func (c *HarborClient) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-// CreateProject creates a new Harbor project
+// isNotFoundErr reports whether err is an HTTP 404 from the Harbor API.
+func isNotFoundErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	cause := errors.Cause(err)
+	if apiErr, ok := cause.(*openapiruntime.APIError); ok {
+		return apiErr.Code == http.StatusNotFound
+	}
+	switch cause.(type) {
+	case *sdkproject.DeleteProjectNotFound:
+		return true
+	}
+	return strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "[404]")
+}
+
+// IsNotFound reports whether a Harbor client error means the resource is absent.
+// Controllers use this to decide ResourceExists vs. a real failure.
+func IsNotFound(err error) bool { return isNotFoundErr(err) }
+
+// isConflictErr reports whether err is an HTTP 409 from the Harbor API.
+func isConflictErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	cause := errors.Cause(err)
+	if apiErr, ok := cause.(*openapiruntime.APIError); ok {
+		return apiErr.Code == http.StatusConflict
+	}
+	_, ok := cause.(*sdkproject.CreateProjectConflict)
+	return ok || strings.Contains(err.Error(), "status 409") || strings.Contains(err.Error(), "[409]")
+}
+
+func boolPtrString(b bool) *string {
+	s := strconv.FormatBool(b)
+	return &s
+}
+
+// projectSpecToReq builds a Harbor ProjectReq from the Crossplane project spec.
+func projectSpecToReq(spec *ProjectSpec) *sdkmodels.ProjectReq {
+	req := &sdkmodels.ProjectReq{
+		ProjectName: spec.Name,
+	}
+	public := spec.Public
+	req.Public = &public
+
+	md := &sdkmodels.ProjectMetadata{
+		Public: strconv.FormatBool(spec.Public),
+	}
+	if spec.EnableContentTrust != nil {
+		md.EnableContentTrust = boolPtrString(*spec.EnableContentTrust)
+	}
+	if spec.EnableContentTrustCosign != nil {
+		md.EnableContentTrustCosign = boolPtrString(*spec.EnableContentTrustCosign)
+	}
+	if spec.AutoScanImages != nil {
+		md.AutoScan = boolPtrString(*spec.AutoScanImages)
+	}
+	if spec.PreventVulnerableImages != nil {
+		md.PreventVul = boolPtrString(*spec.PreventVulnerableImages)
+	}
+	if spec.Severity != nil {
+		md.Severity = spec.Severity
+	}
+	for k, v := range spec.Metadata {
+		switch strings.ToLower(k) {
+		case "public":
+			md.Public = v
+		case "auto_scan":
+			md.AutoScan = &v
+		case "enable_content_trust":
+			md.EnableContentTrust = &v
+		case "enable_content_trust_cosign":
+			md.EnableContentTrustCosign = &v
+		case "prevent_vul":
+			md.PreventVul = &v
+		case "severity":
+			md.Severity = &v
+		}
+	}
+	req.Metadata = md
+
+	if len(spec.CVEAllowlist) > 0 {
+		items := make([]*sdkmodels.CVEAllowlistItem, 0, len(spec.CVEAllowlist))
+		for _, id := range spec.CVEAllowlist {
+			items = append(items, &sdkmodels.CVEAllowlistItem{CVEID: id})
+		}
+		req.CVEAllowlist = &sdkmodels.CVEAllowlist{Items: items}
+	}
+	if spec.StorageLimit != nil {
+		req.StorageLimit = spec.StorageLimit
+	}
+	if spec.RegistryID != nil {
+		req.RegistryID = spec.RegistryID
+	}
+	return req
+}
+
+// projectFromModel maps a Harbor Project API model to ProjectStatus.
+func projectFromModel(p *sdkmodels.Project) *ProjectStatus {
+	if p == nil {
+		return nil
+	}
+	public := false
+	if p.Metadata != nil {
+		public = strings.EqualFold(p.Metadata.Public, "true")
+	}
+	status := &ProjectStatus{
+		ID:         strconv.FormatInt(int64(p.ProjectID), 10),
+		Name:       p.Name,
+		Public:     public,
+		CreatedAt:  time.Time(p.CreationTime),
+		UpdatedAt:  time.Time(p.UpdateTime),
+		OwnerID:    int64(p.OwnerID),
+		OwnerName:  p.OwnerName,
+		RepoCount:  p.RepoCount,
+		ChartCount: 0,
+	}
+	return status
+}
+
+// CreateProject creates a new Harbor project via the real Harbor API.
 func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*ProjectStatus, error) {
 	if spec == nil {
 		return nil, errors.New("project spec is required")
@@ -370,18 +493,40 @@ func (c *HarborClient) CreateProject(ctx context.Context, spec *ProjectSpec) (*P
 		"storageLimit", spec.StorageLimit,
 	)
 
-	status := &ProjectStatus{
-		ID:        "1",
+	params := sdkproject.NewCreateProjectParams()
+	params.WithProject(projectSpecToReq(spec))
+	created, err := v2Client.Project.CreateProject(ctx, params)
+	if err != nil {
+		if isConflictErr(err) {
+			// Project already exists — return its current state.
+			return c.GetProject(ctx, spec.Name)
+		}
+		return nil, errors.Wrapf(err, "failed to create project %q", spec.Name)
+	}
+
+	// 201 has an empty body; re-read the project for full status.
+	status, err := c.GetProject(ctx, spec.Name)
+	if err == nil && status != nil {
+		return status, nil
+	}
+
+	// Fall back to parsing the Location header (…/projects/{id}).
+	id := ""
+	if created != nil && created.Location != "" {
+		parts := strings.Split(strings.TrimSuffix(created.Location, "/"), "/")
+		id = parts[len(parts)-1]
+	}
+	return &ProjectStatus{
+		ID:        id,
 		Name:      spec.Name,
 		Public:    spec.Public,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}
-
-	return status, nil
+	}, nil
 }
 
-// GetProject retrieves a Harbor project by name or ID
+// GetProject retrieves a Harbor project by name or ID.
+// Returns an error when the project does not exist (HTTP 404).
 func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*ProjectStatus, error) {
 	if projectName == "" {
 		return nil, errors.New("project name is required")
@@ -394,17 +539,19 @@ func (c *HarborClient) GetProject(ctx context.Context, projectName string) (*Pro
 
 	c.logger.Info("Retrieving Harbor project", "name", projectName)
 
-	status := &ProjectStatus{
-		ID:        "1",
-		Name:      projectName,
-		Public:    false,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
+	params := sdkproject.NewGetProjectParams()
+	params.WithProjectNameOrID(projectName)
+	resp, err := v2Client.Project.GetProject(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "project %q not found", projectName)
+		}
+		return nil, errors.Wrapf(err, "failed to get project %q", projectName)
 	}
-
-	return status, nil
+	return projectFromModel(resp.Payload), nil
 }
 
-// UpdateProject updates an existing Harbor project
+// UpdateProject updates an existing Harbor project via the real Harbor API.
 func (c *HarborClient) UpdateProject(ctx context.Context, projectName string, spec *ProjectSpec) (*ProjectStatus, error) {
 	if projectName == "" {
 		return nil, errors.New("project name is required")
@@ -428,18 +575,20 @@ func (c *HarborClient) UpdateProject(ctx context.Context, projectName string, sp
 		"storageLimit", spec.StorageLimit,
 	)
 
-	status := &ProjectStatus{
-		ID:        "1",
-		Name:      projectName,
-		Public:    spec.Public,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
-		UpdatedAt: time.Now(),
+	// Harbor PATCH accepts ProjectReq; keep the name aligned with the path key.
+	req := projectSpecToReq(spec)
+	req.ProjectName = projectName
+	params := sdkproject.NewUpdateProjectParams()
+	params.WithProjectNameOrID(projectName)
+	params.WithProject(req)
+	if _, err := v2Client.Project.UpdateProject(ctx, params); err != nil {
+		return nil, errors.Wrapf(err, "failed to update project %q", projectName)
 	}
-
-	return status, nil
+	return c.GetProject(ctx, projectName)
 }
 
-// DeleteProject deletes a Harbor project
+// DeleteProject deletes a Harbor project via the real Harbor API.
+// A 404 is treated as success (already gone).
 func (c *HarborClient) DeleteProject(ctx context.Context, projectName string) error {
 	if projectName == "" {
 		return errors.New("project name is required")
@@ -450,39 +599,45 @@ func (c *HarborClient) DeleteProject(ctx context.Context, projectName string) er
 		return errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
 	c.logger.Info("Deleting Harbor project", "name", projectName)
 
-	// In production, this would make actual Harbor API delete calls
-	// For now, we acknowledge the operation was attempted
+	params := sdkproject.NewDeleteProjectParams()
+	params.WithProjectNameOrID(projectName)
+	if _, err := v2Client.Project.DeleteProject(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "failed to delete project %q", projectName)
+	}
 	return nil
 }
 
-// ListProjects lists Harbor projects
+// ListProjects lists Harbor projects via the real Harbor API.
 func (c *HarborClient) ListProjects(ctx context.Context) ([]*ProjectStatus, error) {
 	v2Client := c.clientSet.V2()
 	if v2Client == nil {
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	// Log the operation for debugging
 	c.logger.Info("Listing Harbor projects")
 
-	// Mock response structure for demonstration
-	// In production, this would query Harbor API and parse the response
-	projects := []*ProjectStatus{
-		{
-			Name:      "library",
-			Public:    true,
-			CreatedAt: time.Now().Add(-7 * 24 * time.Hour),
-		},
-		{
-			Name:      "my-project",
-			Public:    false,
-			CreatedAt: time.Now().Add(-3 * 24 * time.Hour),
-		},
+	page := int64(1)
+	pageSize := int64(100)
+	params := sdkproject.NewListProjectsParams()
+	params.WithPage(&page)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.Project.ListProjects(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list projects")
 	}
 
+	projects := make([]*ProjectStatus, 0, len(resp.Payload))
+	for _, p := range resp.Payload {
+		if st := projectFromModel(p); st != nil {
+			projects = append(projects, st)
+		}
+	}
 	return projects, nil
 }
 

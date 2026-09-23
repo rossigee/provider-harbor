@@ -6,6 +6,8 @@ package member
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -33,6 +35,8 @@ const (
 func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.MemberGroupVersionKind.Kind)
 
+	fmt.Fprintf(os.Stderr, "DEBUG: Member controller Setup called\n")
+
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
@@ -51,12 +55,15 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 		opts...,
 	)
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1beta1.Member{}).
 		Complete(r)
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Member controller Setup completed with error: %v\n", err)
+	return err
 }
 
 type connector struct {
@@ -70,8 +77,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New(errNotMember)
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Connect name=%s\n", mg.GetName())
+
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Connect failed: %v\n", err)
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
@@ -93,13 +103,20 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotMember)
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Observe name=%s project=%s user=%s\n",
+		cr.GetName(), cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
+
 	status, err := c.service.GetProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: GetProjectMember error: %v\n", err)
 		return managed.ExternalObservation{}, err
 	}
 	if status == nil {
+		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: GetProjectMember not found -> ResourceExists=false\n")
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: found member id=%s role=%s\n", status.ID, status.Role)
 
 	// Snapshot cr before mutation for use in MergeFrom patch
 	original := cr.DeepCopy()

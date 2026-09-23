@@ -109,10 +109,10 @@ kubectl config use-context "$KCTX" >/dev/null
 LOGFILE="/tmp/provider-harbor-e2e-debug.log"
 echo "[$(date)] Starting provider log capture during e2e test" > "$LOGFILE"
 (
-  # Wait a bit for provider pod to start
-  sleep 10
-  # Stream logs continuously with follow flag
-  timeout 700 kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true -f >> "$LOGFILE" 2>&1 || true
+  # Give the pod a moment to appear, then follow. Also dump a full non-follow
+  # snapshot after the test so early lines are not lost if -f attaches late.
+  sleep 5
+  timeout 700 kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true --tail=-1 -f >> "$LOGFILE" 2>&1 || true
 ) &
 LOG_PID=$!
 trap "kill $LOG_PID 2>/dev/null || true" EXIT
@@ -135,6 +135,9 @@ if [ $rc -ne 0 ]; then
   log "e2e test failed, dumping captured provider logs"
   echo "=== Captured Provider Logs During Test ===" >&2
   cat "$LOGFILE" >&2 || true
+  echo "" >&2
+  echo "=== Full Provider Logs (non-follow snapshot) ===" >&2
+  kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true --tail=5000 >&2 || true
   echo "" >&2
   echo "=== Provider Pod Events ===" >&2
   k describe pod -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor >&2 || true
