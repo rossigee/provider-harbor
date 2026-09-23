@@ -150,7 +150,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		URL:            cr.Spec.ForProvider.URL,
 		EventTypes:     cr.Spec.ForProvider.EventTypes,
 		AuthHeader:     cr.Spec.ForProvider.AuthHeader,
-		SkipCertVerify: *cr.Spec.ForProvider.SkipCertVerify,
+		SkipCertVerify: cr.Spec.ForProvider.SkipCertVerify != nil && *cr.Spec.ForProvider.SkipCertVerify,
 	}
 
 	_, err := c.service.CreateWebhook(ctx, spec)
@@ -182,7 +182,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		URL:            cr.Spec.ForProvider.URL,
 		EventTypes:     cr.Spec.ForProvider.EventTypes,
 		AuthHeader:     cr.Spec.ForProvider.AuthHeader,
-		SkipCertVerify: *cr.Spec.ForProvider.SkipCertVerify,
+		SkipCertVerify: cr.Spec.ForProvider.SkipCertVerify != nil && *cr.Spec.ForProvider.SkipCertVerify,
 	}
 
 	_, err := c.service.UpdateWebhook(ctx, cr.Spec.ForProvider.ProjectID, *cr.Status.AtProvider.ID, spec)

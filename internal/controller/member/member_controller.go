@@ -97,6 +97,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, err
 	}
+	if status == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
 
 	// Snapshot cr before mutation for use in MergeFrom patch
 	original := cr.DeepCopy()
