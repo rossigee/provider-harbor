@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +46,7 @@ import (
 	providerconfigv1beta1 "github.com/rossigee/provider-harbor/apis/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -218,7 +218,7 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	authInfo := httptransport.BasicAuth(config.Username, config.Password)
 	robotv1Client := sdkrobotv1.New(clientSet.V2().Transport, strfmt.Default, authInfo)
 
-	logger := logging.NewNopLogger().WithValues("client", "harbor")
+	logger := logging.NewLogrLogger(ctrllog.Log.WithName("harbor").WithValues("client", "harbor"))
 
 	return &HarborClient{
 		clientSet:  clientSet,
@@ -278,23 +278,25 @@ func NewHarborClientFromProviderConfig(ctx context.Context, k8sClient client.Cli
 		credentialKey = "credentials"
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credentials key: %s\n", credentialKey)
-	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Secret data keys: %v\n", func() []string {
-		keys := []string{}
-		for k := range secret.Data {
-			keys = append(keys, k)
-		}
-		return keys
-	}())
+	logger := logging.NewLogrLogger(ctrllog.Log.WithName("harbor").WithValues("client", "providerconfig"))
+	secretKeys := make([]string, 0, len(secret.Data))
+	for k := range secret.Data {
+		secretKeys = append(secretKeys, k)
+	}
+	logger.Debug("resolving Harbor credentials",
+		"key", credentialKey,
+		"secretKeys", secretKeys,
+		"providerConfig", configRef.Name,
+	)
 
 	// Get the credential data from the secret
 	credentialData, ok := secret.Data[credentialKey]
 	if !ok {
-		_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Key %s not found\n", credentialKey)
+		logger.Debug("credentials key not found in secret", "key", credentialKey)
 		return nil, errors.Errorf("key %q not found in credentials secret", credentialKey)
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "DEBUG: Credential data length: %d\n", len(credentialData))
+	logger.Debug("loaded credentials blob", "key", credentialKey, "bytes", len(credentialData))
 
 	// Parse credentials as JSON (standard Crossplane format)
 	credentialJSON := &HarborConfig{}
@@ -1826,7 +1828,10 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 		})
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot creating system robot with name=%s, permissions=%d\n", spec.Name, len(permissions))
+	c.logger.Debug("creating system robot",
+		"name", spec.Name,
+		"permissionCount", len(permissions),
+	)
 
 	// Calculate duration
 	duration := int64(-1) // -1 means never expires
@@ -1847,7 +1852,7 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 
 	resp, err := v2Client.Robot.CreateRobot(ctx, params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot API FAILED: %v\n", err)
+		c.logger.Info("CreateRobot system API failed", "name", spec.Name, "error", err.Error())
 		return nil, errors.Wrap(err, "failed to create robot account")
 	}
 
@@ -1892,7 +1897,11 @@ func (c *HarborClient) createProjectRobot(ctx context.Context, spec *RobotSpec, 
 		body.ExpiresAt = time.Now().Add(time.Duration(*spec.ExpiresIn) * 24 * time.Hour).Unix()
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobot creating project robot project=%s name=%s access=%d\n", projectID, name, len(access))
+	c.logger.Debug("creating project robot",
+		"projectId", projectID,
+		"name", name,
+		"accessCount", len(access),
+	)
 
 	params := sdkrobotv1.NewCreateRobotV1Params()
 	params.WithProjectNameOrID(projectID)
@@ -1900,7 +1909,11 @@ func (c *HarborClient) createProjectRobot(ctx context.Context, spec *RobotSpec, 
 
 	resp, err := c.robotv1.CreateRobotV1(ctx, params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: CreateRobotV1 API FAILED: %v\n", err)
+		c.logger.Info("CreateRobotV1 project API failed",
+			"projectId", projectID,
+			"name", name,
+			"error", err.Error(),
+		)
 		return nil, errors.Wrap(err, "failed to create project robot account")
 	}
 
@@ -1933,14 +1946,14 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: ListRobots calling system API\n")
+	c.logger.Debug("ListRobots calling system API")
 	params := sdkrobot.NewListRobotParams()
 	pageSize := int64(100)
 	params.PageSize = &pageSize
 
 	resp, err := v2Client.Robot.ListRobot(ctx, params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: ListRobots API FAILED: %v\n", err)
+		c.logger.Info("ListRobots system API failed", "error", err.Error())
 		return nil, errors.Wrap(err, "failed to list robot accounts")
 	}
 
@@ -1965,7 +1978,7 @@ func (c *HarborClient) listProjectRobots(ctx context.Context, projectID string) 
 
 	resp, err := c.robotv1.ListRobotV1(ctx, params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_HARBOR: ListRobotV1 API FAILED: %v\n", err)
+		c.logger.Info("ListRobotV1 project API failed", "projectId", projectID, "error", err.Error())
 		return nil, errors.Wrap(err, "failed to list project robot accounts")
 	}
 

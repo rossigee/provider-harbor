@@ -78,13 +78,31 @@ if [ "${PRIVATE:-true}" = "true" ]; then
     --dry-run=client -o yaml | k apply -f - >/dev/null
   PULL_REF=$'\n  packagePullSecrets:\n    - name: ghcr-pull'
 fi
+# Enable --debug so Debug-level logs (from logging.Logger) appear in pod logs.
 cat <<EOF | k apply -f -
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-harbor-runtime-config
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            args:
+            - --debug
+---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: ${PROVIDER}
 spec:
   package: ${IMAGE}:${VERSION}${PULL_REF}
+  runtimeConfigRef:
+    name: provider-harbor-runtime-config
 EOF
 log "wait provider Healthy"
 for i in $(seq 1 60); do

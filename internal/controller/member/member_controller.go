@@ -6,8 +6,6 @@ package member
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"time"
 
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -34,15 +32,17 @@ const (
 
 func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.MemberGroupVersionKind.Kind)
+	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Member controller Setup called\n")
+	log.Info("setting up Member controller")
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			newServiceFn: harborclients.NewHarborClientFromProviderConfig,
+			logger:       log,
 		}),
-		managed.WithLogger(logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))),
+		managed.WithLogger(log),
 		managed.WithPollInterval(1 * time.Minute),
 	}
 
@@ -62,13 +62,16 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 		For(&v1beta1.Member{}).
 		Complete(r)
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Member controller Setup completed with error: %v\n", err)
+	if err != nil {
+		log.Info("Member controller setup failed", "error", err.Error())
+	}
 	return err
 }
 
 type connector struct {
 	kube         client.Client
 	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
+	logger       logging.Logger
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
@@ -77,20 +80,36 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New(errNotMember)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Connect name=%s\n", mg.GetName())
+	log := c.log().WithValues("name", mg.GetName())
+	log.Debug("connecting Member resource")
 
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Connect failed: %v\n", err)
+		log.Info("Member Connect failed", "error", err.Error())
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc, kube: c.kube}, nil
+	return &external{service: svc, kube: c.kube, logger: c.logger}, nil
+}
+
+func (c *connector) log() logging.Logger {
+	if c.logger == nil {
+		return logging.NewNopLogger()
+	}
+	return c.logger
 }
 
 type external struct {
 	service harborclients.HarborClienter
 	kube    client.Client
+	logger  logging.Logger
+}
+
+func (c *external) log() logging.Logger {
+	if c.logger == nil {
+		return logging.NewNopLogger()
+	}
+	return c.logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -103,20 +122,20 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotMember)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: Observe name=%s project=%s user=%s\n",
-		cr.GetName(), cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
+	log := c.log().WithValues("name", cr.GetName(), "project", cr.Spec.ForProvider.ProjectID, "user", cr.Spec.ForProvider.Username)
+	log.Debug("observing Member")
 
 	status, err := c.service.GetProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: GetProjectMember error: %v\n", err)
+		log.Info("GetProjectMember failed", "error", err.Error())
 		return managed.ExternalObservation{}, err
 	}
 	if status == nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: GetProjectMember not found -> ResourceExists=false\n")
+		log.Debug("member not found")
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_MEMBER: found member id=%s role=%s\n", status.ID, status.Role)
+	log.Debug("found member", "id", status.ID, "role", status.Role)
 
 	// Snapshot cr before mutation for use in MergeFrom patch
 	original := cr.DeepCopy()
