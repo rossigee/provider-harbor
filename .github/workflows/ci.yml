@@ -213,14 +213,19 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           echo "Repository owner: ${{ github.repository_owner }}"
 
-          # Build binary and docker image for linux_amd64 platform
-          make build.code PLATFORM=linux_amd64
-          make build.artifacts.platform PLATFORM=linux_amd64
+          # Build binary; container image is built as part of make build
+          # (build.artifacts.platform → do.build.images). There is no
+          # standalone docker.build target in build/makelib.
+          make build
           echo "✅ Build successful"
+
+          # Build Crossplane package locally (without push)
+          make xpkg.build
+          echo "✅ Crossplane package build successful"
 
           # Verify build artifacts exist
           ls -la _output/bin/linux_amd64/provider 2>/dev/null && echo "✅ Provider binary exists" || echo "❌ Provider binary missing"
-          ls -la _output/images/provider-harbor/linux_amd64/ 2>/dev/null && echo "✅ Docker image exists" || echo "❌ Docker image missing"
+          ls -la _output/xpkg/linux_amd64/*.xpkg 2>/dev/null && echo "✅ Crossplane package exists" || echo "❌ Crossplane package missing"
 
           echo ""
           echo "🎯 Build validation completed successfully"
