@@ -136,8 +136,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	log.Debug("searching for robot", "searchName", searchName)
 
+	desiredName := cr.Spec.ForProvider.Name
 	for _, robot := range robots {
-		if robot.Name == searchName || robot.Name == cr.Spec.ForProvider.Name {
+		// Harbor stores project robots as "<project>+<name>" and returns
+		// them as "robot$<project>+<name>"; also match bare desired name.
+		if robot.Name == searchName || robot.Name == desiredName ||
+			strings.HasSuffix(robot.Name, "+"+desiredName) ||
+			strings.HasSuffix(robot.Name, "+"+strings.TrimPrefix(searchName, "robot$")) {
 			log.Debug("found robot", "robotName", robot.Name, "id", robot.ID)
 
 			ctrlutil.SetExternalName(cr, robot.Name)
