@@ -15,8 +15,12 @@ IMAGES_PROJECT="${IMAGES_PROJECT:-uptest-images}"
 
 echo "uptest-setup: namespace + secrets + ProviderConfig in $NS"
 ${KUBECTL} create namespace "$NS" --dry-run=client -o yaml | ${KUBECTL} apply -f -
+# Provider expects JSON {url,username,password} at secretRef.key (see
+# internal/clients/harbor.go NewHarborClientFromProviderConfig + the
+# examples/providerconfig/providerconfig.yaml documented layout).
+CREDS_JSON="$(printf '{"url":"%s","username":"admin","password":"%s"}' "$HARBOR_URL" "$HARBOR_PASSWORD")"
 ${KUBECTL} -n "$NS" create secret generic harbor-creds \
-  --from-literal=url="$HARBOR_URL" --from-literal=username=admin --from-literal=password="$HARBOR_PASSWORD" \
+  --from-literal=credentials="$CREDS_JSON" \
   --dry-run=client -o yaml | ${KUBECTL} apply -f -
 ${KUBECTL} -n "$NS" create secret generic user-password \
   --from-literal=password='Uptest-User-123' \
@@ -26,14 +30,13 @@ apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: harbor-e2e
-  namespace: ${NS}
 spec:
   credentials:
     source: Secret
     secretRef:
       namespace: ${NS}
       name: harbor-creds
-      key: password
+      key: credentials
 YAML
 
 echo "uptest-setup: seeding image into project '${IMAGES_PROJECT}' (in-cluster Job)"
