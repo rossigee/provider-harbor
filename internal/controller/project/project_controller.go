@@ -127,6 +127,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Set external name for future reference and adoption tracking
 	ctrlutil.SetExternalName(cr, project.Name)
 
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
+
 	// Update status with observed state using kube client to persist properly
 	cr.Status.AtProvider.ID = getStringPtr(project.ID)
 	if project.CreatedAt != (time.Time{}) {
@@ -146,7 +149,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Persist status to API server using status subresource
 	if c.kube != nil {
-		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
 			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
 		}
 	}
@@ -173,6 +176,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotProject)
 	}
+
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
 
 	cr.SetConditions(xpv1.Creating())
 
@@ -208,7 +214,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	// Persist status to API server using status subresource
 	if c.kube != nil {
-		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, "failed to patch status")
 		}
 	}

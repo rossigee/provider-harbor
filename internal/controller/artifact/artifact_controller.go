@@ -110,6 +110,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrapf(err, "failed to get artifact projectID=%s repo=%s ref=%s", projectID, repoName, reference)
 	}
 
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
+
 	// Populate status fields
 	cr.Status.AtProvider.ID = &status.ID
 	cr.Status.AtProvider.Digest = &status.Digest
@@ -128,7 +131,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Persist status to API server using status subresource
 	if c.kube != nil {
-		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(cr)); err != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
 			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
 		}
 	}
