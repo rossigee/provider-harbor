@@ -6,7 +6,6 @@ package project
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -108,9 +107,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotProject)
 	}
-
-	// Debug: confirm Observe is being called
-	fmt.Printf("[DEBUG] Project.Observe called for %s/%s\n", cr.GetNamespace(), cr.GetName())
 
 	// Check if the project exists in Harbor using external name if set, otherwise use desired name
 	externalName := ctrlutil.GetExternalName(cr)
