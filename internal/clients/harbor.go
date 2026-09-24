@@ -2797,7 +2797,7 @@ func (c *HarborClient) DeleteWebhook(ctx context.Context, projectID, webhookID s
 
 // ReplicationPolicyFilter defines filter rules for replication
 type ReplicationPolicyFilter struct {
-	Type  string // repository, tag, label, resource
+	Type  string // name, tag, label, resource
 	Value string
 }
 

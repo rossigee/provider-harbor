@@ -99,10 +99,10 @@ spec:
                       description: ReplicationFilter defines filter rules for replication
                       properties:
                         type:
-                          description: 'Type is the filter type: repository, tag,
-                            label, resource'
+                          description: 'Type is the filter type: name, tag, label,
+                            resource'
                           enum:
-                          - repository
+                          - name
                           - tag
                           - label
                           - resource

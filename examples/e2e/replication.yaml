@@ -29,7 +29,7 @@ spec:
     trigger: manual
     enabled: true
     filters:
-      - type: repository
+      - type: name
         value: "**"
   providerConfigRef:
     kind: ProviderConfig
