@@ -93,6 +93,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	webhooks, err := c.service.ListWebhooks(ctx, cr.Spec.ForProvider.ProjectID)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		return managed.ExternalObservation{}, err
 	}
 

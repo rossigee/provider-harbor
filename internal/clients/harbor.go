@@ -1736,6 +1736,10 @@ func (c *HarborClient) GetProjectMember(ctx context.Context, projectID, username
 
 	listResp, err := v2Client.Member.ListProjectMembers(ctx, listParams)
 	if err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("GetProjectMember: project not found; treating member as absent", "projectId", projectID, "username", username)
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "failed to list project members")
 	}
 	for _, e := range listResp.Payload {
@@ -1745,6 +1749,10 @@ func (c *HarborClient) GetProjectMember(ctx context.Context, projectID, username
 			params.WithMid(e.ID)
 			resp, err := v2Client.Member.GetProjectMember(ctx, params)
 			if err != nil {
+				if isNotFoundErr(err) {
+					c.logger.Info("GetProjectMember: member vanished; treating as absent", "projectId", projectID, "username", username)
+					return nil, nil
+				}
 				return nil, errors.Wrap(err, "failed to get project member")
 			}
 			memberType := "user"
@@ -1816,6 +1824,10 @@ func (c *HarborClient) DeleteProjectMember(ctx context.Context, projectID, usern
 
 	mid, err := c.findMemberMid(ctx, projectID, username)
 	if err != nil {
+		if isNotFoundErr(err) || strings.Contains(err.Error(), "not found") {
+			c.logger.Info("DeleteProjectMember: project or member already absent", "projectId", projectID, "username", username)
+			return nil
+		}
 		return err
 	}
 
@@ -1825,6 +1837,10 @@ func (c *HarborClient) DeleteProjectMember(ctx context.Context, projectID, usern
 	params.WithProjectNameOrID(projectID)
 	params.WithMid(mid)
 	if _, err := v2Client.Member.DeleteProjectMember(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("DeleteProjectMember: member already gone", "projectId", projectID, "username", username)
+			return nil
+		}
 		return errors.Wrap(err, "failed to delete project member")
 	}
 	return nil
@@ -2671,6 +2687,10 @@ func (c *HarborClient) DeleteWebhook(ctx context.Context, projectID, webhookID s
 
 	_, err = v2Client.Webhook.DeleteWebhookPolicyOfProject(ctx, params)
 	if err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("DeleteWebhook: webhook or project already absent", "projectId", projectID, "webhookId", webhookID)
+			return nil
+		}
 		c.logger.Info("DeleteWebhook: API call failed", "error", err.Error(), "projectId", projectID, "webhookId", webhookID)
 		return errors.Wrap(err, "failed to delete webhook")
 	}

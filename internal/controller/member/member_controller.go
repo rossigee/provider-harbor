@@ -127,6 +127,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	status, err := c.service.GetProjectMember(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Username)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			log.Debug("member or project not found")
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		log.Info("GetProjectMember failed", "error", err.Error())
 		return managed.ExternalObservation{}, err
 	}
