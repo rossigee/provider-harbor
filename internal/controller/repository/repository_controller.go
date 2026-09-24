@@ -102,7 +102,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	status, err := c.service.GetRepository(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Name)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		return managed.ExternalObservation{}, errors.Wrap(err, errRepositoryGet)
+	}
+	if status == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	// Snapshot cr before mutation for use in MergeFrom patch
@@ -158,7 +164,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		// Repository already exists
 		return managed.ExternalCreation{}, nil
 	}
+	if !harborclients.IsNotFound(err) {
+		return managed.ExternalCreation{}, errors.Wrap(err, errRepositoryCreate)
+	}
 
+	// Harbor has no create-repository API; repositories appear when the first
+	// artifact is pushed. Update sets description if the repo already exists
+	// from a prior push; a 404 here means the image has not been pushed yet.
 	_, err = c.service.UpdateRepository(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Name, spec)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errRepositoryCreate)

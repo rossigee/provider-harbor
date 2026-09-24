@@ -37,6 +37,7 @@ import (
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
 	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
 	sdkregistry "github.com/goharbor/go-client/pkg/sdk/v2.0/client/registry"
+	sdkrepository "github.com/goharbor/go-client/pkg/sdk/v2.0/client/repository"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	sdkuser "github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
 	sdkusergroup "github.com/goharbor/go-client/pkg/sdk/v2.0/client/usergroup"
@@ -370,6 +371,9 @@ func isNotFoundErr(err error) bool {
 	case *sdkuser.GetUserNotFound, *sdkuser.DeleteUserNotFound, *sdkuser.UpdateUserProfileNotFound:
 		return true
 	case *sdkregistry.GetRegistryNotFound, *sdkregistry.DeleteRegistryNotFound:
+		return true
+	case *sdkrepository.GetRepositoryNotFound, *sdkrepository.DeleteRepositoryNotFound,
+		*sdkrepository.UpdateRepositoryNotFound, *sdkrepository.ListRepositoriesNotFound:
 		return true
 	}
 	return strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "[404]")
@@ -1309,6 +1313,30 @@ type RepositoryStatus struct {
 	Description   string    `json:"description"`
 }
 
+func repositoryStatusFromModel(m *sdkmodels.Repository, projectID, repoName string) *RepositoryStatus {
+	if m == nil {
+		return nil
+	}
+	fullName := m.Name
+	if fullName == "" {
+		fullName = projectID + "/" + repoName
+	}
+	st := &RepositoryStatus{
+		ID:            strconv.FormatInt(m.ID, 10),
+		FullName:      fullName,
+		ProjectID:     projectID,
+		ArtifactCount: m.ArtifactCount,
+		Description:   m.Description,
+	}
+	if m.CreationTime != nil {
+		st.CreationTime = time.Time(*m.CreationTime)
+	}
+	if !m.UpdateTime.IsZero() {
+		st.UpdateTime = time.Time(m.UpdateTime)
+	}
+	return st
+}
+
 // ListRepositories lists repositories in a Harbor project
 func (c *HarborClient) ListRepositories(ctx context.Context, projectID string) ([]*RepositoryStatus, error) {
 	if projectID == "" {
@@ -1322,27 +1350,27 @@ func (c *HarborClient) ListRepositories(ctx context.Context, projectID string) (
 
 	c.logger.Info("Listing Harbor repositories", "projectId", projectID)
 
-	// The actual Harbor API call would be implemented here
-	// repositories, err := v2Client.Repository.ListRepositories(ctx, &repository.ListRepositoriesParams{
-	//     ProjectID: projectID,
-	// })
+	params := sdkrepository.NewListRepositoriesParams().WithProjectName(projectID)
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
 
-	repos := []*RepositoryStatus{
-		{
-			ID:            "1",
-			FullName:      projectID + "/my-app",
-			ProjectID:     projectID,
-			ArtifactCount: 5,
-			CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
-			UpdateTime:    time.Now().Add(-1 * time.Hour),
-			Description:   "My application repository",
-		},
+	resp, err := v2Client.Repository.ListRepositories(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "project %q not found", projectID)
+		}
+		return nil, errors.Wrapf(err, "failed to list repositories in project %q", projectID)
 	}
 
+	repos := make([]*RepositoryStatus, 0, len(resp.Payload))
+	for _, m := range resp.Payload {
+		repos = append(repos, repositoryStatusFromModel(m, projectID, m.Name))
+	}
 	return repos, nil
 }
 
-// GetRepository retrieves a specific Harbor repository
+// GetRepository retrieves a specific Harbor repository.
+// Returns an error matching isNotFoundErr when the repository is absent.
 func (c *HarborClient) GetRepository(ctx context.Context, projectID, repoName string) (*RepositoryStatus, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID is required")
@@ -1358,26 +1386,20 @@ func (c *HarborClient) GetRepository(ctx context.Context, projectID, repoName st
 
 	c.logger.Info("Retrieving Harbor repository", "projectId", projectID, "name", repoName)
 
-	// The actual Harbor API call would be implemented here
-	// repository, err := v2Client.Repository.GetRepository(ctx, &repository.GetRepositoryParams{
-	//     ProjectID: projectID,
-	//     RepositoryName: repoName,
-	// })
-
-	status := &RepositoryStatus{
-		ID:            "1",
-		FullName:      projectID + "/" + repoName,
-		ProjectID:     projectID,
-		ArtifactCount: 5,
-		CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:    time.Now(),
-		Description:   "Repository description",
+	params := sdkrepository.NewGetRepositoryParams().
+		WithProjectName(projectID).
+		WithRepositoryName(repoName)
+	resp, err := v2Client.Repository.GetRepository(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "repository %q not found", projectID+"/"+repoName)
+		}
+		return nil, errors.Wrapf(err, "failed to get repository %q", projectID+"/"+repoName)
 	}
-
-	return status, nil
+	return repositoryStatusFromModel(resp.Payload, projectID, repoName), nil
 }
 
-// UpdateRepository updates a Harbor repository
+// UpdateRepository updates a Harbor repository (description metadata).
 func (c *HarborClient) UpdateRepository(ctx context.Context, projectID, repoName string, spec *RepositorySpec) (*RepositoryStatus, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID is required")
@@ -1396,26 +1418,26 @@ func (c *HarborClient) UpdateRepository(ctx context.Context, projectID, repoName
 
 	c.logger.Info("Updating Harbor repository", "projectId", projectID, "name", repoName)
 
-	// The actual Harbor API call would be implemented here
-	// err := v2Client.Repository.UpdateRepository(ctx, &repository.UpdateRepositoryParams{
-	//     ProjectID: projectID,
-	//     RepositoryName: repoName,
-	// })
-
-	status := &RepositoryStatus{
-		ID:            "1",
-		FullName:      projectID + "/" + repoName,
-		ProjectID:     projectID,
-		ArtifactCount: 5,
-		CreationTime:  time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:    time.Now(),
-		Description:   *spec.Description,
+	upd := &sdkmodels.Repository{}
+	if spec.Description != nil {
+		upd.Description = *spec.Description
 	}
 
-	return status, nil
+	params := sdkrepository.NewUpdateRepositoryParams().
+		WithProjectName(projectID).
+		WithRepositoryName(repoName).
+		WithRepository(upd)
+	if _, err := v2Client.Repository.UpdateRepository(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "repository %q not found", projectID+"/"+repoName)
+		}
+		return nil, errors.Wrapf(err, "failed to update repository %q", projectID+"/"+repoName)
+	}
+
+	return c.GetRepository(ctx, projectID, repoName)
 }
 
-// DeleteRepository deletes a Harbor repository
+// DeleteRepository deletes a Harbor repository. A missing repository is success.
 func (c *HarborClient) DeleteRepository(ctx context.Context, projectID, repoName string) error {
 	if projectID == "" {
 		return errors.New("project ID is required")
@@ -1431,12 +1453,17 @@ func (c *HarborClient) DeleteRepository(ctx context.Context, projectID, repoName
 
 	c.logger.Info("Deleting Harbor repository", "projectId", projectID, "name", repoName)
 
-	// The actual Harbor API call would be implemented here
-	// err := v2Client.Repository.DeleteRepository(ctx, &repository.DeleteRepositoryParams{
-	//     ProjectID: projectID,
-	//     RepositoryName: repoName,
-	// })
-
+	params := sdkrepository.NewDeleteRepositoryParams().
+		WithProjectName(projectID).
+		WithRepositoryName(repoName)
+	if _, err := v2Client.Repository.DeleteRepository(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("DeleteRepository: repository already absent",
+				"projectId", projectID, "name", repoName)
+			return nil
+		}
+		return errors.Wrapf(err, "failed to delete repository %q", projectID+"/"+repoName)
+	}
 	return nil
 }
 
