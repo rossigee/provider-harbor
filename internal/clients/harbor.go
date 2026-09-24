@@ -37,6 +37,7 @@ import (
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
 	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
 	sdkregistry "github.com/goharbor/go-client/pkg/sdk/v2.0/client/registry"
+	sdkreplication "github.com/goharbor/go-client/pkg/sdk/v2.0/client/replication"
 	sdkrepository "github.com/goharbor/go-client/pkg/sdk/v2.0/client/repository"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	sdkuser "github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
@@ -375,6 +376,8 @@ func isNotFoundErr(err error) bool {
 	case *sdkrepository.GetRepositoryNotFound, *sdkrepository.DeleteRepositoryNotFound,
 		*sdkrepository.UpdateRepositoryNotFound, *sdkrepository.ListRepositoriesNotFound:
 		return true
+	case *sdkreplication.DeleteReplicationPolicyNotFound, *sdkreplication.UpdateReplicationPolicyNotFound:
+		return true
 	}
 	return strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "[404]")
 }
@@ -393,7 +396,8 @@ func isConflictErr(err error) bool {
 		return apiErr.Code == http.StatusConflict
 	}
 	switch cause.(type) {
-	case *sdkproject.CreateProjectConflict, *sdkregistry.CreateRegistryConflict:
+	case *sdkproject.CreateProjectConflict, *sdkregistry.CreateRegistryConflict,
+		*sdkreplication.CreateReplicationPolicyConflict:
 		return true
 	}
 	return strings.Contains(err.Error(), "status 409") || strings.Contains(err.Error(), "[409]")
@@ -2836,6 +2840,122 @@ type ReplicationExecution struct {
 	FailedCount  int64
 }
 
+func replicationPolicyStatusFromModel(m *sdkmodels.ReplicationPolicy) *ReplicationPolicyStatus {
+	st := &ReplicationPolicyStatus{
+		ID:      strconv.FormatInt(m.ID, 10),
+		Name:    m.Name,
+		Enabled: m.Enabled,
+	}
+	if m.Description != "" {
+		d := m.Description
+		st.Description = &d
+	}
+	if !m.CreationTime.IsZero() {
+		st.CreationTime = time.Time(m.CreationTime)
+	}
+	if !m.UpdateTime.IsZero() {
+		st.UpdateTime = time.Time(m.UpdateTime)
+	}
+	return st
+}
+
+func replicationExecutionStatusFromModel(m *sdkmodels.ReplicationExecution) *ReplicationExecution {
+	st := &ReplicationExecution{
+		ID:           strconv.FormatInt(m.ID, 10),
+		PolicyID:     strconv.FormatInt(m.PolicyID, 10),
+		Status:       m.Status,
+		SuccessCount: m.Succeed,
+		FailedCount:  m.Failed,
+	}
+	if !m.StartTime.IsZero() {
+		st.StartTime = time.Time(m.StartTime)
+	}
+	if !m.EndTime.IsZero() {
+		st.EndTime = time.Time(m.EndTime)
+	}
+	return st
+}
+
+// buildReplicationPolicyModel maps the client spec onto a Harbor ReplicationPolicy body.
+// DestinationReg.Name (and optional SourceRegistry) are resolved to registry IDs.
+func (c *HarborClient) buildReplicationPolicyModel(ctx context.Context, spec *ReplicationPolicySpec) (*sdkmodels.ReplicationPolicy, error) {
+	if spec == nil {
+		return nil, errors.New("spec is required")
+	}
+	if spec.Name == "" {
+		return nil, errors.New("policy name is required")
+	}
+	if spec.DestinationReg == nil || spec.DestinationReg.Name == "" {
+		return nil, errors.New("destination registry is required")
+	}
+
+	dest, err := c.findRegistryModel(ctx, spec.DestinationReg.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "destination registry %q", spec.DestinationReg.Name)
+	}
+
+	policy := &sdkmodels.ReplicationPolicy{
+		Name:              spec.Name,
+		Enabled:           spec.Enabled != nil && *spec.Enabled,
+		Override:          spec.Override != nil && *spec.Override,
+		ReplicateDeletion: spec.DeleteSourceTag != nil && *spec.DeleteSourceTag,
+		DestNamespace:     spec.DestinationReg.Namespace,
+		DestRegistry:      &sdkmodels.Registry{ID: dest.ID, Name: dest.Name, Type: dest.Type, URL: dest.URL},
+	}
+	if spec.Description != nil {
+		policy.Description = *spec.Description
+	}
+	trigger := spec.Trigger
+	if trigger == "" {
+		trigger = "manual"
+	}
+	policy.Trigger = &sdkmodels.ReplicationTrigger{Type: trigger}
+
+	if spec.SourceRegistry != nil && *spec.SourceRegistry != "" {
+		src, err := c.findRegistryModel(ctx, *spec.SourceRegistry)
+		if err != nil {
+			return nil, errors.Wrapf(err, "source registry %q", *spec.SourceRegistry)
+		}
+		policy.SrcRegistry = &sdkmodels.Registry{ID: src.ID, Name: src.Name, Type: src.Type, URL: src.URL}
+	}
+
+	policy.Filters = make([]*sdkmodels.ReplicationFilter, 0, len(spec.Filters))
+	for _, f := range spec.Filters {
+		policy.Filters = append(policy.Filters, &sdkmodels.ReplicationFilter{
+			Type:       f.Type,
+			Decoration: "matches",
+			Value:      f.Value,
+		})
+	}
+	return policy, nil
+}
+
+// findReplicationPolicyModel resolves a policy by exact name via ListReplicationPolicies.
+// Empty list matches isNotFoundErr via the "status 404" string.
+func (c *HarborClient) findReplicationPolicyModel(ctx context.Context, name string) (*sdkmodels.ReplicationPolicy, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	params := sdkreplication.NewListReplicationPoliciesParams().WithContext(ctx)
+	params.WithDefaults()
+	params.WithName(&name)
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.Replication.ListReplicationPolicies(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list replication policies")
+	}
+	for _, p := range resp.Payload {
+		if p.Name == name {
+			return p, nil
+		}
+	}
+	return nil, errors.Errorf("replication policy %q not found (status 404)", name)
+}
+
 // CreateReplicationPolicy creates a new replication policy
 func (c *HarborClient) CreateReplicationPolicy(ctx context.Context, spec *ReplicationPolicySpec) (*ReplicationPolicyStatus, error) {
 	if spec == nil {
@@ -2858,16 +2978,30 @@ func (c *HarborClient) CreateReplicationPolicy(ctx context.Context, spec *Replic
 		"destination", spec.DestinationReg.Name,
 		"trigger", spec.Trigger)
 
-	policy := &ReplicationPolicyStatus{
-		ID:           "1",
-		Name:         spec.Name,
-		Description:  spec.Description,
-		Enabled:      spec.Enabled != nil && *spec.Enabled,
-		CreationTime: time.Now(),
-		UpdateTime:   time.Now(),
+	body, err := c.buildReplicationPolicyModel(ctx, spec)
+	if err != nil {
+		return nil, err
 	}
 
-	return policy, nil
+	params := sdkreplication.NewCreateReplicationPolicyParams().WithContext(ctx)
+	params.WithPolicy(body)
+	if _, err := v2Client.Replication.CreateReplicationPolicy(ctx, params); err != nil {
+		if isConflictErr(err) {
+			m, findErr := c.findReplicationPolicyModel(ctx, spec.Name)
+			if findErr != nil {
+				return nil, errors.Wrap(err, "failed to create replication policy")
+			}
+			return replicationPolicyStatusFromModel(m), nil
+		}
+		return nil, errors.Wrapf(err, "failed to create replication policy %q", spec.Name)
+	}
+
+	// 201 has an empty body; re-read by name for full status.
+	m, err := c.findReplicationPolicyModel(ctx, spec.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "replication policy %q created but not readable", spec.Name)
+	}
+	return replicationPolicyStatusFromModel(m), nil
 }
 
 // ListReplicationPolicies lists all replication policies
@@ -2879,16 +3013,20 @@ func (c *HarborClient) ListReplicationPolicies(ctx context.Context) ([]*Replicat
 
 	c.logger.Info("Listing Harbor replication policies")
 
-	policies := []*ReplicationPolicyStatus{
-		{
-			ID:           "1",
-			Name:         "mirror-to-registry",
-			Enabled:      true,
-			CreationTime: time.Now().Add(-7 * 24 * time.Hour),
-			UpdateTime:   time.Now(),
-		},
+	params := sdkreplication.NewListReplicationPoliciesParams().WithContext(ctx)
+	params.WithDefaults()
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.Replication.ListReplicationPolicies(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list replication policies")
 	}
 
+	policies := make([]*ReplicationPolicyStatus, 0, len(resp.Payload))
+	for _, m := range resp.Payload {
+		policies = append(policies, replicationPolicyStatusFromModel(m))
+	}
 	return policies, nil
 }
 
@@ -2903,17 +3041,23 @@ func (c *HarborClient) GetReplicationPolicy(ctx context.Context, policyID string
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Retrieving Harbor replication policy", "policyId", policyID)
-
-	policy := &ReplicationPolicyStatus{
-		ID:           policyID,
-		Name:         "mirror-to-registry",
-		Enabled:      true,
-		CreationTime: time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:   time.Now(),
+	id, err := strconv.ParseInt(policyID, 10, 64)
+	if err != nil {
+		return nil, errors.Errorf("invalid policy ID %q", policyID)
 	}
 
-	return policy, nil
+	c.logger.Info("Retrieving Harbor replication policy", "policyId", policyID)
+
+	params := sdkreplication.NewGetReplicationPolicyParams().WithContext(ctx)
+	params.WithID(id)
+	resp, err := v2Client.Replication.GetReplicationPolicy(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "replication policy %q not found", policyID)
+		}
+		return nil, errors.Wrapf(err, "failed to get replication policy %q", policyID)
+	}
+	return replicationPolicyStatusFromModel(resp.Payload), nil
 }
 
 // UpdateReplicationPolicy updates a replication policy
@@ -2930,18 +3074,34 @@ func (c *HarborClient) UpdateReplicationPolicy(ctx context.Context, policyID str
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Updating Harbor replication policy", "policyId", policyID, "name", spec.Name)
-
-	policy := &ReplicationPolicyStatus{
-		ID:           policyID,
-		Name:         spec.Name,
-		Description:  spec.Description,
-		Enabled:      spec.Enabled != nil && *spec.Enabled,
-		CreationTime: time.Now().Add(-7 * 24 * time.Hour),
-		UpdateTime:   time.Now(),
+	id, err := strconv.ParseInt(policyID, 10, 64)
+	if err != nil {
+		return nil, errors.Errorf("invalid policy ID %q", policyID)
 	}
 
-	return policy, nil
+	c.logger.Info("Updating Harbor replication policy", "policyId", policyID, "name", spec.Name)
+
+	body, err := c.buildReplicationPolicyModel(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+	body.ID = id
+
+	params := sdkreplication.NewUpdateReplicationPolicyParams().WithContext(ctx)
+	params.WithID(id)
+	params.WithPolicy(body)
+	if _, err := v2Client.Replication.UpdateReplicationPolicy(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "replication policy %q not found", policyID)
+		}
+		if isConflictErr(err) {
+			return c.GetReplicationPolicy(ctx, policyID)
+		}
+		return nil, errors.Wrapf(err, "failed to update replication policy %q", policyID)
+	}
+
+	// 200 has no body; re-read for full status.
+	return c.GetReplicationPolicy(ctx, policyID)
 }
 
 // DeleteReplicationPolicy deletes a replication policy
@@ -2955,8 +3115,21 @@ func (c *HarborClient) DeleteReplicationPolicy(ctx context.Context, policyID str
 		return errors.New("failed to get Harbor v2 client")
 	}
 
+	id, err := strconv.ParseInt(policyID, 10, 64)
+	if err != nil {
+		return errors.Errorf("invalid policy ID %q", policyID)
+	}
+
 	c.logger.Info("Deleting Harbor replication policy", "policyId", policyID)
 
+	params := sdkreplication.NewDeleteReplicationPolicyParams().WithContext(ctx)
+	params.WithID(id)
+	if _, err := v2Client.Replication.DeleteReplicationPolicy(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "failed to delete replication policy %q", policyID)
+	}
 	return nil
 }
 
@@ -2971,15 +3144,30 @@ func (c *HarborClient) TriggerReplication(ctx context.Context, policyID string) 
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Triggering Harbor replication", "policyId", policyID)
-
-	execution := &ReplicationExecution{
-		ID:        "1",
-		PolicyID:  policyID,
-		Status:    "pending",
-		StartTime: time.Now(),
+	id, err := strconv.ParseInt(policyID, 10, 64)
+	if err != nil {
+		return nil, errors.Errorf("invalid policy ID %q", policyID)
 	}
 
+	c.logger.Info("Triggering Harbor replication", "policyId", policyID)
+
+	params := sdkreplication.NewStartReplicationParams().WithContext(ctx)
+	params.WithExecution(&sdkmodels.StartReplicationExecution{PolicyID: id})
+	resp, err := v2Client.Replication.StartReplication(ctx, params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to start replication for policy %q", policyID)
+	}
+
+	execution := &ReplicationExecution{
+		PolicyID: policyID,
+		Status:   "Pending",
+	}
+	if resp.Location != "" {
+		parts := strings.Split(strings.TrimRight(resp.Location, "/"), "/")
+		if n := len(parts); n > 0 {
+			execution.ID = parts[n-1]
+		}
+	}
 	return execution, nil
 }
 
@@ -2994,20 +3182,28 @@ func (c *HarborClient) ListReplicationExecutions(ctx context.Context, policyID s
 		return nil, errors.New("failed to get Harbor v2 client")
 	}
 
-	c.logger.Info("Listing Harbor replication executions", "policyId", policyID)
-
-	executions := []*ReplicationExecution{
-		{
-			ID:           "1",
-			PolicyID:     policyID,
-			Status:       "completed",
-			StartTime:    time.Now().Add(-1 * time.Hour),
-			EndTime:      time.Now(),
-			SuccessCount: 42,
-			FailedCount:  0,
-		},
+	id, err := strconv.ParseInt(policyID, 10, 64)
+	if err != nil {
+		return nil, errors.Errorf("invalid policy ID %q", policyID)
 	}
 
+	c.logger.Info("Listing Harbor replication executions", "policyId", policyID)
+
+	params := sdkreplication.NewListReplicationExecutionsParams().WithContext(ctx)
+	params.WithDefaults()
+	params.WithPolicyID(&id)
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.Replication.ListReplicationExecutions(ctx, params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to list executions for policy %q", policyID)
+	}
+
+	executions := make([]*ReplicationExecution, 0, len(resp.Payload))
+	for _, m := range resp.Payload {
+		executions = append(executions, replicationExecutionStatusFromModel(m))
+	}
 	return executions, nil
 }
 
