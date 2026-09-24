@@ -36,10 +36,12 @@ import (
 	sdkartifact "github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
 	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
+	sdkquota "github.com/goharbor/go-client/pkg/sdk/v2.0/client/quota"
 	sdkregistry "github.com/goharbor/go-client/pkg/sdk/v2.0/client/registry"
 	sdkreplication "github.com/goharbor/go-client/pkg/sdk/v2.0/client/replication"
 	sdkrepository "github.com/goharbor/go-client/pkg/sdk/v2.0/client/repository"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
+	sdksysteminfo "github.com/goharbor/go-client/pkg/sdk/v2.0/client/systeminfo"
 	sdkuser "github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
 	sdkusergroup "github.com/goharbor/go-client/pkg/sdk/v2.0/client/usergroup"
 	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
@@ -3543,6 +3545,58 @@ func (c *HarborClient) DeleteUserGroup(ctx context.Context, groupID int64) error
 		return errors.Wrap(err, "failed to delete user group")
 	}
 	return nil
+}
+
+// GetQuotaForProject retrieves quota for a specific project
+func (c *HarborClient) GetQuotaForProject(ctx context.Context, projectID string) (*sdkmodels.Quota, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID is required")
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Getting quota for project", "projectID", projectID)
+
+	ref := "project"
+	params := sdkquota.NewListQuotasParams()
+	params.WithReference(&ref)
+	params.WithReferenceID(&projectID)
+
+	resp, err := v2Client.Quota.ListQuotas(ctx, params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to list quotas for project %s", projectID)
+	}
+
+	if len(resp.Payload) == 0 {
+		return nil, errors.Errorf("no quota found for project %s", projectID)
+	}
+
+	return resp.Payload[0], nil
+}
+
+// GetSystemInfo retrieves Harbor system information
+func (c *HarborClient) GetSystemInfo(ctx context.Context) (*sdkmodels.GeneralInfo, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	c.logger.Info("Getting Harbor system information")
+
+	params := sdksysteminfo.NewGetSystemInfoParams()
+	resp, err := v2Client.Systeminfo.GetSystemInfo(ctx, params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get system info")
+	}
+
+	if resp.Payload == nil {
+		return nil, errors.New("system info response is empty")
+	}
+
+	return resp.Payload, nil
 }
 
 // Helper functions
