@@ -85,7 +85,7 @@ func TestObserveRegistryNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockRegistryClient{
 			getRegistryFunc: func(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
-				return nil, errors.New("not found")
+				return nil, errors.New(`registry "docker-hub" not found (status 404)`)
 			},
 		},
 	}
@@ -96,6 +96,38 @@ func TestObserveRegistryNotFound(t *testing.T) {
 	}
 	if obs.ResourceExists {
 		t.Error("ResourceExists should be false when registry not found")
+	}
+}
+
+func TestObserveRegistryTransientError(t *testing.T) {
+	ctx := context.Background()
+	registry := &v1beta1.Registry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-registry",
+		},
+		Spec: v1beta1.RegistrySpec{
+			ForProvider: v1beta1.RegistryParameters{
+				Name: "docker-hub",
+				Type: "docker-hub",
+				URL:  "https://docker.io",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRegistryClient{
+			getRegistryFunc: func(ctx context.Context, registryName string) (*harborclients.RegistryStatus, error) {
+				return nil, errors.New("connection refused")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, registry)
+	if err == nil {
+		t.Error("Observe should fail on non-404 errors")
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false on error observation")
 	}
 }
 

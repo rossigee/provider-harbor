@@ -36,6 +36,7 @@ import (
 	sdkartifact "github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
 	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
+	sdkregistry "github.com/goharbor/go-client/pkg/sdk/v2.0/client/registry"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
 	sdkuser "github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
 	sdkusergroup "github.com/goharbor/go-client/pkg/sdk/v2.0/client/usergroup"
@@ -163,10 +164,12 @@ type RegistryCredential struct {
 
 // RegistryStatus represents the status of a Harbor registry
 type RegistryStatus struct {
+	ID          int64     `json:"id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description,omitempty"`
 	Type        string    `json:"type"`
 	URL         string    `json:"url"`
+	Status      string    `json:"status,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -366,6 +369,8 @@ func isNotFoundErr(err error) bool {
 		return true
 	case *sdkuser.GetUserNotFound, *sdkuser.DeleteUserNotFound, *sdkuser.UpdateUserProfileNotFound:
 		return true
+	case *sdkregistry.GetRegistryNotFound, *sdkregistry.DeleteRegistryNotFound:
+		return true
 	}
 	return strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "[404]")
 }
@@ -383,8 +388,11 @@ func isConflictErr(err error) bool {
 	if apiErr, ok := cause.(*openapiruntime.APIError); ok {
 		return apiErr.Code == http.StatusConflict
 	}
-	_, ok := cause.(*sdkproject.CreateProjectConflict)
-	return ok || strings.Contains(err.Error(), "status 409") || strings.Contains(err.Error(), "[409]")
+	switch cause.(type) {
+	case *sdkproject.CreateProjectConflict, *sdkregistry.CreateRegistryConflict:
+		return true
+	}
+	return strings.Contains(err.Error(), "status 409") || strings.Contains(err.Error(), "[409]")
 }
 
 func boolPtrString(b bool) *string {
@@ -1096,6 +1104,51 @@ func (c *HarborClient) DeleteUser(ctx context.Context, username string) error {
 	return nil
 }
 
+func registryStatusFromModel(m *sdkmodels.Registry) *RegistryStatus {
+	st := &RegistryStatus{
+		ID:     m.ID,
+		Name:   m.Name,
+		Type:   m.Type,
+		URL:    m.URL,
+		Status: m.Status,
+	}
+	if m.Description != "" {
+		st.Description = &m.Description
+	}
+	if !m.CreationTime.IsZero() {
+		st.CreatedAt = time.Time(m.CreationTime)
+	}
+	if !m.UpdateTime.IsZero() {
+		st.UpdatedAt = time.Time(m.UpdateTime)
+	}
+	return st
+}
+
+// findRegistryModel resolves a registry by exact name via ListRegistries.
+// Returns an error matching isNotFoundErr when the registry is absent.
+func (c *HarborClient) findRegistryModel(ctx context.Context, registryName string) (*sdkmodels.Registry, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	params := sdkregistry.NewListRegistriesParams()
+	params.WithName(&registryName)
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.Registry.ListRegistries(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list registries")
+	}
+	for _, r := range resp.Payload {
+		if r.Name == registryName {
+			return r, nil
+		}
+	}
+	return nil, errors.Errorf("registry %q not found (status 404)", registryName)
+}
+
 // CreateRegistry creates a new Harbor registry
 func (c *HarborClient) CreateRegistry(ctx context.Context, spec *RegistrySpec) (*RegistryStatus, error) {
 	if spec == nil {
@@ -1115,26 +1168,33 @@ func (c *HarborClient) CreateRegistry(ctx context.Context, spec *RegistrySpec) (
 
 	c.logger.Info("Creating Harbor registry", "name", spec.Name, "url", spec.URL, "type", spec.Type)
 
-	// The actual Harbor API call would be implemented here
-	// registryReq := &models.RegistryUpdate{
-	//     Name: spec.Name,
-	//     URL: spec.URL,
-	//     Type: spec.Type,
-	// }
-	// _, err := v2Client.Registry.CreateRegistry(ctx, &registry.CreateRegistryParams{
-	//     Registry: registryReq,
-	// })
-
-	status := &RegistryStatus{
-		Name:        spec.Name,
-		Description: spec.Description,
-		Type:        spec.Type,
-		URL:         spec.URL,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+	reg := &sdkmodels.Registry{
+		Name:     spec.Name,
+		Type:     spec.Type,
+		URL:      spec.URL,
+		Insecure: spec.Insecure,
+	}
+	if spec.Description != nil {
+		reg.Description = *spec.Description
+	}
+	if spec.Credential != nil {
+		reg.Credential = &sdkmodels.RegistryCredential{
+			Type:         spec.Credential.Type,
+			AccessKey:    spec.Credential.AccessKey,
+			AccessSecret: spec.Credential.AccessSecret,
+		}
 	}
 
-	return status, nil
+	params := sdkregistry.NewCreateRegistryParams().WithRegistry(reg)
+	if _, err := v2Client.Registry.CreateRegistry(ctx, params); err != nil {
+		if isConflictErr(err) {
+			c.logger.Info("CreateRegistry: already exists; re-reading", "name", spec.Name)
+			return c.GetRegistry(ctx, spec.Name)
+		}
+		return nil, errors.Wrap(err, "failed to create registry")
+	}
+
+	return c.GetRegistry(ctx, spec.Name)
 }
 
 // GetRegistry retrieves a Harbor registry by name
@@ -1143,28 +1203,13 @@ func (c *HarborClient) GetRegistry(ctx context.Context, registryName string) (*R
 		return nil, errors.New("registry name is required")
 	}
 
-	v2Client := c.clientSet.V2()
-	if v2Client == nil {
-		return nil, errors.New("failed to get Harbor v2 client")
-	}
-
 	c.logger.Info("Retrieving Harbor registry", "name", registryName)
 
-	// The actual Harbor API call would be implemented here
-	// registry, err := v2Client.Registry.GetRegistry(ctx, &registry.GetRegistryParams{
-	//     RegistryID: registryName,
-	// })
-
-	status := &RegistryStatus{
-		Name:        registryName,
-		Description: func() *string { s := "External registry"; return &s }(),
-		Type:        "docker-registry",
-		URL:         "https://registry.example.com",
-		CreatedAt:   time.Now().Add(-24 * time.Hour),
-		UpdatedAt:   time.Now().Add(-24 * time.Hour),
+	m, err := c.findRegistryModel(ctx, registryName)
+	if err != nil {
+		return nil, err
 	}
-
-	return status, nil
+	return registryStatusFromModel(m), nil
 }
 
 // UpdateRegistry updates an existing Harbor registry
@@ -1183,30 +1228,37 @@ func (c *HarborClient) UpdateRegistry(ctx context.Context, registryName string, 
 
 	c.logger.Info("Updating Harbor registry", "name", registryName, "url", spec.URL, "type", spec.Type)
 
-	// The actual Harbor API call would be implemented here
-	// registryReq := &models.RegistryUpdate{
-	//     Name: spec.Name,
-	//     URL: spec.URL,
-	//     Type: spec.Type,
-	// }
-	// err := v2Client.Registry.UpdateRegistry(ctx, &registry.UpdateRegistryParams{
-	//     RegistryID: registryName,
-	//     Registry: registryReq,
-	// })
-
-	status := &RegistryStatus{
-		Name:        registryName,
-		Description: spec.Description,
-		Type:        spec.Type,
-		URL:         spec.URL,
-		CreatedAt:   time.Now().Add(-24 * time.Hour),
-		UpdatedAt:   time.Now(),
+	m, err := c.findRegistryModel(ctx, registryName)
+	if err != nil {
+		return nil, err
 	}
 
-	return status, nil
+	upd := &sdkmodels.RegistryUpdate{
+		Name:     &spec.Name,
+		URL:      &spec.URL,
+		Insecure: &spec.Insecure,
+	}
+	if spec.Description != nil {
+		upd.Description = spec.Description
+	}
+	if spec.Credential != nil {
+		upd.CredentialType = &spec.Credential.Type
+		upd.AccessKey = &spec.Credential.AccessKey
+		upd.AccessSecret = &spec.Credential.AccessSecret
+	}
+
+	params := sdkregistry.NewUpdateRegistryParams().WithID(m.ID).WithRegistry(upd)
+	if _, err := v2Client.Registry.UpdateRegistry(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "registry %q not found", registryName)
+		}
+		return nil, errors.Wrap(err, "failed to update registry")
+	}
+
+	return c.GetRegistry(ctx, registryName)
 }
 
-// DeleteRegistry deletes a Harbor registry
+// DeleteRegistry deletes a Harbor registry. A missing registry is success.
 func (c *HarborClient) DeleteRegistry(ctx context.Context, registryName string) error {
 	if registryName == "" {
 		return errors.New("registry name is required")
@@ -1219,11 +1271,23 @@ func (c *HarborClient) DeleteRegistry(ctx context.Context, registryName string) 
 
 	c.logger.Info("Deleting Harbor registry", "name", registryName)
 
-	// The actual Harbor API call would be implemented here
-	// err := v2Client.Registry.DeleteRegistry(ctx, &registry.DeleteRegistryParams{
-	//     RegistryID: registryName,
-	// })
+	m, err := c.findRegistryModel(ctx, registryName)
+	if err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("DeleteRegistry: registry already absent", "name", registryName)
+			return nil
+		}
+		return err
+	}
 
+	params := sdkregistry.NewDeleteRegistryParams().WithID(m.ID)
+	if _, err := v2Client.Registry.DeleteRegistry(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			c.logger.Info("DeleteRegistry: registry already absent", "name", registryName)
+			return nil
+		}
+		return errors.Wrap(err, "failed to delete registry")
+	}
 	return nil
 }
 
