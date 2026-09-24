@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 )
@@ -66,7 +67,7 @@ func (t *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		if t.logger != nil {
 			t.logger.Info("Harbor API request failed",
 				"method", req.Method,
-				"path", req.URL.RequestURI(),
+				"path", sanitizeForLog(req.URL.RequestURI()),
 				"error", err.Error(),
 			)
 		}
@@ -83,7 +84,7 @@ func (t *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		if t.logger != nil {
 			t.logger.Info("Harbor API error response (body unreadable)",
 				"method", req.Method,
-				"path", req.URL.RequestURI(),
+				"path", sanitizeForLog(req.URL.RequestURI()),
 				"status", res.StatusCode,
 				"error", readErr.Error(),
 			)
@@ -97,7 +98,7 @@ func (t *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	if t.logger != nil {
 		t.logger.Info("Harbor API error response",
 			"method", req.Method,
-			"path", req.URL.RequestURI(),
+			"path", sanitizeForLog(req.URL.RequestURI()),
 			"status", res.StatusCode,
 			"requestBody", truncateForLog(reqBody),
 			"responseBody", truncateForLog(respBody),
@@ -111,7 +112,13 @@ func truncateForLog(b []byte) string {
 		return ""
 	}
 	if len(b) > maxLoggedBody {
-		return string(b[:maxLoggedBody]) + "...(truncated)"
+		return sanitizeForLog(string(b[:maxLoggedBody])) + "...(truncated)"
 	}
-	return string(b)
+	return sanitizeForLog(string(b))
+}
+
+func sanitizeForLog(s string) string {
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.ReplaceAll(s, "\r", "")
+	return s
 }
