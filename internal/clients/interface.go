@@ -215,6 +215,12 @@ type MockHarborClient struct {
 	GetUserGroupFunc    func(ctx context.Context, groupID int64) (*UserGroupStatus, error)
 	UpdateUserGroupFunc func(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
 	DeleteUserGroupFunc func(ctx context.Context, groupID int64) error
+
+	// Quota operations
+	GetQuotaForProjectFunc func(ctx context.Context, projectID string) (*sdkmodels.Quota, error)
+
+	// SystemInfo operations
+	GetSystemInfoFunc func(ctx context.Context) (*sdkmodels.GeneralInfo, error)
 }
 
 // GetBaseURL calls GetBaseURLFunc
