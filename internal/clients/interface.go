@@ -7,6 +7,8 @@ package clients
 import (
 	"context"
 	"time"
+
+	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 )
 
 // HarborClienter defines the interface for Harbor client operations
@@ -106,6 +108,12 @@ type HarborClienter interface {
 	GetUserGroup(ctx context.Context, groupID int64) (*UserGroupStatus, error)
 	UpdateUserGroup(ctx context.Context, groupID int64, spec *UserGroupSpec) (*UserGroupStatus, error)
 	DeleteUserGroup(ctx context.Context, groupID int64) error
+
+	// Quota operations (read-only)
+	GetQuotaForProject(ctx context.Context, projectID string) (*sdkmodels.Quota, error)
+
+	// SystemInfo operations (read-only)
+	GetSystemInfo(ctx context.Context) (*sdkmodels.GeneralInfo, error)
 }
 
 // Ensure HarborClient implements HarborClienter
@@ -865,4 +873,20 @@ func (m *MockHarborClient) DeleteUserGroup(ctx context.Context, groupID int64) e
 		return m.DeleteUserGroupFunc(ctx, groupID)
 	}
 	return nil
+}
+
+// GetQuotaForProject calls GetQuotaForProjectFunc
+func (m *MockHarborClient) GetQuotaForProject(ctx context.Context, projectID string) (*sdkmodels.Quota, error) {
+	if m.GetQuotaForProjectFunc != nil {
+		return m.GetQuotaForProjectFunc(ctx, projectID)
+	}
+	return &sdkmodels.Quota{}, nil
+}
+
+// GetSystemInfo calls GetSystemInfoFunc
+func (m *MockHarborClient) GetSystemInfo(ctx context.Context) (*sdkmodels.GeneralInfo, error) {
+	if m.GetSystemInfoFunc != nil {
+		return m.GetSystemInfoFunc(ctx)
+	}
+	return &sdkmodels.GeneralInfo{}, nil
 }
