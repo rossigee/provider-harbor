@@ -31,6 +31,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	openapiruntime "github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/goharbor/go-client/pkg/harbor"
 	sdkartifact "github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
@@ -210,6 +211,18 @@ func NewHarborClient(config *HarborConfig) (*HarborClient, error) {
 	}
 
 	logger := logging.NewLogrLogger(ctrllog.Log.WithName("harbor").WithValues("client", "harbor"))
+
+	// Wrap the go-swagger runtime transport so non-2xx Harbor responses
+	// log their real bodies (go-swagger default-case APIError reports "{}").
+	if api := clientSet.V2(); api != nil {
+		if rt, ok := api.Transport.(*httptransport.Runtime); ok {
+			base := rt.Transport
+			if base == nil {
+				base = http.DefaultTransport
+			}
+			rt.Transport = &loggingRoundTripper{base: base, logger: logger}
+		}
+	}
 
 	return &HarborClient{
 		clientSet:  clientSet,
