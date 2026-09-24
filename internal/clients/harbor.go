@@ -37,6 +37,7 @@ import (
 	sdkmember "github.com/goharbor/go-client/pkg/sdk/v2.0/client/member"
 	sdkproject "github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
 	sdkrobot "github.com/goharbor/go-client/pkg/sdk/v2.0/client/robot"
+	sdkuser "github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
 	sdkusergroup "github.com/goharbor/go-client/pkg/sdk/v2.0/client/usergroup"
 	sdkwebhook "github.com/goharbor/go-client/pkg/sdk/v2.0/client/webhook"
 	sdkmodels "github.com/goharbor/go-client/pkg/sdk/v2.0/models"
@@ -128,13 +129,18 @@ type UserSpec struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	AdminFlag bool   `json:"admin_flag"`
+	Realname  string `json:"realname,omitempty"`
+	Comment   string `json:"comment,omitempty"`
 }
 
 // UserStatus represents the status of a Harbor user
 type UserStatus struct {
+	UserID    int64     `json:"user_id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	AdminFlag bool      `json:"admin_flag"`
+	Realname  string    `json:"realname,omitempty"`
+	Comment   string    `json:"comment,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -357,6 +363,8 @@ func isNotFoundErr(err error) bool {
 	}
 	switch cause.(type) {
 	case *sdkproject.DeleteProjectNotFound:
+		return true
+	case *sdkuser.GetUserNotFound, *sdkuser.DeleteUserNotFound, *sdkuser.UpdateUserProfileNotFound:
 		return true
 	}
 	return strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "[404]")
@@ -813,7 +821,96 @@ func (c *HarborClient) ListScannerRegistrations(ctx context.Context) ([]*Scanner
 	return scanners, nil
 }
 
-// CreateUser creates a new Harbor user
+// userFromModel maps a Harbor UserResp to UserStatus.
+func userFromModel(u *sdkmodels.UserResp) *UserStatus {
+	if u == nil {
+		return nil
+	}
+	return &UserStatus{
+		UserID:    u.UserID,
+		Username:  u.Username,
+		Email:     u.Email,
+		AdminFlag: u.SysadminFlag,
+		Realname:  u.Realname,
+		Comment:   u.Comment,
+		CreatedAt: time.Time(u.CreationTime),
+	}
+}
+
+// findUserID resolves a username to Harbor's numeric user_id via an exact
+// ListUsers query (q=username=<name>). Returns 0 and an error containing
+// "status 404" when the user does not exist.
+func (c *HarborClient) findUserID(ctx context.Context, username string) (int64, error) {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return 0, errors.New("failed to get Harbor v2 client")
+	}
+
+	q := fmt.Sprintf("username=%s", username)
+	params := sdkuser.NewListUsersParams().WithDefaults()
+	params.WithContext(ctx)
+	params.WithQ(&q)
+	pageSize := int64(100)
+	params.WithPageSize(&pageSize)
+
+	resp, err := v2Client.User.ListUsers(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return 0, errors.Wrapf(err, "user %q not found", username)
+		}
+		return 0, errors.Wrapf(err, "failed to list users for %q", username)
+	}
+	for _, u := range resp.Payload {
+		if u != nil && u.Username == username {
+			return u.UserID, nil
+		}
+	}
+	return 0, errors.Errorf("user %q not found (status 404)", username)
+}
+
+// findUser resolves a username to a full Harbor UserResp.
+func (c *HarborClient) findUser(ctx context.Context, username string) (*sdkmodels.UserResp, error) {
+	userID, err := c.findUserID(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return nil, errors.New("failed to get Harbor v2 client")
+	}
+
+	params := sdkuser.NewGetUserParams().WithDefaults()
+	params.WithContext(ctx)
+	params.WithUserID(userID)
+	resp, err := v2Client.User.GetUser(ctx, params)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil, errors.Wrapf(err, "user %q not found", username)
+		}
+		return nil, errors.Wrapf(err, "failed to get user %q", username)
+	}
+	return resp.Payload, nil
+}
+
+// setUserSysAdmin toggles Harbor's sysadmin flag for a user ID.
+func (c *HarborClient) setUserSysAdmin(ctx context.Context, userID int64, admin bool) error {
+	v2Client := c.clientSet.V2()
+	if v2Client == nil {
+		return errors.New("failed to get Harbor v2 client")
+	}
+
+	params := sdkuser.NewSetUserSysAdminParams().WithDefaults()
+	params.WithContext(ctx)
+	params.WithUserID(userID)
+	params.WithSysadminFlag(&sdkmodels.UserSysAdminFlag{SysadminFlag: admin})
+	if _, err := v2Client.User.SetUserSysAdmin(ctx, params); err != nil {
+		return errors.Wrapf(err, "failed to set sysadmin flag for user id %d", userID)
+	}
+	return nil
+}
+
+// CreateUser creates a local Harbor user via the real Harbor API.
 func (c *HarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserStatus, error) {
 	if spec == nil {
 		return nil, errors.New("user spec is required")
@@ -832,53 +929,81 @@ func (c *HarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserSta
 
 	c.logger.Info("Creating Harbor user", "username", spec.Username, "email", spec.Email)
 
-	// The actual Harbor API call would be implemented here
-	// userReq := &models.UserCreationReq{
-	//     Username: spec.Username,
-	//     Email: spec.Email,
-	//     Password: spec.Password,
-	// }
-	// _, err := v2Client.User.CreateUser(ctx, &user.CreateUserParams{
-	//     UserReq: userReq,
-	// })
+	userReq := &sdkmodels.UserCreationReq{
+		Username: spec.Username,
+		Email:    spec.Email,
+		Password: spec.Password,
+		Realname: spec.Realname,
+		Comment:  spec.Comment,
+	}
+	params := sdkuser.NewCreateUserParams().WithDefaults()
+	params.WithContext(ctx)
+	params.WithUserReq(userReq)
+	created, err := v2Client.User.CreateUser(ctx, params)
+	if err != nil {
+		if isConflictErr(err) {
+			// User already exists — return its current state.
+			return c.GetUser(ctx, spec.Username)
+		}
+		return nil, errors.Wrapf(err, "failed to create user %q", spec.Username)
+	}
 
-	status := &UserStatus{
+	if spec.AdminFlag {
+		// Sysadmin is a separate endpoint; resolve the new ID first.
+		userID, idErr := c.findUserID(ctx, spec.Username)
+		if idErr == nil && userID != 0 {
+			if err := c.setUserSysAdmin(ctx, userID, true); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// 201 has an empty body; re-read the user for full status.
+	status, err := c.GetUser(ctx, spec.Username)
+	if err == nil && status != nil {
+		return status, nil
+	}
+
+	// Fall back to parsing the Location header (…/users/{id}).
+	var id int64
+	if created != nil && created.Location != "" {
+		parts := strings.Split(strings.TrimRight(created.Location, "/"), "/")
+		if n := len(parts); n > 0 {
+			id, _ = strconv.ParseInt(parts[n-1], 10, 64)
+		}
+	}
+	return &UserStatus{
+		UserID:    id,
 		Username:  spec.Username,
 		Email:     spec.Email,
 		AdminFlag: spec.AdminFlag,
+		Realname:  spec.Realname,
+		Comment:   spec.Comment,
 		CreatedAt: time.Now(),
-	}
-
-	return status, nil
+	}, nil
 }
 
-// GetUser retrieves a Harbor user by username
+// GetUser retrieves a Harbor user by username via the real Harbor API.
+// Returns an error when the user does not exist (HTTP 404).
 func (c *HarborClient) GetUser(ctx context.Context, username string) (*UserStatus, error) {
 	if username == "" {
 		return nil, errors.New("username is required")
 	}
 
-	v2Client := c.clientSet.V2()
-	if v2Client == nil {
-		return nil, errors.New("failed to get Harbor v2 client")
-	}
-
 	c.logger.Info("Retrieving Harbor user", "username", username)
 
-	// The actual Harbor API call would be implemented here
-	// user, err := v2Client.User.GetUser(ctx, &user.GetUserParams{UserID: username})
-
-	status := &UserStatus{
-		Username:  username,
-		Email:     username + "@example.com",
-		AdminFlag: false,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
+	u, err := c.findUser(ctx, username)
+	if err != nil {
+		return nil, err
 	}
-
+	status := userFromModel(u)
+	if status == nil {
+		return nil, errors.Errorf("user %q not found (status 404)", username)
+	}
 	return status, nil
 }
 
-// UpdateUser updates an existing Harbor user
+// UpdateUser updates an existing Harbor user via the real Harbor API.
 func (c *HarborClient) UpdateUser(ctx context.Context, username string, spec *UserSpec) (*UserStatus, error) {
 	if username == "" {
 		return nil, errors.New("username is required")
@@ -894,24 +1019,51 @@ func (c *HarborClient) UpdateUser(ctx context.Context, username string, spec *Us
 
 	c.logger.Info("Updating Harbor user", "username", username, "email", spec.Email)
 
-	// The actual Harbor API call would be implemented here
-	// userReq := &models.UserProfile{Email: spec.Email}
-	// err := v2Client.User.UpdateUser(ctx, &user.UpdateUserParams{
-	//     UserID: username,
-	//     Profile: userReq,
-	// })
+	current, err := c.findUser(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	userID := current.UserID
 
-	status := &UserStatus{
-		Username:  username,
-		Email:     spec.Email,
-		AdminFlag: spec.AdminFlag,
-		CreatedAt: time.Now().Add(-24 * time.Hour),
+	profile := &sdkmodels.UserProfile{
+		Email:    spec.Email,
+		Realname: spec.Realname,
+		Comment:  spec.Comment,
+	}
+	profileParams := sdkuser.NewUpdateUserProfileParams().WithDefaults()
+	profileParams.WithContext(ctx)
+	profileParams.WithUserID(userID)
+	profileParams.WithProfile(profile)
+	if _, err := v2Client.User.UpdateUserProfile(ctx, profileParams); err != nil {
+		return nil, errors.Wrapf(err, "failed to update profile for user %q", username)
 	}
 
+	// Password is optional; Harbor allows admins to set without old_password.
+	if spec.Password != "" {
+		pwdParams := sdkuser.NewUpdateUserPasswordParams().WithDefaults()
+		pwdParams.WithContext(ctx)
+		pwdParams.WithUserID(userID)
+		pwdParams.WithPassword(&sdkmodels.PasswordReq{NewPassword: spec.Password})
+		if _, err := v2Client.User.UpdateUserPassword(ctx, pwdParams); err != nil {
+			return nil, errors.Wrapf(err, "failed to update password for user %q", username)
+		}
+	}
+
+	if current.SysadminFlag != spec.AdminFlag {
+		if err := c.setUserSysAdmin(ctx, userID, spec.AdminFlag); err != nil {
+			return nil, err
+		}
+	}
+
+	status, err := c.GetUser(ctx, username)
+	if err != nil {
+		return nil, err
+	}
 	return status, nil
 }
 
-// DeleteUser deletes a Harbor user
+// DeleteUser deletes a Harbor user via the real Harbor API.
+// A 404 is treated as success (already gone).
 func (c *HarborClient) DeleteUser(ctx context.Context, username string) error {
 	if username == "" {
 		return errors.New("username is required")
@@ -924,9 +1076,23 @@ func (c *HarborClient) DeleteUser(ctx context.Context, username string) error {
 
 	c.logger.Info("Deleting Harbor user", "username", username)
 
-	// The actual Harbor API call would be implemented here
-	// err := v2Client.User.DeleteUser(ctx, &user.DeleteUserParams{UserID: username})
+	userID, err := c.findUserID(ctx, username)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return nil
+		}
+		return err
+	}
 
+	params := sdkuser.NewDeleteUserParams().WithDefaults()
+	params.WithContext(ctx)
+	params.WithUserID(userID)
+	if _, err := v2Client.User.DeleteUser(ctx, params); err != nil {
+		if isNotFoundErr(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "failed to delete user %q", username)
+	}
 	return nil
 }
 
