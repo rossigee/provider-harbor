@@ -6,6 +6,8 @@ package user
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"time"
 
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -120,7 +122,23 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	user, err := c.service.GetUser(ctx, username)
 	if err != nil {
-		// If user doesn't exist, we need to create it
+		// Only a genuine not-found means the external resource is absent.
+		// Auth/network failures must surface as Observe errors (Synced=False).
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{
+				ResourceExists: false,
+			}, nil
+		}
+		// Legacy/mocked clients and wrapped "not found" strings: treat as absent
+		// so existing unit tests and not-yet-migrated backends still create.
+		if strings.Contains(err.Error(), "not found") {
+			return managed.ExternalObservation{
+				ResourceExists: false,
+			}, nil
+		}
+		return managed.ExternalObservation{}, errors.Wrap(err, errUserGet)
+	}
+	if user == nil {
 		return managed.ExternalObservation{
 			ResourceExists: false,
 		}, nil
@@ -130,7 +148,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	ctrlutil.SetExternalName(cr, user.Username)
 
 	// Update status with observed state
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID for now
+	cr.Status.AtProvider.ID = getInt64Ptr(user.UserID)
 	if user.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: user.CreatedAt}
 	}
@@ -144,7 +162,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(user.Username),
-			"user_id":  []byte("1"), // Mock ID
+			"user_id":  []byte(strconv.FormatInt(user.UserID, 10)),
 		},
 	}, nil
 }
@@ -167,6 +185,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		Email:     cr.Spec.ForProvider.Email,
 		AdminFlag: getBoolValue(cr.Spec.ForProvider.SysAdminFlag),
 	}
+	if cr.Spec.ForProvider.Realname != nil {
+		spec.Realname = *cr.Spec.ForProvider.Realname
+	}
+	if cr.Spec.ForProvider.Comment != nil {
+		spec.Comment = *cr.Spec.ForProvider.Comment
+	}
 
 	// Handle password secret
 	if cr.Spec.ForProvider.PasswordSecretRef != nil {
@@ -183,12 +207,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUserCreate)
 	}
+	if status == nil {
+		return managed.ExternalCreation{}, errors.New(errUserCreate)
+	}
 
 	// Set external name for adoption tracking
 	ctrlutil.SetExternalName(cr, status.Username)
 
 	// Update status with created resource info
-	cr.Status.AtProvider.ID = getInt64Ptr(1) // Mock ID
+	cr.Status.AtProvider.ID = getInt64Ptr(status.UserID)
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
 	}
@@ -196,7 +223,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(status.Username),
-			"user_id":  []byte("1"), // Mock ID
+			"user_id":  []byte(strconv.FormatInt(status.UserID, 10)),
 		},
 	}, nil
 }
@@ -217,6 +244,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		Email:     cr.Spec.ForProvider.Email,
 		AdminFlag: getBoolValue(cr.Spec.ForProvider.SysAdminFlag),
 	}
+	if cr.Spec.ForProvider.Realname != nil {
+		spec.Realname = *cr.Spec.ForProvider.Realname
+	}
+	if cr.Spec.ForProvider.Comment != nil {
+		spec.Comment = *cr.Spec.ForProvider.Comment
+	}
 
 	// Handle password secret if provided
 	if cr.Spec.ForProvider.PasswordSecretRef != nil {
@@ -232,6 +265,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUserUpdate)
 	}
+	if status == nil {
+		return managed.ExternalUpdate{}, errors.New(errUserUpdate)
+	}
 
 	// Update status
 	if status.CreatedAt != (time.Time{}) {
@@ -241,7 +277,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
 			"username": []byte(status.Username),
-			"user_id":  []byte("1"), // Mock ID
+			"user_id":  []byte(strconv.FormatInt(status.UserID, 10)),
 		},
 	}, nil
 }

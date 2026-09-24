@@ -372,6 +372,74 @@ func TestObserveWebhookListError(t *testing.T) {
 	}
 }
 
+func TestObserveWebhookProjectGone404(t *testing.T) {
+	ctx := context.Background()
+	webhook := &v1beta1.Webhook{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-webhook",
+		},
+		Spec: v1beta1.WebhookSpec{
+			ForProvider: v1beta1.WebhookParameters{
+				ProjectID:  "project-1",
+				Name:       "test-webhook",
+				URL:        "https://webhook.example.com",
+				EventTypes: []string{"PUSH_ARTIFACT"},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockWebhookClient{
+			listWebhooksFunc: func(ctx context.Context, projectID string) ([]*harborclients.WebhookStatus, error) {
+				return nil, errors.New("failed to list webhooks: [404] project project-1 not found")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, webhook)
+	if err != nil {
+		t.Errorf("Observe should treat parent-project 404 as absent, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when parent project is gone")
+	}
+}
+
+func TestDeleteWebhookProjectGone404(t *testing.T) {
+	ctx := context.Background()
+	id := "42"
+	webhook := &v1beta1.Webhook{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-webhook",
+		},
+		Spec: v1beta1.WebhookSpec{
+			ForProvider: v1beta1.WebhookParameters{
+				ProjectID:  "project-1",
+				Name:       "test-webhook",
+				URL:        "https://webhook.example.com",
+				EventTypes: []string{"PUSH_ARTIFACT"},
+			},
+		},
+		Status: v1beta1.WebhookStatus{
+			AtProvider: v1beta1.WebhookObservation{
+				ID: &id,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockWebhookClient{
+			deleteWebhookFunc: func(ctx context.Context, projectID, webhookID string) error {
+				return nil
+			},
+		},
+	}
+
+	if _, err := ext.Delete(ctx, webhook); err != nil {
+		t.Errorf("Delete should succeed when client treats 404 as success, got %v", err)
+	}
+}
+
 func TestCreateWebhookSuccess(t *testing.T) {
 	ctx := context.Background()
 	skipCertVerify := false

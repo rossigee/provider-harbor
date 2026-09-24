@@ -23,11 +23,46 @@ spec:
   - apiGroups:
     - harbor.crossplane.io
     - harbor.m.crossplane.io
+    - artifact.harbor.m.crossplane.io
+    - member.harbor.m.crossplane.io
+    - project.harbor.m.crossplane.io
+    - registry.harbor.m.crossplane.io
+    - replication.harbor.m.crossplane.io
+    - repository.harbor.m.crossplane.io
+    - retention.harbor.m.crossplane.io
+    - robot.harbor.m.crossplane.io
+    - scan.harbor.m.crossplane.io
+    - scanner.harbor.m.crossplane.io
+    - user.harbor.m.crossplane.io
+    - usergroup.harbor.m.crossplane.io
+    - webhook.harbor.m.crossplane.io
     resources:
+    - artifacts
+    - artifacts/status
+    - members
+    - members/status
     - projects
     - projects/status
+    - registries
+    - registries/status
+    - replications
+    - replications/status
     - repositories
     - repositories/status
+    - retentions
+    - retentions/status
+    - robots
+    - robots/status
+    - scans
+    - scans/status
+    - scannerregistrations
+    - scannerregistrations/status
+    - users
+    - users/status
+    - usergroups
+    - usergroups/status
+    - webhooks
+    - webhooks/status
     - providerconfigs
     - providerconfigs/status
     - providerconfigusages
@@ -48,4 +83,8 @@ spec:
     - get
     - list
     - watch
+    - create
+    - update
+    - patch
+    - delete
   controller: {}

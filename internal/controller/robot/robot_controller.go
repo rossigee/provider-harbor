@@ -6,8 +6,6 @@ package robot
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -37,7 +35,7 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 	name := managed.ControllerName(v1beta1.RobotGroupVersionKind.Kind)
 	log := logging.NewLogrLogger(mgr.GetLogger().WithValues("controller", name))
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup called\n")
+	log.Info("setting up Robot controller")
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
@@ -58,19 +56,16 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 		opts...,
 	)
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Robot reconciler created, building controller\n")
-
-	builder := ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1beta1.Robot{})
+		For(&v1beta1.Robot{}).
+		Complete(r)
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller builder ready, completing with ratelimiter\n")
-
-	err := builder.Complete(r)
-
-	fmt.Fprintf(os.Stderr, "DEBUG: Robot controller Setup completed with error: %v\n", err)
+	if err != nil {
+		log.Info("Robot controller setup failed", "error", err.Error())
+	}
 	return err
 }
 
@@ -88,6 +83,9 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	svc, err := c.newServiceFn(ctx, c.kube, mg)
 	if err != nil {
+		if c.logger != nil {
+			c.logger.Info("Robot Connect failed", "name", mg.GetName(), "error", err.Error())
+		}
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
@@ -97,6 +95,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	service harborclients.HarborClienter
 	logger  logging.Logger
+}
+
+func (c *external) log() logging.Logger {
+	if c.logger == nil {
+		return logging.NewNopLogger()
+	}
+	return c.logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -109,38 +114,37 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotRobot)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe called for %s, desiredName=%s\n", cr.Name, cr.Spec.ForProvider.Name)
+	log := c.log().WithValues("name", cr.Name, "desiredName", cr.Spec.ForProvider.Name)
+	log.Debug("observing Robot")
 
-	// Get robot by name (simplified - Harbor API would need the robot ID)
 	robots, err := c.service.ListRobots(ctx, cr.Spec.ForProvider.ProjectID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe error calling ListRobots: %v\n", err)
+		log.Info("ListRobots failed", "error", err.Error())
 		return managed.ExternalObservation{}, err
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe got %d robots\n", len(robots))
+	log.Debug("listed robots", "count", len(robots))
 
-	// Harbor robot names have "robot$" prefix, so we need to handle that
-	// Use external name if set for adoption scenarios
 	externalName := ctrlutil.GetExternalName(cr)
 	searchName := cr.Spec.ForProvider.Name
 	if externalName != "" {
-		// Adoption scenario: use external name to find existing resource
 		searchName = externalName
 	}
 	if !strings.HasPrefix(searchName, "robot$") {
 		searchName = "robot$" + searchName
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe searching for %s\n", searchName)
+	log.Debug("searching for robot", "searchName", searchName)
 
+	desiredName := cr.Spec.ForProvider.Name
 	for _, robot := range robots {
-		fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe checking %s\n", robot.Name)
-		// Also check without prefix in case the name was stored differently
-		if robot.Name == searchName || robot.Name == cr.Spec.ForProvider.Name {
-			fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe FOUND %s id=%s\n", robot.Name, robot.ID)
+		// Harbor stores project robots as "<project>+<name>" and returns
+		// them as "robot$<project>+<name>"; also match bare desired name.
+		if robot.Name == searchName || robot.Name == desiredName ||
+			strings.HasSuffix(robot.Name, "+"+desiredName) ||
+			strings.HasSuffix(robot.Name, "+"+strings.TrimPrefix(searchName, "robot$")) {
+			log.Debug("found robot", "robotName", robot.Name, "id", robot.ID)
 
-			// Set external name for adoption tracking
 			ctrlutil.SetExternalName(cr, robot.Name)
 
 			cr.Status.AtProvider.ID = &robot.ID
@@ -164,16 +168,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				upToDate = false
 			}
 
-			fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe returning exists=true, upToDate=%v\n", upToDate)
-
-			// Set the Ready condition to True since we found the resource
+			log.Debug("robot exists", "upToDate", upToDate)
 			cr.SetConditions(xpv1.Available())
-
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Observe not found, will need to create\n")
+	log.Debug("robot not found, will create")
 	return managed.ExternalObservation{ResourceExists: false}, nil
 }
 
@@ -187,7 +188,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotRobot)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Create called for %s\n", cr.Name)
+	log := c.log().WithValues("name", cr.Name)
+	log.Debug("creating Robot")
 
 	spec := &harborclients.RobotSpec{
 		Name:        cr.Spec.ForProvider.Name,
@@ -197,17 +199,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		Permissions: convertPermissions(cr.Spec.ForProvider.Permissions),
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Create calling Harbor API for %s\n", cr.Spec.ForProvider.Name)
 	robot, err := c.service.CreateRobot(ctx, spec)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Create error: %v\n", err)
+		log.Info("CreateRobot failed", "error", err.Error())
 		return managed.ExternalCreation{}, err
 	}
 
-	// Set external name for adoption tracking
 	ctrlutil.SetExternalName(cr, robot.Name)
 
-	fmt.Fprintf(os.Stderr, "DEBUG_ROBOT: Create succeeded for %s\n", cr.Name)
+	log.Debug("created Robot", "robotName", robot.Name)
 	return managed.ExternalCreation{}, nil
 }
 

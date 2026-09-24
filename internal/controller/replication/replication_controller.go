@@ -95,6 +95,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	policies, err := c.service.ListReplicationPolicies(ctx)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		return managed.ExternalObservation{}, err
 	}
 
@@ -198,10 +201,27 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	spec := &harborclients.ReplicationPolicySpec{
 		Name:            cr.Spec.ForProvider.Name,
 		Description:     cr.Spec.ForProvider.Description,
+		SourceRegistry:  cr.Spec.ForProvider.SourceRegistry,
 		Trigger:         cr.Spec.ForProvider.Trigger,
 		DeleteSourceTag: cr.Spec.ForProvider.DeleteSourceTag,
 		Override:        cr.Spec.ForProvider.Override,
 		Enabled:         cr.Spec.ForProvider.Enabled,
+	}
+
+	if len(cr.Spec.ForProvider.Filters) > 0 {
+		spec.Filters = make([]harborclients.ReplicationPolicyFilter, len(cr.Spec.ForProvider.Filters))
+		for i, f := range cr.Spec.ForProvider.Filters {
+			spec.Filters[i] = harborclients.ReplicationPolicyFilter{
+				Type:  f.Type,
+				Value: f.Value,
+			}
+		}
+	}
+
+	spec.DestinationReg = &harborclients.ReplicationPolicyDestination{
+		Name:      cr.Spec.ForProvider.DestinationReg.Name,
+		Namespace: cr.Spec.ForProvider.DestinationReg.Namespace,
+		URL:       cr.Spec.ForProvider.DestinationReg.URL,
 	}
 
 	_, err := c.service.UpdateReplicationPolicy(ctx, *cr.Status.AtProvider.ID, spec)
@@ -228,6 +248,9 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	err := c.service.DeleteReplicationPolicy(ctx, *cr.Status.AtProvider.ID)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalDelete{}, nil
+		}
 		return managed.ExternalDelete{}, errors.Wrap(err, errReplicationDelete)
 	}
 
