@@ -82,3 +82,23 @@ type QuotaList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Quota `json:"items"`
 }
+
+// GetCondition of this Quota.
+func (mg *Quota) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this Quota.
+func (mg *Quota) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// SetConditions of this Quota.
+func (mg *Quota) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this Quota.
+func (mg *Quota) SetManagementPolicies(c xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = c
+}

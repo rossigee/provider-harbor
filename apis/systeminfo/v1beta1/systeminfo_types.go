@@ -93,3 +93,23 @@ type SystemInfoList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []SystemInfo `json:"items"`
 }
+
+// GetCondition of this SystemInfo.
+func (mg *SystemInfo) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this SystemInfo.
+func (mg *SystemInfo) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// SetConditions of this SystemInfo.
+func (mg *SystemInfo) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this SystemInfo.
+func (mg *SystemInfo) SetManagementPolicies(c xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = c
+}
