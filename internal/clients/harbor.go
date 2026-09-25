@@ -2464,6 +2464,11 @@ func (c *HarborClient) DeleteRobot(ctx context.Context, robotID string) error {
 	delParams := sdkrobot.NewDeleteRobotParams()
 	delParams.RobotID = id
 	if _, err := v2Client.Robot.DeleteRobot(ctx, delParams); err != nil {
+		// The robot may already be gone (e.g. its parent project was
+		// deleted first); 404 means the desired state is achieved.
+		if isNotFoundErr(err) {
+			return nil
+		}
 		return errors.Wrap(err, "failed to delete robot account")
 	}
 	return nil
