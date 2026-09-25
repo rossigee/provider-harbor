@@ -119,6 +119,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	robots, err := c.service.ListRobots(ctx, cr.Spec.ForProvider.ProjectID)
 	if err != nil {
+		// The parent project may already be gone (e.g. teardown deleted
+		// it first); report the robot as absent so the reconciler can
+		// clear the finalizer instead of retrying Observe forever.
+		if harborclients.IsNotFound(err) {
+			log.Debug("project or robot not found")
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		log.Info("ListRobots failed", "error", err.Error())
 		return managed.ExternalObservation{}, err
 	}
