@@ -2923,9 +2923,16 @@ func (c *HarborClient) buildReplicationPolicyModel(ctx context.Context, spec *Re
 
 	policy.Filters = make([]*sdkmodels.ReplicationFilter, 0, len(spec.Filters))
 	for _, f := range spec.Filters {
+		// Harbor only supports decoration on tag and label filters;
+		// sending it on name/resource filters is rejected with 400
+		// ("only tag and label filter support decoration").
+		decoration := ""
+		if f.Type == "tag" || f.Type == "label" {
+			decoration = "matches"
+		}
 		policy.Filters = append(policy.Filters, &sdkmodels.ReplicationFilter{
 			Type:       f.Type,
-			Decoration: "matches",
+			Decoration: decoration,
 			Value:      f.Value,
 		})
 	}

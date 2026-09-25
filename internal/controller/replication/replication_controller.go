@@ -114,7 +114,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			cr.Status.AtProvider.UpdateTime = &ut
 
 			// Mark resource as ready/synced so status is persisted
-			cr.SetConditions(xpv1.Available())
+			cr.SetConditions(xpv1.Available(), xpv1.ReconcileSuccess())
 
 			// Persist status to API server using status subresource
 			if c.kube != nil {
