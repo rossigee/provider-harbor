@@ -88,3 +88,5 @@ spec:
     - patch
     - delete
   controller: {}
+  crossplane:
+    version: ">=v2.5.0"
