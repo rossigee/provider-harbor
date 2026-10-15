@@ -6,6 +6,7 @@ package project
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -69,7 +70,7 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 // is called.
 type connector struct {
 	kube         client.Client
-	newServiceFn func(ctx context.Context, kube client.Client, mg resource.Managed) (harborclients.HarborClienter, error)
+	newServiceFn func(context.Context, client.Client, resource.Managed) (harborclients.HarborClienter, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -118,16 +119,30 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	project, err := c.service.GetProject(ctx, projectName)
 	if err != nil {
-		// If project doesn't exist, we need to create it
-		return managed.ExternalObservation{
-			ResourceExists: false,
-		}, nil
+		// Only a genuine not-found means the external resource is absent.
+		// Auth/network failures must surface as Observe errors (Synced=False).
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{
+				ResourceExists: false,
+			}, nil
+		}
+		// Legacy/mocked clients and wrapped "not found" strings: treat as absent
+		// so existing unit tests and not-yet-migrated backends still create.
+		if strings.Contains(err.Error(), "not found") {
+			return managed.ExternalObservation{
+				ResourceExists: false,
+			}, nil
+		}
+		return managed.ExternalObservation{}, errors.Wrap(err, errProjectGet)
 	}
 
 	// Set external name for future reference and adoption tracking
 	ctrlutil.SetExternalName(cr, project.Name)
 
-	// Update status with observed state
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
+
+	// Update status with observed state using kube client to persist properly
 	cr.Status.AtProvider.ID = getStringPtr(project.ID)
 	if project.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: project.CreatedAt}
@@ -141,6 +156,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.ChartCount = getInt64Ptr(project.ChartCount)
 	cr.Status.AtProvider.CurrentStorageUsage = getInt64Ptr(project.CurrentStorageUsage)
 
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+		}
+	}
+
 	// Check if resource is up to date
 	upToDate := cr.Spec.ForProvider.Public == nil || *cr.Spec.ForProvider.Public == project.Public
 
@@ -149,7 +174,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		ResourceUpToDate: upToDate,
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(project.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(project.ID),
 		},
 	}, nil
 }
@@ -163,6 +188,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotProject)
 	}
+
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
 
 	cr.SetConditions(xpv1.Creating())
 
@@ -191,15 +219,22 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	ctrlutil.SetExternalName(cr, status.Name)
 
 	// Update status with created resource info
-	cr.Status.AtProvider.ID = getStringPtr("1") // Mock ID
+	cr.Status.AtProvider.ID = getStringPtr(status.ID)
 	if status.CreatedAt != (time.Time{}) {
 		cr.Status.AtProvider.CreationTime = &metav1.Time{Time: status.CreatedAt}
+	}
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, "failed to patch status")
+		}
 	}
 
 	return managed.ExternalCreation{
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(status.ID),
 		},
 	}, nil
 }
@@ -243,7 +278,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{
 		ConnectionDetails: managed.ConnectionDetails{
 			"project_name": []byte(status.Name),
-			"project_id":   []byte("1"), // Mock ID
+			"project_id":   []byte(status.ID),
 		},
 	}, nil
 }

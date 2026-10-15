@@ -58,10 +58,13 @@ log "install Harbor (in-cluster, no TLS/persistence)"
 helm repo add harbor https://helm.goharbor.io >/dev/null 2>&1 || true
 helm repo update harbor >/dev/null 2>&1
 k create namespace harbor --dry-run=client -o yaml | k apply -f - >/dev/null
+# trivy.enabled=false: vulnerability scanning is not exercised by
+# apply->Ready->delete uptest cases and was OOM-killing chainsaw on the
+# 7GB ubuntu-24.04 runner alongside kind + full Harbor + Crossplane.
 helm --kube-context "$KCTX" upgrade --install my-harbor harbor/harbor -n harbor \
   --set expose.type=clusterIP --set expose.tls.enabled=false \
   --set externalURL=http://harbor.harbor.svc --set persistence.enabled=false \
-  --set harborAdminPassword="$HARBOR_PASSWORD" --set trivy.enabled=true \
+  --set harborAdminPassword="$HARBOR_PASSWORD" --set trivy.enabled=false \
   --set jobservice.replicas=1 --wait --timeout 10m >/dev/null
 
 log "install provider ${IMAGE}:${VERSION}"
@@ -75,13 +78,31 @@ if [ "${PRIVATE:-true}" = "true" ]; then
     --dry-run=client -o yaml | k apply -f - >/dev/null
   PULL_REF=$'\n  packagePullSecrets:\n    - name: ghcr-pull'
 fi
+# Enable --debug so Debug-level logs (from logging.Logger) appear in pod logs.
 cat <<EOF | k apply -f -
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-harbor-runtime-config
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            args:
+            - --debug
+---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: ${PROVIDER}
 spec:
   package: ${IMAGE}:${VERSION}${PULL_REF}
+  runtimeConfigRef:
+    name: provider-harbor-runtime-config
 EOF
 log "wait provider Healthy"
 for i in $(seq 1 60); do
@@ -106,10 +127,10 @@ kubectl config use-context "$KCTX" >/dev/null
 LOGFILE="/tmp/provider-harbor-e2e-debug.log"
 echo "[$(date)] Starting provider log capture during e2e test" > "$LOGFILE"
 (
-  # Wait a bit for provider pod to start
-  sleep 10
-  # Stream logs continuously with follow flag
-  timeout 700 kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true -f >> "$LOGFILE" 2>&1 || true
+  # Give the pod a moment to appear, then follow. Also dump a full non-follow
+  # snapshot after the test so early lines are not lost if -f attaches late.
+  sleep 5
+  timeout 700 kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true --tail=-1 -f >> "$LOGFILE" 2>&1 || true
 ) &
 LOG_PID=$!
 trap "kill $LOG_PID 2>/dev/null || true" EXIT
@@ -132,6 +153,9 @@ if [ $rc -ne 0 ]; then
   log "e2e test failed, dumping captured provider logs"
   echo "=== Captured Provider Logs During Test ===" >&2
   cat "$LOGFILE" >&2 || true
+  echo "" >&2
+  echo "=== Full Provider Logs (non-follow snapshot) ===" >&2
+  kubectl --context "$KCTX" logs -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor --all-containers=true --tail=5000 >&2 || true
   echo "" >&2
   echo "=== Provider Pod Events ===" >&2
   k describe pod -n crossplane-system -l pkg.crossplane.io/provider=provider-harbor >&2 || true

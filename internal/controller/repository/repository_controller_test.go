@@ -82,17 +82,48 @@ func TestObserveRepositoryNotFound(t *testing.T) {
 	ext := &external{
 		service: &mockRepositoryClient{
 			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
-				return nil, errors.New("not found")
+				return nil, errors.New(`repository "project-1/my-repo" not found (status 404)`)
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, repo)
+	if err != nil {
+		t.Errorf("Observe should not fail on not-found, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when repository not found")
+	}
+}
+
+func TestObserveRepositoryTransientError(t *testing.T) {
+	ctx := context.Background()
+	repo := &v1beta1.Repository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-repository",
+		},
+		Spec: v1beta1.RepositorySpec{
+			ForProvider: v1beta1.RepositoryParameters{
+				ProjectID: "project-1",
+				Name:      "my-repo",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRepositoryClient{
+			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
+				return nil, errors.New("connection refused")
 			},
 		},
 	}
 
 	obs, err := ext.Observe(ctx, repo)
 	if err == nil {
-		t.Error("Observe should fail when client returns error")
+		t.Error("Observe should fail on transient client error")
 	}
 	if obs.ResourceExists {
-		t.Error("ResourceExists should be false when repository not found")
+		t.Error("ResourceExists should be false on transient error")
 	}
 }
 
@@ -199,7 +230,7 @@ func TestCreateRepositorySuccess(t *testing.T) {
 	ext := &external{
 		service: &mockRepositoryClient{
 			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
-				return nil, errors.New("not found")
+				return nil, errors.New(`repository "project-1/my-repo" not found (status 404)`)
 			},
 			updateRepositoryFunc: func(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error) {
 				return &harborclients.RepositoryStatus{
@@ -215,6 +246,37 @@ func TestCreateRepositorySuccess(t *testing.T) {
 	_, err := ext.Create(ctx, repo)
 	if err != nil {
 		t.Errorf("Create should not fail, got %v", err)
+	}
+}
+
+func TestCreateRepositoryNotPushedYet(t *testing.T) {
+	ctx := context.Background()
+	repo := &v1beta1.Repository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-repository",
+		},
+		Spec: v1beta1.RepositorySpec{
+			ForProvider: v1beta1.RepositoryParameters{
+				ProjectID: "project-1",
+				Name:      "my-repo",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRepositoryClient{
+			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
+				return nil, errors.New(`repository "project-1/my-repo" not found (status 404)`)
+			},
+			updateRepositoryFunc: func(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error) {
+				return nil, errors.New(`repository "project-1/my-repo" not found (status 404)`)
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, repo)
+	if err == nil {
+		t.Error("Create should fail until first artifact push creates the repository")
 	}
 }
 
@@ -266,17 +328,14 @@ func TestCreateRepositoryError(t *testing.T) {
 	ext := &external{
 		service: &mockRepositoryClient{
 			getRepositoryFunc: func(ctx context.Context, projectID, repoName string) (*harborclients.RepositoryStatus, error) {
-				return nil, errors.New("not found")
-			},
-			updateRepositoryFunc: func(ctx context.Context, projectID, repoName string, spec *harborclients.RepositorySpec) (*harborclients.RepositoryStatus, error) {
-				return nil, errors.New("create failed")
+				return nil, errors.New("connection refused")
 			},
 		},
 	}
 
 	_, err := ext.Create(ctx, repo)
 	if err == nil {
-		t.Error("Create should fail when client fails")
+		t.Error("Create should fail when Get fails with transient error")
 	}
 }
 

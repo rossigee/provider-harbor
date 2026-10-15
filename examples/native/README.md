@@ -44,14 +44,19 @@ These examples demonstrate how to use the native Harbor provider, which directly
 
 ## Credentials Format
 
-The Harbor credentials secret should contain:
+The Harbor credentials secret should contain a single JSON blob at the key
+referenced by `ProviderConfig.spec.credentials.secretRef.key` (default
+`credentials`):
 
 ```yaml
 stringData:
-  url: "https://your-harbor-instance.com"
-  username: "admin"
-  password: "your-password"
-  insecure: "false"  # Optional: skip TLS verification
+  credentials: |
+    {
+      "url": "https://your-harbor-instance.com",
+      "username": "admin",
+      "password": "your-password",
+      "insecure": false
+    }
 ```
 
 ## Resource Status

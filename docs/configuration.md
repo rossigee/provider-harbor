@@ -17,11 +17,14 @@ spec:
     secretRef:
       name: harbor-credentials
       namespace: crossplane-system
+      key: credentials
 ```
 
 ## Authentication
 
-Create a secret with your Harbor credentials:
+Create a secret with your Harbor credentials as a single JSON blob at
+`secretRef.key` (the provider unmarshals `{url,username,password}` —
+see `internal/clients/harbor.go`):
 
 ```yaml
 apiVersion: v1
@@ -31,7 +34,10 @@ metadata:
   namespace: crossplane-system
 type: Opaque
 stringData:
-  url: https://harbor.example.com
-  username: admin
-  password: your-password
+  credentials: |
+    {
+      "url": "https://harbor.example.com",
+      "username": "admin",
+      "password": "your-password"
+    }
 ```

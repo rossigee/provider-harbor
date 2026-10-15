@@ -96,6 +96,68 @@ func TestObserveMemberNotFound(t *testing.T) {
 	}
 }
 
+func TestObserveMemberNilStatus(t *testing.T) {
+	ctx := context.Background()
+	member := &v1beta1.Member{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-member",
+		},
+		Spec: v1beta1.MemberSpec{
+			ForProvider: v1beta1.MemberParameters{
+				ProjectID: "project-1",
+				Username:  "testuser",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockMemberClient{
+			getProjectMemberFunc: func(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error) {
+				return nil, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, member)
+	if err != nil {
+		t.Errorf("Observe should not fail for absent member, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when GetProjectMember returns nil status")
+	}
+}
+
+func TestObserveMemberProjectGone404(t *testing.T) {
+	ctx := context.Background()
+	member := &v1beta1.Member{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-member",
+		},
+		Spec: v1beta1.MemberSpec{
+			ForProvider: v1beta1.MemberParameters{
+				ProjectID: "project-1",
+				Username:  "testuser",
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockMemberClient{
+			getProjectMemberFunc: func(ctx context.Context, projectID, username string) (*harborclients.MemberStatus, error) {
+				return nil, errors.New("failed to list project members: [404] project project-1 not found")
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, member)
+	if err != nil {
+		t.Errorf("Observe should treat parent-project 404 as absent, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when parent project is gone")
+	}
+}
+
 func TestObserveMemberExists(t *testing.T) {
 	ctx := context.Background()
 	member := &v1beta1.Member{

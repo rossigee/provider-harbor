@@ -28,10 +28,14 @@ metadata:
   name: harbor-credentials
   namespace: crossplane-system
 type: Opaque
-data:
-  url: aHR0cHM6Ly9oYXJib3IuZXhhbXBsZS5jb20=  # https://harbor.example.com
-  username: YWRtaW4=  # admin
-  password: SGFyYm9yMTIzNDU=  # Harbor12345
+stringData:
+  credentials: |
+    {
+      "url": "https://harbor.example.com",
+      "username": "admin",
+      "password": "Harbor12345",
+      "insecure": false
+    }
 ```
 
 ### 2. Create ProviderConfig

@@ -46,7 +46,7 @@ GO_SUBDIRS += cmd internal apis
 KIND_VERSION = v0.15.0
 UP_VERSION = v0.40.3
 UP_CHANNEL = stable
-UPTEST_VERSION = v0.5.0
+UPTEST_VERSION = v2.2.0
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -225,3 +225,17 @@ help-special: crossplane.help
 # Local Development Extensions
 # Include local development targets if Makefile.dev exists
 -include Makefile.dev
+
+# xpkg-only publishing override + img neutralization for ghcr (standardized)
+xpkg.release.publish.ghcr.io/rossigee.provider-harbor:
+	@$(foreach p,$(XPKG_LINUX_PLATFORMS),$(MAKE) xpkg.build.provider-harbor PLATFORM=$(p) || exit 1;)
+	@$(CROSSPLANE_CLI) xpkg push \
+		$(foreach p,$(XPKG_LINUX_PLATFORMS),--package-files $(XPKG_OUTPUT_DIR)/$(p)/provider-harbor-$(VERSION).xpkg ) \
+		ghcr.io/rossigee/provider-harbor:$(VERSION)
+	@$(OK) Pushed package ghcr.io/rossigee/provider-harbor:$(VERSION)
+
+XPKG_REG_ORGS ?= ghcr.io/rossigee
+
+# Neutralize plain image publish for ghcr (xpkg uses same ref; plain push would clobber package.yaml)
+img.release.publish.ghcr.io/rossigee.provider-harbor:
+	@:

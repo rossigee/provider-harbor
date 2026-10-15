@@ -352,6 +352,39 @@ func TestObserveRobotNotFound(t *testing.T) {
 	}
 }
 
+func TestObserveRobotProjectGone(t *testing.T) {
+	ctx := context.Background()
+	projectID := "deleted-proj"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, projectID *string) ([]*harborclients.RobotStatus, error) {
+				return nil, errors.New(`failed to resolve project for robot list: project "deleted-proj" not found: response status code does not match any response statuses defined for this endpoint in the swagger spec (status 404): {}`)
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should treat a deleted parent project as absent, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false when the parent project is gone")
+	}
+}
+
 func TestObserveRobotExists(t *testing.T) {
 	ctx := context.Background()
 	projectID := "project-1"
