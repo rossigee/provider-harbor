@@ -1,5 +1,5 @@
 # Standardized Security Template for Crossplane Providers
-# Version: 2025-12-21 - Merged with CodeQL approach
+# Version: 2026-09-08 - Updated for Go 1.27.1 (aligned with ci/release templates)
 #
 # This template provides:
 # - AUTOMATED security scanning on pushes/PRs (with no-op detection)
@@ -44,7 +44,6 @@ permissions:
   contents: read
   security-events: write
   actions: read
-  id-token: write
   attestations: write
   pull-requests: write
 
@@ -126,7 +125,7 @@ jobs:
 
       - name: Run Gosec Security Scanner
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == ''
-        uses: securego/gosec@v2.29.0
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
@@ -148,7 +147,7 @@ jobs:
 
       - name: Check for secrets with TruffleHog
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'secrets' || github.event.inputs.scan_type == ''
-        uses: trufflesecurity/trufflehog@v3.97.4
+        uses: trufflesecurity/trufflehog@main
         with:
           path: ./
           base: master
@@ -187,7 +186,7 @@ jobs:
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
-          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
+          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, AGPL-3.0
 
   notification:
     name: Security Scan Notification

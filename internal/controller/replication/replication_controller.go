@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/replication/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -74,11 +75,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -93,17 +95,33 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	policies, err := c.service.ListReplicationPolicies(ctx)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		return managed.ExternalObservation{}, err
 	}
 
 	for _, policy := range policies {
 		if policy.Name == cr.Spec.ForProvider.Name {
+			// Snapshot cr before mutation for use in MergeFrom patch
+			original := cr.DeepCopy()
+
 			cr.Status.AtProvider.ID = &policy.ID
 			cr.Status.AtProvider.Enabled = &policy.Enabled
 			t := metav1.NewTime(policy.CreationTime)
 			cr.Status.AtProvider.CreationTime = &t
 			ut := metav1.NewTime(policy.UpdateTime)
 			cr.Status.AtProvider.UpdateTime = &ut
+
+			// Mark resource as ready/synced so status is persisted
+			cr.SetConditions(xpv1.Available(), xpv1.ReconcileSuccess())
+
+			// Persist status to API server using status subresource
+			if c.kube != nil {
+				if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
+					return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+				}
+			}
 
 			upToDate := true
 			if cr.Spec.ForProvider.Description != nil && policy.Description != nil && *cr.Spec.ForProvider.Description != *policy.Description {
@@ -183,10 +201,27 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	spec := &harborclients.ReplicationPolicySpec{
 		Name:            cr.Spec.ForProvider.Name,
 		Description:     cr.Spec.ForProvider.Description,
+		SourceRegistry:  cr.Spec.ForProvider.SourceRegistry,
 		Trigger:         cr.Spec.ForProvider.Trigger,
 		DeleteSourceTag: cr.Spec.ForProvider.DeleteSourceTag,
 		Override:        cr.Spec.ForProvider.Override,
 		Enabled:         cr.Spec.ForProvider.Enabled,
+	}
+
+	if len(cr.Spec.ForProvider.Filters) > 0 {
+		spec.Filters = make([]harborclients.ReplicationPolicyFilter, len(cr.Spec.ForProvider.Filters))
+		for i, f := range cr.Spec.ForProvider.Filters {
+			spec.Filters[i] = harborclients.ReplicationPolicyFilter{
+				Type:  f.Type,
+				Value: f.Value,
+			}
+		}
+	}
+
+	spec.DestinationReg = &harborclients.ReplicationPolicyDestination{
+		Name:      cr.Spec.ForProvider.DestinationReg.Name,
+		Namespace: cr.Spec.ForProvider.DestinationReg.Namespace,
+		URL:       cr.Spec.ForProvider.DestinationReg.URL,
 	}
 
 	_, err := c.service.UpdateReplicationPolicy(ctx, *cr.Status.AtProvider.ID, spec)
@@ -213,6 +248,9 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	err := c.service.DeleteReplicationPolicy(ctx, *cr.Status.AtProvider.ID)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalDelete{}, nil
+		}
 		return managed.ExternalDelete{}, errors.Wrap(err, errReplicationDelete)
 	}
 

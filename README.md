@@ -51,9 +51,12 @@ metadata:
   name: harbor-creds
 type: Opaque
 stringData:
-  url: https://harbor.example.com
-  username: admin
-  password: password
+  credentials: |
+    {
+      "url": "https://harbor.example.com",
+      "username": "admin",
+      "password": "password"
+    }
 ---
 apiVersion: harbor.m.crossplane.io/v1beta1
 kind: ProviderConfig
@@ -64,6 +67,7 @@ spec:
     source: Secret
     secretRef:
       name: harbor-creds
+      key: credentials
 ```
 
 ## Usage

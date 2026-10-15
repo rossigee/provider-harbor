@@ -11,8 +11,8 @@ import (
 
 // ReplicationFilter defines filter rules for replication
 type ReplicationFilter struct {
-	// Type is the filter type: repository, tag, label, resource
-	// +kubebuilder:validation:Enum=repository;tag;label;resource
+	// Type is the filter type: name, tag, label, resource
+	// +kubebuilder:validation:Enum=name;tag;label;resource
 	Type string `json:"type"`
 
 	// Value is the filter value

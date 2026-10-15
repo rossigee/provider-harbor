@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/repository/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -80,12 +81,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{service: svc, kube: c.kube}, nil
 }
 
 // external observes, then either creates, updates, or deletes an external resource.
 type external struct {
 	service harborclients.HarborClienter
+	kube    client.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -100,8 +102,17 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	status, err := c.service.GetRepository(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Name)
 	if err != nil {
+		if harborclients.IsNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
 		return managed.ExternalObservation{}, errors.Wrap(err, errRepositoryGet)
 	}
+	if status == nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
+	// Snapshot cr before mutation for use in MergeFrom patch
+	original := cr.DeepCopy()
 
 	cr.Status.AtProvider.ID = &status.ID
 	cr.Status.AtProvider.FullName = &status.FullName
@@ -113,6 +124,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.UpdateTime = &ut
 	if status.Description != "" {
 		cr.Status.AtProvider.Description = &status.Description
+	}
+
+	// Mark resource as ready/synced so status is persisted
+	cr.SetConditions(xpv1.Available())
+
+	// Persist status to API server using status subresource
+	if c.kube != nil {
+		if err := c.kube.Status().Patch(ctx, cr, client.MergeFrom(original)); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, "failed to patch status")
+		}
 	}
 
 	upToDate := cr.Spec.ForProvider.Description == nil || status.Description == "" || *cr.Spec.ForProvider.Description == status.Description
@@ -143,7 +164,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		// Repository already exists
 		return managed.ExternalCreation{}, nil
 	}
+	if !harborclients.IsNotFound(err) {
+		return managed.ExternalCreation{}, errors.Wrap(err, errRepositoryCreate)
+	}
 
+	// Harbor has no create-repository API; repositories appear when the first
+	// artifact is pushed. Update sets description if the repo already exists
+	// from a prior push; a 404 here means the image has not been pushed yet.
 	_, err = c.service.UpdateRepository(ctx, cr.Spec.ForProvider.ProjectID, cr.Spec.ForProvider.Name, spec)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errRepositoryCreate)
