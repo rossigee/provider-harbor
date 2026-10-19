@@ -1,5 +1,5 @@
 # Standardized CI/CD Template for Crossplane Providers
-# Version: 2026-09-08 - Updated for Go 1.27.1 + golangci-lint v2.14.0 + full security scanning
+# Version: 2026-09-08 - Updated for Go 1.27.2 + golangci-lint v2.14.0 + full security scanning
 #
 # This template implements CI builds and validates ONLY
 # - CI: Build validation only (no publishing to avoid tag conflicts)
@@ -27,7 +27,7 @@ permissions:
   actions: read    # Needed for detecting duplicate actions
 
 env:
-  GO_VERSION: '1.27.1'
+  GO_VERSION: '1.27.2'
   GOLANGCI_VERSION: '2.14.0'
   GOLANGCILINT_VERSION: '2.14.0'
   DOCKER_BUILDX_VERSION: 'v0.11.2'
@@ -255,7 +255,7 @@ jobs:
 # 5. STANDARDIZED BUILD SYSTEM
 #    - Uses rossigee/build submodule (working fork)
 #    - Consistent make targets across all providers
-#    - Go 1.27.1 with proper version handling
+#    - Go 1.27.2 with proper version handling
 # 
 # To apply this template:
 # 1. Copy this structure to .github/workflows/ci.yml
