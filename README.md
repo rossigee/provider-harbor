@@ -13,7 +13,7 @@ A native Crossplane provider for Harbor container registry management. Manage Ha
 
 ## Container Registry
 
-- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.17.2`
+- **Primary**: `ghcr.io/rossigee/provider-harbor:v0.19.3`
 
 ## Features
 
@@ -39,7 +39,7 @@ A native Crossplane provider for Harbor container registry management. Manage Ha
 ### Installation
 
 ```bash
-kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:v0.17.2
+kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:v0.19.3
 ```
 
 ### Configuration

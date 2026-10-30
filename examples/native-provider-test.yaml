@@ -9,7 +9,7 @@ metadata:
     version: "v0.8.0"
     description: "Native Harbor provider with 85% memory reduction"
 spec:
-  package: ghcr.io/rossigee/provider-harbor:v0.8.0
+  package: ghcr.io/rossigee/provider-harbor:v0.19.3
   runtimeConfigRef:
     name: provider-harbor-native-config
 
