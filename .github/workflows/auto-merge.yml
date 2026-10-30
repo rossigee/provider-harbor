@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Determine Merge Strategy
         id: merge-strategy
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const labels = context.payload.pull_request.labels.map(l => l.name);
@@ -65,7 +65,7 @@ jobs:
       - name: Check CI Status
         if: steps.merge-strategy.outputs.result == 'automerge'
         id: ci-status
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
@@ -126,7 +126,7 @@ jobs:
       - name: Retry CI Status Check
         if: steps.ci-status.outputs.result == 'pending'
         id: ci-status-retry
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
