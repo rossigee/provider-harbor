@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v5
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
@@ -71,13 +71,13 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -86,18 +86,18 @@ jobs:
 
       - name: Initialize CodeQL
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           languages: go
           queries: security-extended,security-and-quality
 
       - name: Autobuild for CodeQL
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
 
       - name: Perform CodeQL Analysis
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == ''
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: "/language:go"
 
@@ -125,7 +125,7 @@ jobs:
 
       - name: Run Gosec Security Scanner
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == ''
-        uses: securego/gosec@v2.30.0
+        uses: securego/gosec@5eb1d104ef85ff2c905c877eb600e8c1dee33a22 # v2.30.0
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
         continue-on-error: true
@@ -140,14 +140,14 @@ jobs:
 
       - name: Upload Gosec Results
         if: (github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'vulnerabilities' || github.event.inputs.scan_type == '') && always() && hashFiles('gosec-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           sarif_file: gosec-results.sarif
           category: gosec
 
       - name: Check for secrets with TruffleHog
         if: github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'secrets' || github.event.inputs.scan_type == ''
-        uses: trufflesecurity/trufflehog@v3.99.7
+        uses: trufflesecurity/trufflehog@31ce31ee1abbcc7dc8eee5764c17121c3044c8b2 # v3.99.7
         with:
           path: ./
           base: master
@@ -162,10 +162,10 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true' && (github.event.inputs.scan_type == 'comprehensive' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == '')
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -177,13 +177,13 @@ jobs:
 
       - name: Upload OSV scan results
         if: always() && hashFiles('osv-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           sarif_file: osv-results.sarif
 
       - name: Dependency Review
         if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v5
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
         with:
           fail-on-severity: moderate
           allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, AGPL-3.0, LicenseRef-scancode-google-patent-license-golang
