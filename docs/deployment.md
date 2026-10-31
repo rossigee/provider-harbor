@@ -408,7 +408,7 @@ kubectl get projects -A -o wide | grep -v Synced
 
 # 2. Update provider image
 kubectl set image deployment/provider-harbor \
-  provider=ghcr.io/rossigee/provider-harbor:v0.17.0 \
+  provider=ghcr.io/rossigee/provider-harbor:v0.19.3 \
   -n crossplane-system
 
 # 3. Wait for rollout
