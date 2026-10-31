@@ -1,0 +1,30 @@
+# A proxy-cache project that refers to a Registry by name. The project waits
+# until the Registry has been created in Harbor and has an observed ID, then
+# uses that ID. Use registryId instead to pin a known Harbor registry ID.
+apiVersion: registry.harbor.m.crossplane.io/v1beta1
+kind: Registry
+metadata:
+  name: dockerhub-upstream
+  namespace: default
+spec:
+  forProvider:
+    name: docker-hub-upstream
+    description: "Docker Hub proxy cache upstream"
+    type: docker-hub
+    url: https://registry-1.docker.io
+    insecure: false
+  providerConfigRef:
+    name: default
+---
+apiVersion: project.harbor.m.crossplane.io/v1beta1
+kind: Project
+metadata:
+  name: dockerhub-proxy
+  namespace: default
+spec:
+  forProvider:
+    name: dockerhub-proxy
+    public: false
+    registryRef: dockerhub-upstream
+  providerConfigRef:
+    name: default

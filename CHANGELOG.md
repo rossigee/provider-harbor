@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `Configuration` managed resource (`configuration.harbor.m.crossplane.io/v1beta1`)
+  for Harbor's system authentication and OIDC/OAuth2 SSO settings. Partial
+  updates, explicit clearing with empty strings, and client-secret rotation
+  detection via a stored hash. Deletion leaves Harbor's settings unchanged.
+  See [docs/oidc-configuration.md](docs/oidc-configuration.md).
+- `Project.spec.forProvider.registryRef` names a Registry in the same namespace
+  whose observed Harbor ID is used for proxy-cache projects.
+
+### Fixed
+- Registry `credential.accessSecretRef` is now read from the referenced Secret.
+  Previously a placeholder value was sent to Harbor. A missing secret or key
+  now fails the reconcile.
+
+### Changed
+- Registry `type` accepts the proxy-cache and replication adapter types
+  `ali-acr`, `github-ghcr`, `jfrog-artifactory`, `huawei-SWR`, `tencent-tcr`
+  and `volcengine-cr`.
+
 ## v0.17.0 (2025-06-21)
 
 ### Achievement: Production Ready 🚀

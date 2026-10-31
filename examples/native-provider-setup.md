@@ -7,7 +7,7 @@ This guide covers setting up and using the native Harbor provider (v0.4.0+) whic
 ### Install the Provider
 
 ```bash
-kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:v0.4.0
+kubectl crossplane install provider ghcr.io/rossigee/provider-harbor:v0.19.3
 ```
 
 ### Verify Installation

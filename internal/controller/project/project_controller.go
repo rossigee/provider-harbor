@@ -194,6 +194,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	cr.SetConditions(xpv1.Creating())
 
+	registryID, err := c.resolveRegistryID(ctx, cr)
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+
 	// Prepare project spec with all parameters
 	spec := &harborclients.ProjectSpec{
 		Name:                     cr.Spec.ForProvider.Name,
@@ -204,7 +209,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		PreventVulnerableImages:  cr.Spec.ForProvider.PreventVulnerableImages,
 		Severity:                 cr.Spec.ForProvider.Severity,
 		CVEAllowlist:             cr.Spec.ForProvider.CVEAllowlist,
-		RegistryID:               cr.Spec.ForProvider.RegistryID,
+		RegistryID:               registryID,
 		StorageLimit:             cr.Spec.ForProvider.StorageLimit,
 		Metadata:                 cr.Spec.ForProvider.Metadata,
 	}
@@ -249,6 +254,11 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotProject)
 	}
 
+	registryID, err := c.resolveRegistryID(ctx, cr)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	// Prepare updated project spec with all parameters
 	spec := &harborclients.ProjectSpec{
 		Name:                     cr.Spec.ForProvider.Name,
@@ -259,7 +269,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		PreventVulnerableImages:  cr.Spec.ForProvider.PreventVulnerableImages,
 		Severity:                 cr.Spec.ForProvider.Severity,
 		CVEAllowlist:             cr.Spec.ForProvider.CVEAllowlist,
-		RegistryID:               cr.Spec.ForProvider.RegistryID,
+		RegistryID:               registryID,
 		StorageLimit:             cr.Spec.ForProvider.StorageLimit,
 		Metadata:                 cr.Spec.ForProvider.Metadata,
 	}

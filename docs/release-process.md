@@ -98,7 +98,7 @@ Before each release:
    - Image build
 
 3. **Publish Artifacts**
-   - Container image: `ghcr.io/rossigee/provider-harbor:v0.14.0`
+   - Container image: `ghcr.io/rossigee/provider-harbor:v0.19.3`
    - Checksums and signatures
    - Release notes
 
@@ -210,7 +210,7 @@ Monitor the workflow in `.github/workflows/release.yml`
 
 ```bash
 # Verify container image exists
-docker pull ghcr.io/rossigee/provider-harbor:v0.14.0
+docker pull ghcr.io/rossigee/provider-harbor:v0.19.3
 
 # List available tags
 docker image ls ghcr.io/rossigee/provider-harbor
@@ -231,7 +231,7 @@ git tag -l | grep v0.14.0
 ```bash
 # Update provider image in your deployment
 kubectl set image deployment/provider-harbor \
-  provider=ghcr.io/rossigee/provider-harbor:v0.14.0 \
+  provider=ghcr.io/rossigee/provider-harbor:v0.19.3 \
   -n crossplane-system
 
 # Verify rollout
@@ -292,7 +292,7 @@ Each release creates multiple image tags:
 ```bash
 # Latest release
 ghcr.io/rossigee/provider-harbor:latest
-ghcr.io/rossigee/provider-harbor:v0.14.0
+ghcr.io/rossigee/provider-harbor:v0.19.3
 
 # Development
 ghcr.io/rossigee/provider-harbor:dev
@@ -338,7 +338,7 @@ helm install provider-harbor \
 ### GHCR (Primary)
 
 ```bash
-ghcr.io/rossigee/provider-harbor:v0.14.0
+ghcr.io/rossigee/provider-harbor:v0.19.3
 ```
 
 GitHub Actions handles publishing automatically.
@@ -426,8 +426,8 @@ echo $CR_PAT | docker login ghcr.io \
 gh auth status
 
 # Manually push image
-docker build -t ghcr.io/rossigee/provider-harbor:v0.14.0 .
-docker push ghcr.io/rossigee/provider-harbor:v0.14.0
+docker build -t ghcr.io/rossigee/provider-harbor:v0.19.3 .
+docker push ghcr.io/rossigee/provider-harbor:v0.19.3
 ```
 
 ## Questions?

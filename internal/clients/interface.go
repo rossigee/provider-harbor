@@ -114,6 +114,10 @@ type HarborClienter interface {
 
 	// SystemInfo operations (read-only)
 	GetSystemInfo(ctx context.Context) (*sdkmodels.GeneralInfo, error)
+
+	// Configuration operations (system-wide authentication settings)
+	GetConfigurations(ctx context.Context) (*sdkmodels.ConfigurationsResponse, error)
+	UpdateConfigurations(ctx context.Context, cfg *sdkmodels.Configurations) error
 }
 
 // Ensure HarborClient implements HarborClienter
@@ -221,6 +225,10 @@ type MockHarborClient struct {
 
 	// SystemInfo operations
 	GetSystemInfoFunc func(ctx context.Context) (*sdkmodels.GeneralInfo, error)
+
+	// Configuration operations
+	GetConfigurationsFunc    func(ctx context.Context) (*sdkmodels.ConfigurationsResponse, error)
+	UpdateConfigurationsFunc func(ctx context.Context, cfg *sdkmodels.Configurations) error
 }
 
 // GetBaseURL calls GetBaseURLFunc
@@ -895,4 +903,20 @@ func (m *MockHarborClient) GetSystemInfo(ctx context.Context) (*sdkmodels.Genera
 		return m.GetSystemInfoFunc(ctx)
 	}
 	return &sdkmodels.GeneralInfo{}, nil
+}
+
+// GetConfigurations calls GetConfigurationsFunc
+func (m *MockHarborClient) GetConfigurations(ctx context.Context) (*sdkmodels.ConfigurationsResponse, error) {
+	if m.GetConfigurationsFunc != nil {
+		return m.GetConfigurationsFunc(ctx)
+	}
+	return &sdkmodels.ConfigurationsResponse{}, nil
+}
+
+// UpdateConfigurations calls UpdateConfigurationsFunc
+func (m *MockHarborClient) UpdateConfigurations(ctx context.Context, cfg *sdkmodels.Configurations) error {
+	if m.UpdateConfigurationsFunc != nil {
+		return m.UpdateConfigurationsFunc(ctx, cfg)
+	}
+	return nil
 }

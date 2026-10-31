@@ -37,7 +37,7 @@ type RegistryParameters struct {
 
 	// Type is the type of registry (harbor, docker-hub, docker-registry, etc.)
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=harbor;docker-hub;docker-registry;helm-hub;aws-ecr;azure-acr;google-gcr;gitlab;quay
+	// +kubebuilder:validation:Enum=harbor;docker-hub;docker-registry;helm-hub;aws-ecr;azure-acr;google-gcr;gitlab;quay;ali-acr;github-ghcr;jfrog-artifactory;huawei-SWR;tencent-tcr;volcengine-cr
 	Type string `json:"type"`
 
 	// URL is the URL of the registry

@@ -20,6 +20,7 @@ import (
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
 	ctrlutil "github.com/rossigee/provider-harbor/internal/controller"
 	"github.com/rossigee/provider-harbor/internal/tracing"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -341,11 +342,28 @@ func (c *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-// Helper function to get secret from secret reference
+// getSecretFromRef reads the registry access secret named by the Registry's
+// credential.accessSecretRef. A missing secret or key is an error, so an
+// unreachable credential never reaches Harbor as a placeholder.
 func (c *external) getSecretFromRef(ctx context.Context, cr *v1beta1.Registry) (string, error) {
-	// This would need to be implemented to read from Kubernetes secret
-	// For now, return a placeholder
-	return "mock-secret", nil
+	ref := cr.Spec.ForProvider.Credential.AccessSecretRef
+
+	ns := ref.Namespace
+	if ns == "" {
+		ns = cr.GetNamespace()
+	}
+
+	secret := &corev1.Secret{}
+	if err := c.kube.Get(ctx, client.ObjectKey{Namespace: ns, Name: ref.Name}, secret); err != nil {
+		return "", errors.Wrapf(err, "secret %s/%s", ns, ref.Name)
+	}
+
+	value, ok := secret.Data[ref.Key]
+	if !ok {
+		return "", errors.Errorf("key %q not found in secret %s/%s", ref.Key, ns, ref.Name)
+	}
+
+	return string(value), nil
 }
 
 // Helper functions
