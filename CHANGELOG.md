@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.20.0 (2026-10-31)
 
 ### Added
 - `Configuration` managed resource (`configuration.harbor.m.crossplane.io/v1beta1`)
