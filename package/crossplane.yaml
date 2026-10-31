@@ -21,8 +21,9 @@ metadata:
 spec:
   permissionRequests:
   - apiGroups:
-    - harbor.crossplane.io
     - harbor.m.crossplane.io
+    - quota.harbor.m.crossplane.io
+    - systeminfo.harbor.m.crossplane.io
     - artifact.harbor.m.crossplane.io
     - member.harbor.m.crossplane.io
     - project.harbor.m.crossplane.io

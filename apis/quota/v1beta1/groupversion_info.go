@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	SchemeGroupVersion = schema.GroupVersion{Group: "quota.harbor.crossplane.io", Version: "v1beta1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: "quota.harbor.m.crossplane.io", Version: "v1beta1"}
 	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 	AddToScheme        = SchemeBuilder.AddToScheme
 )

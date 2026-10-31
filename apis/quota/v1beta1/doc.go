@@ -16,5 +16,5 @@ limitations under the License.
 
 // Package v1beta1 contains the v1beta1 API for Harbor Quota resources.
 // +kubebuilder:object:generate=true
-// +groupName=quota.harbor.crossplane.io
+// +groupName=quota.harbor.m.crossplane.io
 package v1beta1
