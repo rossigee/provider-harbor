@@ -78,7 +78,7 @@ type SystemInfoStatus struct {
 // +kubebuilder:printcolumn:name="STORAGE",type="string",JSONPath=".status.atProvider.registryStorageProviderName"
 // +kubebuilder:printcolumn:name="AUTH-MODE",type="string",JSONPath=".status.atProvider.authMode"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,harbor}
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,harbor}
 type SystemInfo struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.22.0
-  name: quotas.quota.harbor.crossplane.io
+  name: systeminfoes.systeminfo.harbor.m.crossplane.io
 spec:
-  group: quota.harbor.crossplane.io
+  group: systeminfo.harbor.m.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - harbor
-    kind: Quota
-    listKind: QuotaList
-    plural: quotas
-    singular: quota
+    kind: SystemInfo
+    listKind: SystemInfoList
+    plural: systeminfoes
+    singular: systeminfo
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -25,11 +25,14 @@ spec:
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
       type: string
-    - jsonPath: .status.atProvider.projectID
-      name: PROJECT-ID
+    - jsonPath: .status.atProvider.harborVersion
+      name: VERSION
       type: string
-    - jsonPath: .status.atProvider.type
-      name: TYPE
+    - jsonPath: .status.atProvider.registryStorageProviderName
+      name: STORAGE
+      type: string
+    - jsonPath: .status.atProvider.authMode
+      name: AUTH-MODE
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -56,48 +59,12 @@ spec:
           metadata:
             type: object
           spec:
-            description: A QuotaSpec defines the desired state of a Quota resource.
+            description: A SystemInfoSpec defines the desired state of a SystemInfo
+              resource.
             properties:
               forProvider:
-                description: QuotaParameters defines the desired state of Quota
-                properties:
-                  projectRef:
-                    description: ProjectID or ProjectRef references the project to
-                      fetch quotas for
-                    properties:
-                      name:
-                        description: Name of the referenced object.
-                        type: string
-                      policy:
-                        description: Policies for referencing.
-                        properties:
-                          resolution:
-                            default: Required
-                            description: |-
-                              Resolution specifies whether resolution of this reference is required.
-                              The default is 'Required', which means the reconcile will fail if the
-                              reference cannot be resolved. 'Optional' means this reference will be
-                              a no-op if it cannot be resolved.
-                            enum:
-                            - Required
-                            - Optional
-                            type: string
-                          resolve:
-                            description: |-
-                              Resolve specifies when this reference should be resolved. The default
-                              is 'IfNotPresent', which will attempt to resolve the reference only when
-                              the corresponding field is not present. Use 'Always' to resolve the
-                              reference on every reconcile.
-                            enum:
-                            - Always
-                            - IfNotPresent
-                            type: string
-                        type: object
-                    required:
-                    - name
-                    type: object
-                required:
-                - projectRef
+                description: SystemInfoParameters defines the desired state of SystemInfo
+                  (typically empty for read-only)
                 type: object
               managementPolicies:
                 default:
@@ -158,43 +125,51 @@ spec:
             - forProvider
             type: object
           status:
-            description: A QuotaStatus represents the observed state of a Quota.
+            description: A SystemInfoStatus represents the observed state of SystemInfo.
             properties:
               atProvider:
-                description: QuotaObservation defines the observed state of Harbor
-                  resource quotas
+                description: SystemInfoObservation defines the observed state of Harbor
+                  system information
                 properties:
-                  creationTime:
-                    description: CreationTime is when the quota was created
-                    format: date-time
+                  authMode:
+                    description: AuthMode is the authentication mode (db_auth, ldap_auth,
+                      oidc_auth, etc.)
                     type: string
-                  hard:
-                    additionalProperties:
-                      type: string
-                    description: Hard is the hard limit for the quota
-                    type: object
-                  id:
-                    description: ID is the unique identifier of the quota
+                  certificateExpiration:
+                    description: CertificateExpiration is the Unix timestamp of certificate
+                      expiration
                     format: int64
                     type: integer
-                  projectID:
-                    description: ProjectID is the ID of the project this quota applies
-                      to
-                    format: int64
-                    type: integer
-                  type:
-                    description: Type indicates the resource type (storage, artifact
-                      count, etc.)
+                  databaseType:
+                    description: DatabaseType is the type of database (postgresql,
+                      mysql, etc.)
                     type: string
-                  updateTime:
-                    description: UpdateTime is when the quota was last updated
+                  harborVersion:
+                    description: HarborVersion is the version of Harbor
+                    type: string
+                  hasCARoot:
+                    description: HasCARoot indicates if a custom CA certificate is
+                      installed
+                    type: boolean
+                  notaryEnabled:
+                    description: NotaryEnabled indicates if Notary is enabled
+                    type: boolean
+                  observedAt:
+                    description: ObservedAt is the timestamp when this information
+                      was last observed
                     format: date-time
                     type: string
-                  used:
-                    additionalProperties:
-                      type: string
-                    description: Used represents current usage
-                    type: object
+                  registryStorageProviderName:
+                    description: RegistryStorageProviderName is the storage provider
+                      type
+                    type: string
+                  selfRegistration:
+                    description: SelfRegistration indicates if self-registration is
+                      enabled
+                    type: boolean
+                  traceEnabled:
+                    description: TraceEnabled indicates if tracing is enabled
+                    type: boolean
                 type: object
               conditions:
                 description: Conditions of the resource.
