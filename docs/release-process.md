@@ -343,29 +343,6 @@ ghcr.io/rossigee/provider-harbor:v0.19.3
 
 GitHub Actions handles publishing automatically.
 
-### Docker Hub (Optional)
-
-To publish to Docker Hub:
-
-```bash
-# Build and tag
-docker build -t \
-  rossigee/provider-harbor:v0.14.0 \
-  -f cluster/images/xpkg.Dockerfile .
-
-# Push
-docker push rossigee/provider-harbor:v0.14.0
-```
-
-### Quay.io (Optional)
-
-```bash
-docker tag ghcr.io/rossigee/provider-harbor:v0.19.3 \
-  quay.io/rossigee/provider-harbor:v0.14.0
-
-docker push quay.io/rossigee/provider-harbor:v0.14.0
-```
-
 ## Release Artifacts
 
 Each release generates:
