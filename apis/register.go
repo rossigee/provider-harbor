@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	artifactv1beta1 "github.com/rossigee/provider-harbor/apis/artifact/v1beta1"
+	configurationv1beta1 "github.com/rossigee/provider-harbor/apis/configuration/v1beta1"
 	memberv1beta1 "github.com/rossigee/provider-harbor/apis/member/v1beta1"
 	projectv1beta1 "github.com/rossigee/provider-harbor/apis/project/v1beta1"
 	registryv1beta1 "github.com/rossigee/provider-harbor/apis/registry/v1beta1"
@@ -50,6 +51,9 @@ func init() {
 		// Phase 4: Enterprise features - Replication and Retention
 		replicationv1beta1.SchemeBuilder.AddToScheme,
 		retentionv1beta1.SchemeBuilder.AddToScheme,
+
+		// Phase 5: System configuration (OIDC / authentication settings)
+		configurationv1beta1.SchemeBuilder.AddToScheme,
 
 		// Provider config APIs
 		v1beta1.SchemeBuilder.AddToScheme,

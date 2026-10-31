@@ -53,6 +53,13 @@ type ProjectParameters struct {
 	// +kubebuilder:validation:Optional
 	RegistryID *int64 `json:"registryId,omitempty"`
 
+	// RegistryRef names a Registry managed resource in the same namespace. Its
+	// observed Harbor ID is used as the registry for proxy cache projects, so
+	// the Registry does not have to be looked up by hand. Ignored when
+	// RegistryID is set. Creation waits until the Registry has an ID.
+	// +kubebuilder:validation:Optional
+	RegistryRef *string `json:"registryRef,omitempty"`
+
 	// StorageLimit is the storage quota for the project (in bytes)
 	// +kubebuilder:validation:Optional
 	StorageLimit *int64 `json:"storageLimit,omitempty"`

@@ -32,6 +32,7 @@ import (
 	webhookv1beta1 "github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	harborcontroller "github.com/rossigee/provider-harbor/internal/controller"
 	artifactcontroller "github.com/rossigee/provider-harbor/internal/controller/artifact"
+	configurationcontroller "github.com/rossigee/provider-harbor/internal/controller/configuration"
 	membercontroller "github.com/rossigee/provider-harbor/internal/controller/member"
 	projectcontroller "github.com/rossigee/provider-harbor/internal/controller/project"
 	registrycontroller "github.com/rossigee/provider-harbor/internal/controller/registry"
@@ -155,6 +156,9 @@ func main() {
 
 	// Setup Artifact controller
 	kingpin.FatalIfError(artifactcontroller.Setup(mgr, o), "Cannot setup Artifact controller")
+
+	// Setup Configuration controller
+	kingpin.FatalIfError(configurationcontroller.Setup(mgr, o), "Cannot setup Configuration controller")
 
 	// Setup Member controller
 	kingpin.FatalIfError(membercontroller.Setup(mgr, o), "Cannot setup Member controller")
