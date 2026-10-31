@@ -167,6 +167,11 @@ func (in *ProjectParameters) DeepCopyInto(out *ProjectParameters) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.RegistryRef != nil {
+		in, out := &in.RegistryRef, &out.RegistryRef
+		*out = new(string)
+		**out = **in
+	}
 	if in.StorageLimit != nil {
 		in, out := &in.StorageLimit, &out.StorageLimit
 		*out = new(int64)

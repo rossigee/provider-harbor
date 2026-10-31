@@ -1,0 +1,39 @@
+# Harbor system authentication (OIDC / OAuth2 SSO) for one Harbor instance.
+# Create one Configuration per Harbor, each with its own ProviderConfig.
+# The client secret value is supplied by a Secret you manage (for example via
+# External Secrets); the placeholder below must not be committed with a value.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-oidc-client
+  namespace: harbor-config
+type: Opaque
+stringData:
+  clientSecret: "replace-with-oidc-client-secret"
+---
+apiVersion: configuration.harbor.m.crossplane.io/v1beta1
+kind: Configuration
+metadata:
+  name: harbor-oidc
+  namespace: harbor-config
+  annotations:
+    kubernetes.io/description: "OIDC SSO for the example Harbor"
+spec:
+  forProvider:
+    authMode: oidc_auth
+    oidc:
+      name: Keycloak
+      endpoint: https://sso.example.com/auth/realms/Example
+      clientId: harbor
+      clientSecretRef:
+        name: harbor-oidc-client
+        namespace: harbor-config
+        key: clientSecret
+      scope: "openid profile email"
+      userClaim: preferred_username
+      groupsClaim: groups
+      adminGroup: harbor-admins
+      verifyCert: true
+      autoOnboard: true
+  providerConfigRef:
+    name: harbor-golder

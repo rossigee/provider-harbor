@@ -102,6 +102,7 @@ spec:
 | Retention | `retention.harbor.m.crossplane.io/v1beta1` | Artifact retention policies |
 | Member | `member.harbor.m.crossplane.io/v1beta1` | Project membership and RBAC |
 | Scan | `scan.harbor.m.crossplane.io/v1beta1` | Vulnerability scan management |
+| Configuration | `configuration.harbor.m.crossplane.io/v1beta1` | System authentication, including OIDC/OAuth2 SSO settings (one per Harbor instance) |
 | ProviderConfig | `harbor.m.crossplane.io/v1beta1` | Provider credentials (cluster-scoped) |
 
 All resources are namespaced `v1beta1` (`.m.` groups) for Crossplane v2 multi-tenancy. See [docs/index.md](docs/index.md) for the full reference and [API coverage gaps](docs/index.md#api-coverage-gaps).
