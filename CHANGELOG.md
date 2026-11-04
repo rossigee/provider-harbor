@@ -2,6 +2,12 @@
 
 ## v0.20.0 (2026-10-31)
 
+### Breaking Changes
+- `SystemInfo` is now namespaced. Quota and SystemInfo moved to
+  `quota.harbor.m.crossplane.io` and `systeminfo.harbor.m.crossplane.io`.
+  Orphan existing resources before removing the old CRDs; see
+  [docs/migration-namespaced-systeminfo.md](docs/migration-namespaced-systeminfo.md).
+
 ### Added
 - `Configuration` managed resource (`configuration.harbor.m.crossplane.io/v1beta1`)
   for Harbor's system authentication and OIDC/OAuth2 SSO settings. Partial
