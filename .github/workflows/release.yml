@@ -140,6 +140,43 @@ jobs:
           fi
           echo "Published $registry_path:$VERSION and $registry_path:latest as $version_digest"
 
+      - name: Extract breaking-change notes from CHANGELOG
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 - "$VERSION" CHANGELOG.md > "$RUNNER_TEMP/breaking-notes.md" <<'EOF'
+          import re
+          import sys
+
+          ver = sys.argv[1].lstrip("v")
+          lines = open(sys.argv[2], encoding="utf-8").read().splitlines()
+          pat = re.compile(r"(?<![\d.])" + re.escape(ver) + r"(?!\d)")
+
+          start = None
+          for i, line in enumerate(lines):
+              if line.startswith("## ") and pat.search(line):
+                  start = i
+                  break
+          if start is None:
+              sys.exit(0)
+
+          out = []
+          in_breaking = False
+          for line in lines[start + 1:]:
+              if line.startswith("## "):
+                  break
+              if line.startswith("### "):
+                  in_breaking = line.strip() in ("### Breaking", "### Breaking Changes")
+                  continue
+              if in_breaking:
+                  out.append(line)
+
+          text = "\n".join(out).strip()
+          if text:
+              print("## Breaking changes\n")
+              print(text)
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
@@ -148,3 +185,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body_path: ${{ runner.temp }}/breaking-notes.md
