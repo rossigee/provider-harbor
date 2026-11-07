@@ -352,6 +352,68 @@ func TestObserveRobotNotFound(t *testing.T) {
 	}
 }
 
+func TestObserveRobotIgnoresForeignRobotWithSameSuffix(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-robot"},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:      "ci",
+				ProjectID: &projectID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{ID: "999", Name: "robot-prod-ci", ProjectID: pid},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if obs.ResourceExists {
+		t.Error("ResourceExists should be false: a robot named robot-prod-ci must not match desired name ci")
+	}
+}
+
+func TestCreateRobotConflictIsNotAdopted(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-robot"},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:      "my-robot",
+				ProjectID: &projectID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			createRobotFunc: func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return nil, errors.New("robot already exists")
+			},
+		},
+	}
+
+	_, err := ext.Create(ctx, robot)
+	if err == nil {
+		t.Fatal("Create should return the conflict error instead of adopting an existing robot")
+	}
+	if got := robot.GetAnnotations()["crossplane.io/external-name"]; got != "" {
+		t.Errorf("external name should not be set on a failed create, got %q", got)
+	}
+}
+
 func TestObserveRobotProjectGone(t *testing.T) {
 	ctx := context.Background()
 	projectID := "deleted-proj"
