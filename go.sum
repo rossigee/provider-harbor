@@ -23,8 +23,8 @@ github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5 h1:JTWp/389uzSn6pz8cRHyh+zIHVKtyUQgVd2v9zbsGc4=
 github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5/go.mod h1:W5PNfXAOkvDjcDUCBsP2mEFDneCrrcMo1t+U3Dj5mjI=
-github.com/crossplane/crossplane/apis/v2 v2.5.0-rc.0 h1:m+SsOShTbbCrd7byOkZXXzDO1Aq/YDgIpLdbvQye7W4=
-github.com/crossplane/crossplane/apis/v2 v2.5.0-rc.0/go.mod h1:Ev+FjQqTTWJWoaXi63uKER215kDjTo8PghDCT0JapZs=
+github.com/crossplane/crossplane/apis/v2 v2.5.0-rc.0.0.20261029180807-76a72bee8a19 h1:fVbCySit5sRqOJSLQmNRJEheN955ugr05LKwK2SG8Ic=
+github.com/crossplane/crossplane/apis/v2 v2.5.0-rc.0.0.20261029180807-76a72bee8a19/go.mod h1:k42eXFByp3L89+SQA/GJawZ4LoDFmeOFh3ufkKE2wOs=
 github.com/dave/jennifer v1.7.1 h1:B4jJJDHelWcDhlRQxWeo0Npa/pYKBLrirAQoTN45txo=
 github.com/dave/jennifer v1.7.1/go.mod h1:nXbxhEmQfOZhWml3D1cDK5M1FLnMSozpbFN/m3RmGZc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -169,8 +169,8 @@ github.com/prometheus/common v0.73.1 h1:SZWh/j4AvhCdhX8jvYSnxvPxhWlC9QZkjJ+tOrEr
 github.com/prometheus/common v0.73.1/go.mod h1:I9aA/Ukz9s1olOobh8KtCkU7B1mQPQsB9UvQPsUQ1Dk=
 github.com/prometheus/procfs v0.23.0 h1:ad+S6FTkzwaMgacKLM5h6bNKExS+DMH0YiUwXItH/o4=
 github.com/prometheus/procfs v0.23.0/go.mod h1:3AVXO0FqLafyYFU/V/IQRZlC8Rgqz8Dm/x6pKLK+RIk=
-github.com/rossigee/crossplane-runtime/v2 v2.5.1 h1:SgFnC2+kDB21QwDiKMpi+fnBnn7m286UzBKjXfytzyE=
-github.com/rossigee/crossplane-runtime/v2 v2.5.1/go.mod h1:HydCb6kEfcRF2VtlVdWA8tCNghY7Ug+fVOmoQ+0ryzI=
+github.com/rossigee/crossplane-runtime/v2 v2.5.0-dev h1:pvU8kvzrJ4Xvu76TWN8YDriyb3pHvihnz/e/ZjU4zCo=
+github.com/rossigee/crossplane-runtime/v2 v2.5.0-dev/go.mod h1:dxpQGHFShkxBZLdog5hHhonqgA+HPg/yOC6OtUayc8s=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
