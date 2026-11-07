@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.20.1 (2026-11-08)
+
+### Fixed
+- GitHub releases attach the CHANGELOG breaking-change notes for the
+  release version, so CRD migration instructions appear in release notes.
+- Robot controller tests cover conflict non-adoption and foreign robot name
+  matching.
+
 ## v0.20.0 (2026-10-31)
 
 ### Breaking Changes
