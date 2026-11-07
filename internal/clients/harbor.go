@@ -2158,7 +2158,7 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 	if err != nil {
 		if isConflictErr(err) {
 			c.logger.Info("CreateRobot: robot already exists, adopting", "name", spec.Name)
-			return c.adoptExistingRobot(ctx, nil, spec.Name, "robot$"+spec.Name)
+			return c.adoptExistingRobot(ctx, nil, spec.Name, "robot$"+spec.Name, "robot-"+spec.Name)
 		}
 		c.logger.Info("CreateRobot system API failed", "name", spec.Name, "error", err.Error())
 		return nil, errors.Wrap(err, "failed to create robot account")
@@ -2273,7 +2273,7 @@ func (c *HarborClient) createProjectRobot(ctx context.Context, spec *RobotSpec, 
 				"projectId", numericID,
 				"name", name,
 			)
-			return c.adoptExistingRobot(ctx, &projectRef, "robot$"+namespace+"+"+name, namespace+"+"+name)
+			return c.adoptExistingRobot(ctx, &projectRef, "robot$"+namespace+"+"+name, namespace+"+"+name, "robot-"+name, "robot$"+name, "robot-"+namespace+"+"+name)
 		}
 		c.logger.Info("CreateRobot project API failed",
 			"projectId", numericID,

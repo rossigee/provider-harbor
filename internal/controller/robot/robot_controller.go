@@ -153,6 +153,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		// create, so it must match exactly; the "robot$" prefix above does not apply to it.
 		if (externalName != "" && robot.Name == externalName) ||
 			robot.Name == searchName || robot.Name == desiredName ||
+			(strings.HasPrefix(robot.Name, "robot-") && strings.HasSuffix(robot.Name, desiredName)) ||
+			(strings.HasPrefix(robot.Name, "robot-") && strings.HasSuffix(robot.Name, strings.TrimPrefix(searchName, "robot$"))) ||
 			strings.HasSuffix(robot.Name, "+"+desiredName) ||
 			strings.HasSuffix(robot.Name, "+"+strings.TrimPrefix(searchName, "robot$")) {
 			log.Debug("found robot", "robotName", robot.Name, "id", robot.ID)
