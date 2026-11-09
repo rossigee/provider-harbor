@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.20.2 (2026-11-09)
+
+### Fixed
+- Robot controller adopts existing Harbor robots instead of failing on 409 Conflict.
+- Project-level robot creation also adopts existing robots on 409 Conflict.
+
 ## v0.20.1 (2026-11-08)
 
 ### Fixed
