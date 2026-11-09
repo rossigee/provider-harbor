@@ -2156,6 +2156,10 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 
 	resp, err := v2Client.Robot.CreateRobot(ctx, params)
 	if err != nil {
+		if isConflictErr(err) {
+			c.logger.Info("CreateRobot: robot already exists, adopting", "name", spec.Name)
+			return c.adoptExistingRobot(ctx, nil, spec.Name, "robot$"+spec.Name)
+		}
 		c.logger.Info("CreateRobot system API failed", "name", spec.Name, "error", err.Error())
 		return nil, errors.Wrap(err, "failed to create robot account")
 	}
@@ -2168,6 +2172,24 @@ func (c *HarborClient) CreateRobot(ctx context.Context, spec *RobotSpec) (*Robot
 		Secret:       createdRobot.Secret,
 		CreationTime: time.Time(createdRobot.CreationTime),
 	}, nil
+}
+
+// adoptExistingRobot resolves a robot that Harbor reported as already existing
+// (409). Only exact name matches are adopted; any other outcome is an error so
+// the reconciler retries rather than recording a robot with no ID.
+func (c *HarborClient) adoptExistingRobot(ctx context.Context, projectID *string, candidates ...string) (*RobotStatus, error) {
+	robots, err := c.ListRobots(ctx, projectID)
+	if err != nil {
+		return nil, errors.Wrap(err, "robot already exists but listing robots to adopt it failed")
+	}
+	for _, r := range robots {
+		for _, candidate := range candidates {
+			if r.Name == candidate {
+				return r, nil
+			}
+		}
+	}
+	return nil, errors.Errorf("robot already exists but no robot named one of %v was listed", candidates)
 }
 
 // createProjectRobot creates a project-scoped robot via the system /robots API.
@@ -2246,6 +2268,13 @@ func (c *HarborClient) createProjectRobot(ctx context.Context, spec *RobotSpec, 
 
 	resp, err := v2Client.Robot.CreateRobot(ctx, params)
 	if err != nil {
+		if isConflictErr(err) {
+			c.logger.Info("CreateRobot project API: robot already exists, adopting",
+				"projectId", numericID,
+				"name", name,
+			)
+			return c.adoptExistingRobot(ctx, &projectRef, "robot$"+namespace+"+"+name, namespace+"+"+name)
+		}
 		c.logger.Info("CreateRobot project API failed",
 			"projectId", numericID,
 			"name", name,
