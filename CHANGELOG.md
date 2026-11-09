@@ -1,10 +1,9 @@
 # Changelog
 
-## v0.20.2 (2026-11-09)
+## v0.20.3 (2026-11-09)
 
 ### Fixed
-- Robot controller adopts existing Harbor robots instead of failing on 409 Conflict.
-- Project-level robot creation also adopts existing robots on 409 Conflict.
+- Robot creation adopts an existing Harbor robot with the exact desired name on 409 Conflict, instead of failing. Project robots are matched as `robot$<project>+<name>` or `<project>+<name>`. If no exact match is found, creation still fails with an error.
 
 ## v0.20.1 (2026-11-08)
 
