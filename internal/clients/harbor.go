@@ -2318,6 +2318,13 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 	pageSize := int64(100)
 	params.PageSize = &pageSize
 
+	// Harbor's GET /robots defaults to a project-scoped view; without
+	// q=Level=system the payload omits system-level robots entirely, so
+	// robots created with Level=system are invisible here and conflict
+	// adoption below can never match them.
+	q := "Level=system"
+	params.WithQ(&q)
+
 	resp, err := v2Client.Robot.ListRobot(ctx, params)
 	if err != nil {
 		c.logger.Info("ListRobots system API failed", "error", err.Error())
@@ -2326,6 +2333,9 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 
 	var robots []*RobotStatus
 	for _, r := range resp.Payload {
+		if r.Level != "" && r.Level != "system" {
+			continue
+		}
 		robots = append(robots, &RobotStatus{
 			ID:           strconv.FormatInt(r.ID, 10),
 			Name:         r.Name,
