@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.20.4 (2026-11-12)
+
+### Changed
+- Built with Go 1.27.4 (previously 1.27.3).
+
 ## v0.20.3 (2026-11-09)
 
 ### Fixed
