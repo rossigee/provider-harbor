@@ -169,8 +169,8 @@ github.com/prometheus/common v0.73.1 h1:SZWh/j4AvhCdhX8jvYSnxvPxhWlC9QZkjJ+tOrEr
 github.com/prometheus/common v0.73.1/go.mod h1:I9aA/Ukz9s1olOobh8KtCkU7B1mQPQsB9UvQPsUQ1Dk=
 github.com/prometheus/procfs v0.23.0 h1:ad+S6FTkzwaMgacKLM5h6bNKExS+DMH0YiUwXItH/o4=
 github.com/prometheus/procfs v0.23.0/go.mod h1:3AVXO0FqLafyYFU/V/IQRZlC8Rgqz8Dm/x6pKLK+RIk=
-github.com/rossigee/crossplane-runtime/v2 v2.5.0-dev h1:pvU8kvzrJ4Xvu76TWN8YDriyb3pHvihnz/e/ZjU4zCo=
-github.com/rossigee/crossplane-runtime/v2 v2.5.0-dev/go.mod h1:dxpQGHFShkxBZLdog5hHhonqgA+HPg/yOC6OtUayc8s=
+github.com/rossigee/crossplane-runtime/v2 v2.5.1 h1:SgFnC2+kDB21QwDiKMpi+fnBnn7m286UzBKjXfytzyE=
+github.com/rossigee/crossplane-runtime/v2 v2.5.1/go.mod h1:HydCb6kEfcRF2VtlVdWA8tCNghY7Ug+fVOmoQ+0ryzI=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
