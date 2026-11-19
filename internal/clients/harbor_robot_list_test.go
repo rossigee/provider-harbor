@@ -46,8 +46,8 @@ func TestListRobotsSystem(t *testing.T) {
 		t.Error("ListRobots must set an explicit page_size")
 	}
 	// On this branch ListRobots system path does not yet force q=Level=system
-	if len(robots) != 2 {
-		t.Fatalf("expected 2 robots (mixed), got %d", len(robots))
+	if len(robots) != 1 {
+		t.Fatalf("expected 1 system robot (filtered), got %d", len(robots))
 	}
 }
 

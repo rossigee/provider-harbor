@@ -139,7 +139,7 @@ func TestCreateRobotConflictAdoptionProject(t *testing.T) {
 // TestCreateRobotConflictNoExactMatchReturnsStub verifies that when list succeeds
 // but no name variant matches, we return a stub (ID empty) instead of error.
 // This prevents reconcile failure; later Observe will decide.
-func TestCreateRobotConflictNoExactMatchReturnsStub(t *testing.T) {
+func TestCreateRobotConflictNoExactMatchReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
 			w.Header().Set("Content-Type", "application/json")
@@ -168,24 +168,15 @@ func TestCreateRobotConflictNoExactMatchReturnsStub(t *testing.T) {
 		t.Fatalf("NewHarborClient returned error: %v", err)
 	}
 
-	robot, err := c.CreateRobot(context.Background(), &RobotSpec{Name: "my-robot"})
-	if err != nil {
-		t.Fatalf("CreateRobot on 409 with no match must succeed with stub, got: %v", err)
-	}
-	if robot == nil {
-		t.Fatal("nil robot")
-	}
-	if robot.ID != "" {
-		t.Errorf("expected empty ID for no-match stub, got %q", robot.ID)
-	}
-	if robot.Name != "my-robot" {
-		t.Errorf("stub name = %q, want %q", robot.Name, "my-robot")
+	_, err = c.CreateRobot(context.Background(), &RobotSpec{Name: "my-robot"})
+	if err == nil {
+		t.Fatal("expected error when no robot matches on 409")
 	}
 }
 
 // TestCreateRobotConflictListErrorReturnsStub ensures list failure during 409 adopt
 // still returns a stub (not a hard error) so controller can proceed.
-func TestCreateRobotConflictListErrorReturnsStub(t *testing.T) {
+func TestCreateRobotConflictListErrorReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
 			w.Header().Set("Content-Type", "application/json")
@@ -212,12 +203,9 @@ func TestCreateRobotConflictListErrorReturnsStub(t *testing.T) {
 		t.Fatalf("NewHarborClient returned error: %v", err)
 	}
 
-	robot, err := c.CreateRobot(context.Background(), &RobotSpec{Name: "my-robot"})
-	if err != nil {
-		t.Fatalf("CreateRobot must not propagate list error on 409, got: %v", err)
-	}
-	if robot.ID != "" || robot.Name != "my-robot" {
-		t.Errorf("expected stub on list failure during adopt, got %+v", robot)
+	_, err = c.CreateRobot(context.Background(), &RobotSpec{Name: "my-robot"})
+	if err == nil {
+		t.Fatal("expected error when list fails during 409 adopt")
 	}
 }
 
@@ -266,16 +254,16 @@ func TestCreateRobotConflictMatchesAllNameVariants(t *testing.T) {
 			}
 
 			robot, err := c.CreateRobot(context.Background(), &RobotSpec{Name: tc.specName})
-			if err != nil {
-				t.Fatalf("CreateRobot: %v", err)
-			}
 			if tc.wantAdopt {
+				if err != nil {
+					t.Fatalf("CreateRobot: %v", err)
+				}
 				if robot.ID == "" {
-					t.Errorf("expected adoption for %s but got stub", tc.name)
+					t.Errorf("expected adoption for %s but got no id", tc.name)
 				}
 			} else {
-				if robot.ID != "" {
-					t.Errorf("expected stub (no adopt) for %s, got id=%s", tc.name, robot.ID)
+				if err == nil {
+					t.Errorf("expected error (no adopt) for %s, got robot %+v", tc.name, robot)
 				}
 			}
 		})
