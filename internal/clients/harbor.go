@@ -2314,35 +2314,41 @@ func (c *HarborClient) ListRobots(ctx context.Context, projectID *string) ([]*Ro
 	}
 
 	c.logger.Debug("ListRobots calling system API")
-	params := sdkrobot.NewListRobotParams()
-	pageSize := int64(100)
-	params.PageSize = &pageSize
 
 	// Harbor's GET /robots defaults to a project-scoped view; without
 	// q=Level=system the payload omits system-level robots entirely, so
 	// robots created with Level=system are invisible here and conflict
 	// adoption below can never match them.
 	q := "Level=system"
-	params.WithQ(&q)
-
-	resp, err := v2Client.Robot.ListRobot(ctx, params)
-	if err != nil {
-		c.logger.Info("ListRobots system API failed", "error", err.Error())
-		return nil, errors.Wrap(err, "failed to list robot accounts")
-	}
-
+	pageSize := int64(100)
 	var robots []*RobotStatus
-	for _, r := range resp.Payload {
-		if r.Level != "" && r.Level != "system" {
-			continue
+	for page := int64(1); ; page++ {
+		params := sdkrobot.NewListRobotParams()
+		params.WithPageSize(&pageSize)
+		params.WithPage(&page)
+		params.WithQ(&q)
+
+		resp, err := v2Client.Robot.ListRobot(ctx, params)
+		if err != nil {
+			c.logger.Info("ListRobots system API failed", "error", err.Error(), "page", page)
+			return nil, errors.Wrap(err, "failed to list robot accounts")
 		}
-		robots = append(robots, &RobotStatus{
-			ID:           strconv.FormatInt(r.ID, 10),
-			Name:         r.Name,
-			Description:  &r.Description,
-			CreationTime: time.Time(r.CreationTime),
-			UpdateTime:   time.Time(r.UpdateTime),
-		})
+
+		for _, r := range resp.Payload {
+			if r.Level != "" && r.Level != "system" {
+				continue
+			}
+			robots = append(robots, &RobotStatus{
+				ID:           strconv.FormatInt(r.ID, 10),
+				Name:         r.Name,
+				Description:  &r.Description,
+				CreationTime: time.Time(r.CreationTime),
+				UpdateTime:   time.Time(r.UpdateTime),
+			})
+		}
+		if int64(len(resp.Payload)) < pageSize {
+			break
+		}
 	}
 	return robots, nil
 }
@@ -2358,15 +2364,6 @@ func (c *HarborClient) listProjectRobots(ctx context.Context, projectID string) 
 
 	q := fmt.Sprintf("Level=project,ProjectID=%s", projectID)
 	pageSize := int64(100)
-	params := sdkrobot.NewListRobotParams()
-	params.WithPageSize(&pageSize)
-	params.WithQ(&q)
-
-	resp, err := v2Client.Robot.ListRobot(ctx, params)
-	if err != nil {
-		c.logger.Info("ListRobot project query failed", "projectId", projectID, "error", err.Error())
-		return nil, errors.Wrap(err, "failed to list project robot accounts")
-	}
 
 	// Return the caller-facing project ref (often a name), not only the numeric ID.
 	projectRef := projectID
@@ -2375,19 +2372,35 @@ func (c *HarborClient) listProjectRobots(ctx context.Context, projectID string) 
 	}
 
 	var robots []*RobotStatus
-	for _, r := range resp.Payload {
-		if r.Level != "" && r.Level != "project" {
-			continue
+	for page := int64(1); ; page++ {
+		params := sdkrobot.NewListRobotParams()
+		params.WithPageSize(&pageSize)
+		params.WithPage(&page)
+		params.WithQ(&q)
+
+		resp, err := v2Client.Robot.ListRobot(ctx, params)
+		if err != nil {
+			c.logger.Info("ListRobot project query failed", "projectId", projectID, "error", err.Error(), "page", page)
+			return nil, errors.Wrap(err, "failed to list project robot accounts")
 		}
-		desc := r.Description
-		robots = append(robots, &RobotStatus{
-			ID:           strconv.FormatInt(r.ID, 10),
-			Name:         r.Name,
-			Description:  &desc,
-			ProjectID:    &projectRef,
-			CreationTime: time.Time(r.CreationTime),
-			UpdateTime:   time.Time(r.UpdateTime),
-		})
+
+		for _, r := range resp.Payload {
+			if r.Level != "" && r.Level != "project" {
+				continue
+			}
+			desc := r.Description
+			robots = append(robots, &RobotStatus{
+				ID:           strconv.FormatInt(r.ID, 10),
+				Name:         r.Name,
+				Description:  &desc,
+				ProjectID:    &projectRef,
+				CreationTime: time.Time(r.CreationTime),
+				UpdateTime:   time.Time(r.UpdateTime),
+			})
+		}
+		if int64(len(resp.Payload)) < pageSize {
+			break
+		}
 	}
 	return robots, nil
 }
