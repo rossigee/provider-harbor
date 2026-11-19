@@ -149,7 +149,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	for _, robot := range robots {
 		// Harbor stores project robots as "<project>+<name>" and returns
 		// them as "robot$<project>+<name>"; also match bare desired name.
-		if robot.Name == searchName || robot.Name == desiredName ||
+		// An external name is the full Harbor name recorded on an earlier observe or
+		// create, so it must match exactly; the "robot$" prefix above does not apply to it.
+		if (externalName != "" && robot.Name == externalName) ||
+			robot.Name == searchName || robot.Name == desiredName ||
 			strings.HasSuffix(robot.Name, "+"+desiredName) ||
 			strings.HasSuffix(robot.Name, "+"+strings.TrimPrefix(searchName, "robot$")) {
 			log.Debug("found robot", "robotName", robot.Name, "id", robot.ID)
@@ -217,7 +220,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	ctrlutil.SetExternalName(cr, robot.Name)
 
 	log.Debug("created Robot", "robotName", robot.Name)
-	return managed.ExternalCreation{}, nil
+
+	// Harbor returns the robot secret only on create, so it is published here, once.
+	// The connection secret is the only place it can be recovered later.
+	details := managed.ConnectionDetails{"username": []byte(robot.Name)}
+	if robot.Secret != "" {
+		details["password"] = []byte(robot.Secret)
+	}
+	return managed.ExternalCreation{ConnectionDetails: details}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {

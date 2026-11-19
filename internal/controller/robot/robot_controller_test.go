@@ -1073,3 +1073,76 @@ func ptrString(s string) *string {
 func ptrInt64(i int64) *int64 {
 	return &i
 }
+
+func TestCreateRobotPublishesConnectionDetails(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-robot"},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:      "my-robot",
+				ProjectID: &projectID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			createRobotFunc: func(ctx context.Context, spec *harborclients.RobotSpec) (*harborclients.RobotStatus, error) {
+				return &harborclients.RobotStatus{
+					ID:           "robot-123",
+					Name:         "robot$my-robot",
+					Secret:       "s3cret-value",
+					CreationTime: time.Now(),
+				}, nil
+			},
+		},
+	}
+
+	creation, err := ext.Create(ctx, robot)
+	if err != nil {
+		t.Fatalf("Create should not fail, got %v", err)
+	}
+	if got := string(creation.ConnectionDetails["username"]); got != "robot$my-robot" {
+		t.Errorf("username = %q, want %q", got, "robot$my-robot")
+	}
+	if got := string(creation.ConnectionDetails["password"]); got != "s3cret-value" {
+		t.Errorf("password not published from the create response")
+	}
+}
+
+func TestObserveRobotMatchesExactExternalName(t *testing.T) {
+	ctx := context.Background()
+	projectID := "project-1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-robot",
+			Annotations: map[string]string{"crossplane.io/external-name": "robot-robot-cicd"},
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:      "cicd",
+				ProjectID: &projectID,
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{ID: "9841", Name: "robot-robot-cicd", ProjectID: pid},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Fatalf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("ResourceExists should be true: the external name is the exact Harbor name of the robot")
+	}
+}
