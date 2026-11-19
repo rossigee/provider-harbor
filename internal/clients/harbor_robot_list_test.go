@@ -342,3 +342,173 @@ func TestListRobotsPaginationErrorOnPage2(t *testing.T) {
 		t.Fatal("expected error from page 2, got nil")
 	}
 }
+
+// TestListRobotsEmptyResult verifies handling of no robots at all.
+func TestListRobotsEmptyResult(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient returned error: %v", err)
+	}
+
+	robots, err := c.ListRobots(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListRobots returned error: %v", err)
+	}
+	if len(robots) != 0 {
+		t.Errorf("expected 0 robots, got %d", len(robots))
+	}
+}
+
+// TestListRobotsFiltersNonSystemAcrossPages ensures filtering works when
+// later pages contain mixed levels.
+func TestListRobotsFiltersNonSystemAcrossPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			pageStr := r.URL.Query().Get("page")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if pageStr == "1" {
+				// return enough to trigger page 2 (simulate full page with mixed)
+				var items []string
+				for i := 0; i < 100; i++ {
+					level := "project"
+					if i%2 == 0 {
+						level = "system"
+					}
+					items = append(items, fmt.Sprintf(`{"id":%d,"name":"item-%03d","level":"%s"}`, i+1, i, level))
+				}
+				_, _ = w.Write([]byte("[" + strings.Join(items, ",") + "]"))
+				return
+			}
+			// page 2 with more system
+			_, _ = w.Write([]byte(`[
+				{"id":101,"name":"sys-extra","level":"system"},
+				{"id":102,"name":"other2","level":""}
+			]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient returned error: %v", err)
+	}
+
+	robots, err := c.ListRobots(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListRobots returned error: %v", err)
+	}
+	// From 100 on page 1 (50 system), + 1 system on page 2 = 51
+	if len(robots) < 50 {
+		t.Fatalf("expected at least 50 system robots after filtering across pages, got %d", len(robots))
+	}
+}
+
+// TestListRobotsFullPageThenEmpty verifies the loop requests an extra page
+// when a page returns exactly pageSize items (and the next returns empty).
+func TestListRobotsFullPageThenEmpty(t *testing.T) {
+	var requestedPages []int64
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			pageStr := r.URL.Query().Get("page")
+			page, _ := strconv.ParseInt(pageStr, 10, 64)
+			requestedPages = append(requestedPages, page)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+
+			if page == 1 {
+				// exactly 100 items
+				items := make([]string, 100)
+				for i := range items {
+					items[i] = fmt.Sprintf(`{"id":%d,"name":"r%d","level":"system"}`, i+1, i)
+				}
+				_, _ = w.Write([]byte("[" + strings.Join(items, ",") + "]"))
+				return
+			}
+			// empty page 2
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient returned error: %v", err)
+	}
+
+	robots, err := c.ListRobots(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListRobots returned error: %v", err)
+	}
+
+	if len(requestedPages) != 2 {
+		t.Errorf("expected 2 pages (full + empty), got %d", len(requestedPages))
+	}
+	if len(robots) != 100 {
+		t.Fatalf("expected 100 robots, got %d", len(robots))
+	}
+}
+
+// TestListRobotsProjectResolveError tests the error path when a project
+// reference cannot be resolved (non-numeric name that doesn't exist).
+func TestListRobotsProjectResolveError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient returned error: %v", err)
+	}
+
+	projectID := "nonexistent-project"
+	_, err = c.ListRobots(context.Background(), &projectID)
+	if err == nil {
+		t.Fatal("expected error for unresolvable project, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to resolve project") {
+		t.Errorf("expected resolve error, got: %v", err)
+	}
+}
