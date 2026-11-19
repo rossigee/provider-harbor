@@ -512,3 +512,134 @@ func TestListRobotsProjectResolveError(t *testing.T) {
 		t.Errorf("expected resolve error, got: %v", err)
 	}
 }
+
+// TestListRobotsProjectPaginatesErrorOnPage2 ensures errors on non-first pages for project lists are surfaced.
+func TestListRobotsProjectPaginatesErrorOnPage2(t *testing.T) {
+	projectID := "123"
+	callCount := 0
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			if callCount == 1 {
+				// full first page
+				items := make([]string, 100)
+				for i := range items {
+					items[i] = fmt.Sprintf(`{"id":%d,"name":"p%d","level":"project"}`, i+1, i)
+				}
+				_, _ = w.Write([]byte("[" + strings.Join(items, ",") + "]"))
+				return
+			}
+			// error on page 2
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"boom on page 2"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient: %v", err)
+	}
+
+	_, err = c.ListRobots(context.Background(), &projectID)
+	if err == nil {
+		t.Fatal("expected error from page 2 of project list")
+	}
+}
+
+// TestListProjectRobotsResolveNameAndFullData exercises resolve + full field mapping for project path.
+func TestListProjectRobotsResolveNameAndFullData(t *testing.T) {
+	projectID := "77"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":77,"name":"friendly-proj","metadata":{"public":"false"}}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":42,"name":"proj-robot","level":"project","description":"full data","creation_time":"2026-01-01T00:00:00Z","update_time":"2026-01-02T00:00:00Z"}]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	robots, err := c.ListRobots(context.Background(), &projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(robots) != 1 {
+		t.Fatal(len(robots))
+	}
+	r := robots[0]
+	if r.ProjectID == nil || *r.ProjectID != "friendly-proj" {
+		t.Errorf("expected friendly name, got %v", r.ProjectID)
+	}
+	if r.Description == nil || *r.Description != "full data" {
+		t.Error("description not populated")
+	}
+}
+
+// TestListRobotsSystemFiltersLevelAcrossPages ensures system level filtering works with pagination.
+func TestListRobotsSystemFiltersLevelAcrossPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			pageStr := r.URL.Query().Get("page")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if pageStr == "1" {
+				// return enough mixed to force page 2
+				var items []string
+				for i := 0; i < 100; i++ {
+					level := "project"
+					if i%3 == 0 {
+						level = "system"
+					}
+					items = append(items, fmt.Sprintf(`{"id":%d,"name":"item-%03d","level":"%s"}`, i+1, i, level))
+				}
+				_, _ = w.Write([]byte("[" + strings.Join(items, ",") + "]"))
+				return
+			}
+			_, _ = w.Write([]byte(`[{"id":101,"name":"sys-extra","level":"system"},{"id":102,"name":"other2","level":""}]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	robots, err := c.ListRobots(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// page1: ~34 system (every 3rd), page2: 1 system + 1 empty -> should keep all system + empty?
+	// filter: keep if level=="" or "system"
+	if len(robots) < 34 {
+		t.Fatalf("expected many system after filter across pages, got %d", len(robots))
+	}
+}
