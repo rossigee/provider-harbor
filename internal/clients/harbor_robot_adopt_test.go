@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	openapiruntime "github.com/go-openapi/runtime"
+	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/project"
 	"github.com/pkg/errors"
 )
 
@@ -508,6 +510,28 @@ func TestIsConflictErr(t *testing.T) {
 	errOther := errors.New("status 500")
 	if isConflictErr(errOther) {
 		t.Error("500 should not be conflict")
+	}
+
+	// explicit APIError (covers the openapiruntime branch)
+	apiErr := &openapiruntime.APIError{Code: http.StatusConflict}
+	if !isConflictErr(apiErr) {
+		t.Error("APIError with Code=409 should be detected")
+	}
+	wrapped := errors.Wrap(apiErr, "wrapped 409")
+	if !isConflictErr(wrapped) {
+		t.Error("wrapped APIError 409 should be detected")
+	}
+
+	// APIError 404 should not
+	api404 := &openapiruntime.APIError{Code: http.StatusNotFound}
+	if isConflictErr(api404) {
+		t.Error("APIError 404 should not be conflict")
+	}
+
+	// typed SDK conflict (exercises the switch in isConflictErr)
+	typed := &project.CreateProjectConflict{}
+	if !isConflictErr(typed) {
+		t.Error("typed CreateProjectConflict should be detected")
 	}
 }
 
