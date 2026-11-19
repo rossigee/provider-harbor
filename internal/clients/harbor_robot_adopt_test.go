@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
 // TestCreateRobotConflictAdoptionSystem covers 409 on system robot create:
@@ -275,5 +277,236 @@ func TestCreateRobotConflictMatchesAllNameVariants(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// --- Additional coverage for success paths, validation, non-409 errors ---
+
+// TestCreateRobotSuccessSystem covers the happy path for system-level robot creation.
+func TestCreateRobotSuccessSystem(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{
+				"id": 123,
+				"name": "robot$flux-ci",
+				"secret": "super-secret-123",
+				"creation_time": "2026-11-19T10:00:00Z",
+				"update_time": "2026-11-19T10:00:00Z",
+				"description": "CI robot"
+			}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("NewHarborClient: %v", err)
+	}
+
+	desc := "CI robot for Flux"
+	expires := int64(30)
+	robot, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:        "flux-ci",
+		Description: &desc,
+		ExpiresIn:   &expires,
+		Permissions: []RobotPermission{
+			{Namespace: "library", Access: []string{"pull", "push"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateRobot success: %v", err)
+	}
+	if robot.ID != "123" || robot.Name != "robot$flux-ci" || robot.Secret != "super-secret-123" {
+		t.Errorf("unexpected success robot: %+v", robot)
+	}
+}
+
+// TestCreateRobotSuccessProject covers happy path for project robot (with resolve).
+func TestCreateRobotSuccessProject(t *testing.T) {
+	var sawProjectGet int
+	projectRef := "myproj"
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			sawProjectGet++
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":55,"name":"myproj","metadata":{"public":"true"}}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{
+				"id": 456,
+				"name": "robot$myproj+puller",
+				"secret": "proj-secret",
+				"creation_time": "2026-11-19T11:00:00Z"
+			}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+
+	pid := projectRef
+	robot, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name: "puller",
+		ProjectID: &pid,
+		Permissions: []RobotPermission{
+			{Access: []string{"pull"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("project create success: %v", err)
+	}
+	if sawProjectGet < 1 {
+		t.Error("expected project resolve")
+	}
+	if robot.ID != "456" || robot.ProjectID == nil || *robot.ProjectID != "myproj" {
+		t.Errorf("bad project robot: %+v", robot)
+	}
+}
+
+// TestCreateRobotValidationErrors covers early returns.
+func TestCreateRobotValidationErrors(t *testing.T) {
+	// Use a mock that satisfies resolves for project path so we reach permission checks.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":1,"name":"p1","metadata":{"public":"false"}}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+
+	_, err = c.CreateRobot(context.Background(), nil)
+	if err == nil || !strings.Contains(err.Error(), "spec is required") {
+		t.Errorf("nil spec: %v", err)
+	}
+
+	_, err = c.CreateRobot(context.Background(), &RobotSpec{Name: ""})
+	if err == nil || !strings.Contains(err.Error(), "name is required") {
+		t.Errorf("empty name: %v", err)
+	}
+
+	pid := "p1"
+	_, err = c.CreateRobot(context.Background(), &RobotSpec{
+		Name:      "x",
+		ProjectID: &pid,
+		// no Permissions
+	})
+	if err == nil || !strings.Contains(err.Error(), "permission") {
+		t.Errorf("no perms for project: %v", err)
+	}
+
+	emptyAccess := []string{}
+	_, err = c.CreateRobot(context.Background(), &RobotSpec{
+		Name:      "x",
+		ProjectID: &pid,
+		Permissions: []RobotPermission{{Access: emptyAccess}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "access list cannot be empty") {
+		t.Errorf("empty access: %v", err)
+	}
+}
+
+// TestCreateRobotNonConflictError covers generic create failure (not 409).
+func TestCreateRobotNonConflictError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"boom"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL, Username: "admin", Password: "Harbor12345", Insecure: true,
+	})
+
+	_, err := c.CreateRobot(context.Background(), &RobotSpec{Name: "failme"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "failed to create robot account") {
+		t.Errorf("wrong error: %v", err)
+	}
+}
+
+// TestCreateRobotProjectResolveError covers resolve failures before the POST in project path.
+func TestCreateRobotProjectResolveError(t *testing.T) {
+	projectRef := "gone"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"errors":[{"code":"NOT_FOUND"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL, Username: "admin", Password: "Harbor12345", Insecure: true,
+	})
+
+	pid := projectRef
+	_, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:      "x",
+		ProjectID: &pid,
+		Permissions: []RobotPermission{{Access: []string{"pull"}}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "failed to resolve project") {
+		t.Errorf("expected resolve error, got: %v", err)
+	}
+}
+
+// TestIsConflictErr exercises the conflict detection helper (used by 409 adoption).
+func TestIsConflictErr(t *testing.T) {
+	if isConflictErr(nil) {
+		t.Error("nil is not conflict")
+	}
+	// string form (what our httptest + SDK typically produces)
+	err409 := errors.New("response status code does not match ... (status 409): {}")
+	if !isConflictErr(err409) {
+		t.Error("string 409 should be detected")
+	}
+	errOther := errors.New("status 500")
+	if isConflictErr(errOther) {
+		t.Error("500 should not be conflict")
 	}
 }
