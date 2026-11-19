@@ -733,6 +733,92 @@ func TestCreateRobotAdoptsStubOnConflict(t *testing.T) {
 	}
 }
 
+// TestObserveRobotProjectMatchesRobotDashPrefix exercises the robot- prefix
+// matching (from 409 branch) for project-scoped robots in Observe.
+func TestObserveRobotProjectMatchesRobotDashPrefix(t *testing.T) {
+	ctx := context.Background()
+	projectID := "proj-xyz"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "my-proj-robot",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{
+						ID:           "101",
+						Name:         "robot-my-proj-robot",
+						ProjectID:    pid,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe should not fail, got %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("should find project robot via robot- prefix match")
+	}
+}
+
+// TestObserveRobotWithExternalNameAndRobotDash covers searchName (from external-name)
+// matching a robot- form.
+func TestObserveRobotWithExternalNameAndRobotDash(t *testing.T) {
+	ctx := context.Background()
+	projectID := "p1"
+	robot := &v1beta1.Robot{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-robot",
+		},
+		Spec: v1beta1.RobotSpec{
+			ForProvider: v1beta1.RobotParameters{
+				Name:        "desired",
+				ProjectID:   &projectID,
+				Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+			},
+		},
+	}
+
+	ext := &external{
+		service: &mockRobotClient{
+			listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+				return []*harborclients.RobotStatus{
+					{
+						ID:           "202",
+						Name:         "robot-desired",
+						ProjectID:    pid,
+						CreationTime: time.Now(),
+						UpdateTime:   time.Now(),
+					},
+				}, nil
+			},
+		},
+	}
+
+	obs, err := ext.Observe(ctx, robot)
+	if err != nil {
+		t.Errorf("Observe: %v", err)
+	}
+	if !obs.ResourceExists {
+		t.Error("expected match via robot- + searchName path")
+	}
+}
+
 func TestUpdateRobotSuccess(t *testing.T) {
 	ctx := context.Background()
 	projectID := "project-1"

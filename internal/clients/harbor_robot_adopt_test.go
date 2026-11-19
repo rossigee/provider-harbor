@@ -510,3 +510,129 @@ func TestIsConflictErr(t *testing.T) {
 		t.Error("500 should not be conflict")
 	}
 }
+
+// TestCreateRobotProjectCustomResourceAndExpires covers the resource remapping
+// logic and ExpiresIn in the project create path (non-adopt).
+func TestCreateRobotProjectCustomResourceAndExpires(t *testing.T) {
+	projectRef := "proj42"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":42,"name":"proj42","metadata":{"public":"false"}}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":789,"name":"robot$proj42+custom","secret":"s","creation_time":"2026-11-19T12:00:00Z"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	expires := int64(90)
+	pid := projectRef
+	robot, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:        "custom",
+		ProjectID:   &pid,
+		ExpiresIn:   &expires,
+		Description: func() *string { s := "custom res"; return &s }(),
+		Permissions: []RobotPermission{
+			{Namespace: "my-custom-ns", Access: []string{"pull"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("project create with custom resource: %v", err)
+	}
+	if robot.ID != "789" {
+		t.Errorf("bad id: %s", robot.ID)
+	}
+}
+
+// TestCreateRobotProjectAdoptRobotDashPrefix covers 409 adopt in project path
+// matching the "robot-" form (after trim).
+func TestCreateRobotProjectAdoptRobotDashPrefix(t *testing.T) {
+	projectRef := "p"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":1,"name":"p","metadata":{"public":"false"}}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"errors":[{"code":"CONFLICT"}]}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":55,"name":"robot-myprojrobot","level":"project"}]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL, Username: "admin", Password: "Harbor12345", Insecure: true,
+	})
+
+	pid := projectRef
+	robot, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:        "myprojrobot",
+		ProjectID:   &pid,
+		Permissions: []RobotPermission{{Access: []string{"pull"}}},
+	})
+	if err != nil {
+		t.Fatalf("adopt project robot-: %v", err)
+	}
+	if robot.ID != "55" {
+		t.Errorf("expected adopt id 55, got %s", robot.ID)
+	}
+}
+
+// TestCreateRobotProjectNonConflictError covers the project-specific error path
+// (not 409).
+func TestCreateRobotProjectNonConflictError(t *testing.T) {
+	projectRef := "p"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"project_id":1,"name":"p"}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2.0/robots" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"proj boom"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL, Username: "admin", Password: "Harbor12345", Insecure: true,
+	})
+
+	pid := projectRef
+	_, err := c.CreateRobot(context.Background(), &RobotSpec{
+		Name:        "x",
+		ProjectID:   &pid,
+		Permissions: []RobotPermission{{Access: []string{"pull"}}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "failed to create project robot account") {
+		t.Errorf("expected project error wrap, got: %v", err)
+	}
+}

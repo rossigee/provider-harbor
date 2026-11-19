@@ -370,3 +370,70 @@ func TestListRobotsHandlesBadResponse(t *testing.T) {
 	}
 	_ = robots // coverage of the path
 }
+
+// TestListProjectRobotsResolveNameFailure keeps numeric project ref when resolveName fails.
+func TestListProjectRobotsResolveNameFailure(t *testing.T) {
+	projectID := "123" // numeric triggers resolveName
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v2.0/projects/") {
+			w.WriteHeader(http.StatusInternalServerError) // resolveName will fail
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":9,"name":"proj9","level":"project"}]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	robots, err := c.ListRobots(context.Background(), &projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(robots) != 1 || robots[0].ProjectID == nil || *robots[0].ProjectID != "123" {
+		t.Errorf("expected numeric project ref on resolve failure, got %+v", robots)
+	}
+}
+
+// TestListProjectRobotsIncludesEmptyLevel covers the filter that accepts level=="" or "project".
+func TestListProjectRobotsIncludesEmptyLevel(t *testing.T) {
+	projectID := "5"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[
+				{"id":1,"name":"with-level","level":"project"},
+				{"id":2,"name":"no-level","level":""}
+			]`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	robots, err := c.ListRobots(context.Background(), &projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(robots) != 2 {
+		t.Fatalf("expected both, got %d", len(robots))
+	}
+}
