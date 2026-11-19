@@ -437,3 +437,32 @@ func TestListProjectRobotsIncludesEmptyLevel(t *testing.T) {
 		t.Fatalf("expected both, got %d", len(robots))
 	}
 }
+
+// TestListProjectRobotsListError covers error from the underlying ListRobot in project path.
+func TestListProjectRobotsListError(t *testing.T) {
+	projectID := "9"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v2.0/robots" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"list proj failed"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, _ := NewHarborClient(&HarborConfig{
+		URL:      srv.URL,
+		Username: "admin",
+		Password: "Harbor12345",
+		Insecure: true,
+	})
+
+	_, err := c.ListRobots(context.Background(), &projectID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "failed to list project robot accounts") {
+		t.Errorf("wrong wrap: %v", err)
+	}
+}
