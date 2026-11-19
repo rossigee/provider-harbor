@@ -818,6 +818,57 @@ func TestObserveRobotWithExternalNameAndRobotDash(t *testing.T) {
 	}
 }
 
+// TestObserveRobotNameMatching covers all the name matching rules (including the
+// robot- additions from the 409 conflict fix) via a table of cases.
+func TestObserveRobotNameMatching(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name       string
+		listName   string
+		desired    string
+		projectID  *string
+		wantExists bool
+	}{
+		{"exact desired", "my-robot", "my-robot", nil, true},
+		{"robot$ prefix", "robot$my-robot", "my-robot", nil, true},
+		{"robot- prefix", "robot-my-robot", "my-robot", nil, true},
+		{"project + suffix", "proj+my-robot", "my-robot", ptrString("proj"), true},
+		{"project robot$ form", "robot$proj+my-robot", "my-robot", ptrString("proj"), true},
+		{"foreign suffix no match", "other-my-robot", "my-robot", nil, false},
+		{"robot- project", "robot-my-proj-r", "my-proj-r", ptrString("p"), true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			robot := &v1beta1.Robot{
+				ObjectMeta: metav1.ObjectMeta{Name: "cr"},
+				Spec: v1beta1.RobotSpec{
+					ForProvider: v1beta1.RobotParameters{
+						Name:        tc.desired,
+						ProjectID:   tc.projectID,
+						Permissions: []v1beta1.RobotPermission{{Namespace: "project", Access: []string{"pull"}}},
+					},
+				},
+			}
+			ext := &external{
+				service: &mockRobotClient{
+					listRobotsFunc: func(ctx context.Context, pid *string) ([]*harborclients.RobotStatus, error) {
+						return []*harborclients.RobotStatus{{ID: "1", Name: tc.listName, CreationTime: time.Now(), UpdateTime: time.Now()}}, nil
+					},
+				},
+			}
+			obs, err := ext.Observe(ctx, robot)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+			if obs.ResourceExists != tc.wantExists {
+				t.Errorf("exists=%v want %v for list=%s desired=%s", obs.ResourceExists, tc.wantExists, tc.listName, tc.desired)
+			}
+		})
+	}
+}
+
 func TestUpdateRobotSuccess(t *testing.T) {
 	ctx := context.Background()
 	projectID := "project-1"
