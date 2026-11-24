@@ -123,6 +123,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	user, err := c.service.GetUser(ctx, username)
+	if err != nil && externalName != "" && externalName != cr.Spec.ForProvider.Username && harborclients.IsNotFound(err) {
+		// The recorded external name did not resolve (stale/default name); fall
+		// back to the desired username before declaring the resource absent.
+		user, err = c.service.GetUser(ctx, cr.Spec.ForProvider.Username)
+	}
 	if err != nil {
 		// Only a genuine not-found means the external resource is absent.
 		// Auth/network failures must surface as Observe errors (Synced=False).
