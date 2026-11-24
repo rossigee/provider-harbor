@@ -405,6 +405,22 @@ func isConflictErr(err error) bool {
 	return strings.Contains(err.Error(), "status 409") || strings.Contains(err.Error(), "[409]")
 }
 
+// isForbiddenErr reports whether err is an HTTP 403 from the Harbor API.
+func isForbiddenErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	cause := errors.Cause(err)
+	if apiErr, ok := cause.(*openapiruntime.APIError); ok {
+		return apiErr.Code == http.StatusForbidden
+	}
+	return strings.Contains(err.Error(), "status 403") || strings.Contains(err.Error(), "[403]") ||
+		strings.Contains(err.Error(), "FORBIDDEN")
+}
+
+// IsForbidden reports whether a Harbor client error is an HTTP 403.
+func IsForbidden(err error) bool { return isForbiddenErr(err) }
+
 func boolPtrString(b bool) *string {
 	s := strconv.FormatBool(b)
 	return &s
@@ -962,6 +978,15 @@ func (c *HarborClient) CreateUser(ctx context.Context, spec *UserSpec) (*UserSta
 		if isConflictErr(err) {
 			// User already exists — return its current state.
 			return c.GetUser(ctx, spec.Username)
+		}
+		// Under OIDC auth mode Harbor refuses to create local users (403).
+		// If a user with the desired username already exists (e.g. auto-onboarded
+		// via OIDC), adopt it instead of failing the reconcile.
+		if isForbiddenErr(err) {
+			if existing, gerr := c.GetUser(ctx, spec.Username); gerr == nil && existing != nil {
+				c.logger.Info("CreateUser: forbidden (OIDC mode); adopting existing user", "username", spec.Username)
+				return existing, nil
+			}
 		}
 		return nil, errors.Wrapf(err, "failed to create user %q", spec.Username)
 	}
@@ -1764,6 +1789,12 @@ func (c *HarborClient) AddProjectMember(ctx context.Context, projectID, username
 		RoleID:     roleID,
 	})
 	if _, err := v2Client.Member.CreateProjectMember(ctx, params); err != nil {
+		if isConflictErr(err) {
+			// Member already exists — treat as success so the reconciler
+			// converges instead of retrying on every pass.
+			c.logger.Info("AddProjectMember: member already exists, adopting", "projectId", numericID, "username", username)
+			return nil
+		}
 		return errors.Wrap(err, "failed to create project member")
 	}
 	return nil
