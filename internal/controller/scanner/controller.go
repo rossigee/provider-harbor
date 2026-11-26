@@ -26,6 +26,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/scanner/v1beta1"
 	"github.com/rossigee/provider-harbor/internal/clients"
@@ -137,6 +138,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if status.UpdateTime != (time.Time{}) {
 		cr.Status.AtProvider.UpdateTime = &metav1.Time{Time: status.UpdateTime}
 	}
+	// Mark the registration Available so Ready reflects reality.
+	cr.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:    true,

@@ -133,6 +133,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Update status with observed state
 	cr.Status.AtProvider.ID = &group.ID
+	// Mark the group Available so Ready reflects reality. Without this the
+	// provider emits only Synced, and the Crossplane readiness metrics show
+	// a permanently un-ready GVK for every healthy UserGroup.
+	cr.SetConditions(xpv1.Available())
 
 	// Set external name for adoption tracking
 	ctrlutil.SetExternalName(cr, group.GroupName)
