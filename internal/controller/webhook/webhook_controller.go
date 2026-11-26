@@ -14,6 +14,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv1 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	"github.com/rossigee/provider-harbor/apis/webhook/v1beta1"
 	harborclients "github.com/rossigee/provider-harbor/internal/clients"
@@ -131,6 +132,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 			// Set external name for adoption tracking
 			ctrlutil.SetExternalName(cr, webhook.Name)
+			// Mark the webhook Available so Ready reflects reality.
+			cr.SetConditions(xpv1.Available())
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
 	}
