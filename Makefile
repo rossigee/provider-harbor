@@ -5,7 +5,7 @@ PROJECT_NAME ?= provider-harbor
 PROJECT_REPO ?= github.com/rossigee/$(PROJECT_NAME)
 
 # Set default Crossplane version for local-deploy
-export CROSSPLANE_VERSION ?= 1.20.0
+export CROSSPLANE_VERSION ?= 2.5.0
 
 PLATFORMS ?= linux_amd64 linux_arm64
 
